@@ -35,3 +35,25 @@ button { border: 0; border-radius: 10px; padding: .75rem 1rem; font: inherit; fo
 .link-button { background: transparent; color: #c6d3dd; padding: .3rem; }
 .error { color: #ffc5c5; }
 @media (max-width: 680px) { .section-heading { display: block; } .section-heading p { margin-top: .35rem; } .hero { padding: 1.5rem; } }
+
+/* Live integration presentation. */
+.status-healthy { color: #d7f7e4; border-color: #3f6c52; }
+.status-unavailable { color: #ffd2d2; border-color: #754848; }
+.status-misconfigured { color: #ffe2ad; border-color: #765f39; }
+.netbird-section { margin-top: 2.5rem; }
+.metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+.metric-card { padding: 1.1rem 1.2rem; border: 1px solid #263440; border-radius: 16px; background: rgba(14, 22, 29, .9); }
+.metric-card span { display: block; color: #8fa4b8; font-size: .82rem; margin-bottom: .45rem; }
+.metric-card strong { font-size: 1.8rem; }
+.peer-list { display: grid; gap: .8rem; }
+.peer-card { padding: 1.1rem 1.2rem; border: 1px solid #263440; border-radius: 16px; background: rgba(14, 22, 29, .9); }
+.peer-card h3 { margin: .75rem 0 1rem; }
+.peer-state { font-size: .76rem; font-weight: 700; }
+.peer-connected { color: #bde8ca; }
+.peer-disconnected { color: #e0b8b8; }
+.peer-details { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .7rem 1.2rem; }
+.peer-details div { min-width: 0; }
+.peer-details dt { color: #8398aa; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .2rem; }
+.peer-details dd { margin: 0; color: #c6d3dd; overflow-wrap: anywhere; }
+.integration-message { max-width: 720px; }
+@media (max-width: 680px) { .metrics-grid { grid-template-columns: 1fr; } }
