@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 from django.test import SimpleTestCase
@@ -74,3 +75,7 @@ class KopiaCollectorTests(SimpleTestCase):
             self.assertIn('"schema_version": 1', path.read_text(encoding="utf-8"))
             self.assertEqual(os.stat(path).st_mode & 0o777, 0o644)
             self.assertEqual(os.stat(path.parent).st_mode & 0o777, 0o755)
+
+    def test_parse_timestamp_accepts_precise_bootstrap_event_time(self):
+        parsed = collector.parse_timestamp("2026-08-11T11:03:41Z")
+        self.assertEqual(parsed, datetime(2026, 8, 11, 11, 3, 41, tzinfo=UTC))
