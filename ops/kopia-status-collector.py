@@ -207,6 +207,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("success", "skipped", "failed", "unknown"),
     )
     parser.add_argument("--attempt-reason", required=True)
+    parser.add_argument(
+        "--attempt-at",
+        help=(
+            "Optional ISO-8601 timestamp for bootstrap/reconciliation. Normal wrapper "
+            "calls omit this and use the observed result time automatically."
+        ),
+    )
     parser.add_argument("--refresh-snapshot", action="store_true")
     parser.add_argument("--status-path", type=Path, default=DEFAULT_STATUS_PATH)
     parser.add_argument("--stack-dir", type=Path, default=DEFAULT_STACK_DIR)
@@ -223,6 +230,13 @@ def main() -> int:
     if os.geteuid() != 0:
         print("ERROR: Kopia status collector must run as root.", file=sys.stderr)
         return 1
+
+    requested_attempt_at: datetime | None = None
+    if args.attempt_at:
+        requested_attempt_at = parse_timestamp(args.attempt_at)
+        if requested_attempt_at is None:
+            print("ERROR: --attempt-at must be a timezone-aware ISO-8601 timestamp.", file=sys.stderr)
+            return 1
 
     now = utc_now()
     latest_snapshot = load_previous_snapshot(args.status_path)
@@ -248,8 +262,13 @@ def main() -> int:
             repository_state = "error"
             query_failed = True
 
-    attempt_at = now
-    if args.attempt_state == "success" and repository_state == "ok" and latest_snapshot:
+    attempt_at = requested_attempt_at or now
+    if (
+        requested_attempt_at is None
+        and args.attempt_state == "success"
+        and repository_state == "ok"
+        and latest_snapshot
+    ):
         snapshot_end = parse_timestamp(latest_snapshot.get("end_time"))
         if snapshot_end is not None:
             attempt_at = snapshot_end
