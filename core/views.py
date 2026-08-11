@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
 
+from integrations.beszel import beszel_status
 from integrations.healthchecks import healthchecks_snapshot
 from integrations.kopia import kopia_status
 from integrations.netbird import netbird_snapshot
@@ -17,6 +18,7 @@ def overview(request):
     netbird = netbird_snapshot()
     healthchecks = healthchecks_snapshot()
     uptime_kuma = uptime_kuma_snapshot()
+    beszel = beszel_status()
     kopia = kopia_status()
     return render(
         request,
@@ -26,11 +28,13 @@ def overview(request):
                 netbird_status=netbird.integration_status(),
                 healthchecks_status=healthchecks.integration_status(),
                 uptime_kuma_status=uptime_kuma.integration_status(),
+                beszel_status=beszel.integration_status(),
                 kopia_status=kopia.integration_status(),
             ),
             "netbird": netbird,
             "healthchecks": healthchecks,
             "uptime_kuma": uptime_kuma,
+            "beszel": beszel,
             "kopia": kopia,
             "release": "0.1.0-dev",
         },

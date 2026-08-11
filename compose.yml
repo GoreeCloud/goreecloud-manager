@@ -21,6 +21,9 @@ services:
       # mounted, and the Manager container receives it read-only. VPS deployments
       # override this host path in .env; local development uses ./runtime/kopia.
       - "${KOPIA_STATUS_HOST_DIR:-./runtime/kopia}:/app/integrations/kopia:ro"
+      # Beszel credentials, Hub data, agent credentials, and Docker access remain
+      # outside Manager. Only the delegated collector's sanitized artifact is mounted.
+      - "${BESZEL_STATUS_HOST_DIR:-./runtime/beszel}:/app/integrations/beszel:ro"
     command:
       - sh
       - -c

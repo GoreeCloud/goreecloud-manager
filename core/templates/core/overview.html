@@ -271,6 +271,123 @@
 <section class="integration-section">
   <div class="section-heading">
     <div>
+      <p class="eyebrow">Monitoring visibility</p>
+      <h2>Beszel</h2>
+    </div>
+    <span class="status status-{{ beszel.state }}">{{ beszel.state }}</span>
+  </div>
+
+  {% if beszel.stats and beszel.details %}
+    <div class="metrics-grid metrics-grid-four">
+      <article class="metric-card">
+        <span>CPU</span>
+        <strong>{{ beszel.stats.cpu_label }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Memory</span>
+        <strong>{{ beszel.stats.memory_percent_label }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Root disk</span>
+        <strong>{{ beszel.stats.disk_percent_label }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Containers</span>
+        <strong>{{ beszel.container_total }}</strong>
+      </article>
+    </div>
+
+    <article class="protection-card native-protection-card">
+      <div class="card-topline">
+        <span class="category">Delegated read-only Beszel artifact</span>
+        <span class="item-state {% if beszel.container_attention %}item-warning{% else %}item-good{% endif %}">
+          {% if beszel.container_attention %}Attention{% else %}Verified{% endif %}
+        </span>
+      </div>
+      <h3>{{ beszel.source_name }} resource monitoring</h3>
+      <p>This is sanitized host and container resource visibility collected through a dedicated Beszel readonly identity outside Manager. Beszel remains authoritative for historical charts, alerts, and resource-monitoring configuration. This data does not prove service availability, backup success, or restore readiness.</p>
+      <dl class="detail-grid">
+        <div><dt>System state</dt><dd>{{ beszel.source_status }}</dd></div>
+        <div><dt>Load average</dt><dd>{{ beszel.stats.load_average_label }}</dd></div>
+        <div><dt>Memory</dt><dd>{{ beszel.stats.memory_label }} ({{ beszel.stats.memory_percent_label }})</dd></div>
+        <div><dt>Swap</dt><dd>{{ beszel.stats.swap_label }}</dd></div>
+        <div><dt>Root disk</dt><dd>{{ beszel.stats.disk_label }} ({{ beszel.stats.disk_percent_label }})</dd></div>
+        <div><dt>Network sent</dt><dd>{{ beszel.stats.network_sent_label }}</dd></div>
+        <div><dt>Network received</dt><dd>{{ beszel.stats.network_recv_label }}</dd></div>
+        <div><dt>Container attention</dt><dd>{{ beszel.container_attention }}</dd></div>
+        <div>
+          <dt>Resource observed</dt>
+          <dd>{{ beszel.stats.observed_at|localtime|date:"M j, Y g:i A T" }}</dd>
+        </div>
+        <div>
+          <dt>Artifact updated</dt>
+          <dd>
+            {% if beszel.generated_at %}
+              {{ beszel.generated_at|localtime|date:"M j, Y g:i A T" }} ({{ beszel.artifact_age_label }} ago)
+            {% else %}
+              Not reported
+            {% endif %}
+          </dd>
+        </div>
+        <div><dt>Beszel Hub</dt><dd>{{ beszel.beszel_version|default:"Not reported" }}</dd></div>
+        <div><dt>Beszel Agent</dt><dd>{{ beszel.agent_version|default:"Not reported" }}</dd></div>
+      </dl>
+      {% if beszel.stats.temperatures %}
+        <dl class="detail-grid">
+          {% for sensor, temperature in beszel.stats.temperatures %}
+            <div><dt>{{ sensor }}</dt><dd>{{ temperature|floatformat:1 }} °C</dd></div>
+          {% endfor %}
+        </dl>
+      {% endif %}
+    </article>
+
+    <article class="detail-card">
+      <div class="card-topline">
+        <span class="item-state item-good">System details</span>
+        <span class="category">{{ beszel.details.hostname }}</span>
+      </div>
+      <h3>{{ beszel.details.os_name|default:"System details" }}</h3>
+      <dl class="detail-grid">
+        <div><dt>Kernel</dt><dd>{{ beszel.details.kernel|default:"Not reported" }}</dd></div>
+        <div><dt>Architecture</dt><dd>{{ beszel.details.architecture|default:"Not reported" }}</dd></div>
+        <div><dt>CPU model</dt><dd>{{ beszel.details.cpu_model|default:"Not reported" }}</dd></div>
+        <div><dt>Cores / threads</dt><dd>{{ beszel.details.cores|default_if_none:"—" }} / {{ beszel.details.threads|default_if_none:"—" }}</dd></div>
+        <div><dt>Installed memory</dt><dd>{{ beszel.details.memory_label }}</dd></div>
+        <div><dt>Container runtime</dt><dd>{% if beszel.details.podman %}Podman{% else %}Docker-compatible{% endif %}</dd></div>
+      </dl>
+    </article>
+
+    <div class="detail-list" aria-label="Beszel container resource status">
+      {% for container in beszel.containers %}
+        <article class="detail-card">
+          <div class="card-topline">
+            <span class="item-state {% if container.attention %}item-warning{% else %}item-good{% endif %}">
+              {{ container.state }}
+            </span>
+            <span class="category">{{ container.health }}</span>
+          </div>
+          <h3>{{ container.name }}</h3>
+          <dl class="detail-grid">
+            <div><dt>CPU</dt><dd>{{ container.cpu_label }}</dd></div>
+            <div><dt>Memory</dt><dd>{{ container.memory_label }}</dd></div>
+            <div><dt>Network</dt><dd>{{ container.network_label }}</dd></div>
+          </dl>
+        </article>
+      {% empty %}
+        <article class="card"><p>Beszel returned no container records for this system.</p></article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <article class="card integration-message">
+      <h3>Native Beszel resource data is not available</h3>
+      <p>{{ beszel.detail }}</p>
+    </article>
+  {% endif %}
+</section>
+
+<section class="integration-section">
+  <div class="section-heading">
+    <div>
       <p class="eyebrow">Protection visibility</p>
       <h2>Kopia</h2>
     </div>
