@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
+from integrations.healthchecks import Healthcheck, HealthchecksSnapshot
 from integrations.netbird import NetBirdPeer, NetBirdSnapshot
 from integrations.registry import integration_statuses
 
@@ -33,6 +34,7 @@ class CoreViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "GoreeCloud Manager")
         self.assertContains(response, "NetBird")
+        self.assertContains(response, "Healthchecks")
 
     @patch("core.views.netbird_snapshot")
     def test_authenticated_overview_renders_live_netbird_peer(self, mocked_snapshot):
@@ -65,6 +67,45 @@ class CoreViewTests(TestCase):
         self.assertContains(response, "goreecloud-test-peer")
         self.assertContains(response, "100.64.0.1")
         self.assertContains(response, "Connected")
+
+    @patch("core.views.healthchecks_snapshot")
+    def test_authenticated_overview_renders_healthchecks_and_kopia_signal(
+        self, mocked_snapshot
+    ):
+        mocked_snapshot.return_value = HealthchecksSnapshot(
+            state="healthy",
+            detail="Live read-only API data verified for 1 check(s).",
+            checks=(
+                Healthcheck(
+                    key="stable-key",
+                    name="GoreeCloud Kopia Backup",
+                    slug="goreecloud-kopia-backup",
+                    tags=("goreecloud", "backup", "kopia", "vps"),
+                    status="up",
+                    started=False,
+                    last_ping=datetime(2026, 8, 11, 9, 0, tzinfo=UTC),
+                    next_ping=datetime(2026, 8, 12, 9, 0, tzinfo=UTC),
+                    timeout=86400,
+                    grace=43200,
+                    schedule="",
+                    timezone="",
+                ),
+            ),
+        )
+        user = get_user_model().objects.create_user(
+            username="healthchecks-admin-test",
+            password="strong-test-password",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("overview"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Monitoring visibility")
+        self.assertContains(response, "GoreeCloud Kopia Backup", count=2)
+        self.assertContains(response, "Protection signal from Healthchecks")
+        self.assertContains(response, "1 day")
+        self.assertContains(response, "12 hours")
 
 
 class IntegrationRegistryTests(SimpleTestCase):
@@ -99,3 +140,15 @@ class IntegrationRegistryTests(SimpleTestCase):
         )
         netbird = next(status for status in statuses if status["key"] == "netbird")
         self.assertEqual(netbird["state"], "healthy")
+
+    def test_live_healthchecks_status_overrides_configuration_placeholder(self):
+        statuses = integration_statuses(
+            healthchecks_status={
+                "state": "degraded",
+                "detail": "Live data verified; 1 check requires attention.",
+            }
+        )
+        healthchecks = next(
+            status for status in statuses if status["key"] == "healthchecks"
+        )
+        self.assertEqual(healthchecks["state"], "degraded")
