@@ -65,18 +65,16 @@ The intended credential is a NetBird service-user personal access token with rea
 
 Manager uses Healthchecks Management API v3 `GET /checks/` with a project-specific read-only API key. The read-only API response omits write URLs, ping URLs, channel identifiers, and other sensitive management fields.
 
+On the GoreeCloud VPS, Manager reaches the Healthchecks application container directly over the dedicated external `manager-healthchecks` Docker network. Manager does not join Healthchecks' application/database network, no new host port is published, and Caddy/NetBird publication controls remain unchanged.
+
 Configure the protected runtime environment:
 
 ```dotenv
 HEALTHCHECKS_ENABLED=true
-HEALTHCHECKS_API_URL=https://healthchecks.goreecloud.com/api/v3
+HEALTHCHECKS_API_URL=http://healthchecks:8000/api/v3
 HEALTHCHECKS_API_KEY=<project read-only API key>
 HEALTHCHECKS_TIMEOUT_SECONDS=5
-HEALTHCHECKS_API_HOST=healthchecks.goreecloud.com
-HEALTHCHECKS_API_IP=100.71.27.119
 ```
-
-The Docker development configuration maps the private Healthchecks hostname to the current GoreeCloud private Caddy/NetBird address so the application can preserve the HTTPS hostname and certificate path without changing VPS-wide DNS behavior.
 
 Manager displays normalized check status, last/next ping timing, schedule or period, grace, and tags. A `down` or `grace` check degrades the Healthchecks summary but does not prevent the rest of Manager from loading.
 
@@ -99,7 +97,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only integration API calls; it does not publish the Manager backend. Production publication through GoreeCloud private DNS, NetBird, and Caddy remains deferred until production-readiness validation.
+The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only internet/API integrations, and the external `manager-healthchecks` network provides only the approved direct Healthchecks service path. Neither publishes the Manager backend. Production publication through GoreeCloud private DNS, NetBird, and Caddy remains deferred until production-readiness validation.
 
 ## Documentation
 
