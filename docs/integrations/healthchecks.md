@@ -33,27 +33,39 @@ Healthchecks documentation states that a read-only API key is restricted to read
 
 ```dotenv
 HEALTHCHECKS_ENABLED=true
-HEALTHCHECKS_API_URL=https://healthchecks.goreecloud.com/api/v3
+HEALTHCHECKS_API_URL=http://healthchecks:8000/api/v3
 HEALTHCHECKS_API_KEY=<protected read-only project API key>
 HEALTHCHECKS_TIMEOUT_SECONDS=5
-HEALTHCHECKS_API_HOST=healthchecks.goreecloud.com
-HEALTHCHECKS_API_IP=100.71.27.119
 ```
 
 The populated API key must remain in approved protected runtime configuration and must not be committed, pasted into issues, recorded in screenshots, or stored in ordinary documentation.
 
-## Private Hostname Resolution
+## Service-to-Service Network
 
-The current GoreeCloud Healthchecks service is privately published through the approved Caddy/NetBird path. The Manager Compose configuration supports an application-specific hostname mapping from `HEALTHCHECKS_API_HOST` to `HEALTHCHECKS_API_IP`.
+On the GoreeCloud VPS, Manager reaches the Healthchecks application container directly over the dedicated external Docker network `manager-healthchecks`.
 
-This preserves:
+The approved path is:
 
-- the `healthchecks.goreecloud.com` HTTPS hostname;
-- normal TLS certificate validation and SNI;
-- the private NetBird/Caddy destination;
-- the existing VPS-wide DNS configuration.
+```text
+GoreeCloud Manager
+        |
+        | manager-healthchecks
+        v
+Healthchecks application :8000
+```
 
-The mapping is a runtime/deployment detail rather than a new public-service publication path.
+This network is intentionally separate from both the public/private Caddy publication path and Healthchecks' `healthchecks-internal` application/database network.
+
+The design preserves the following boundaries:
+
+- Manager does not join `healthchecks-internal` and therefore does not receive a network path to the Healthchecks PostgreSQL container.
+- Healthchecks does not publish a new host port.
+- Caddy's NetBird-only access policy remains unchanged.
+- Manager does not hairpin through the VPS NetBird address to query a service already running on the same Docker host.
+- Docker service discovery uses the stable `healthchecks` container/service name rather than a temporary container IP.
+- The cross-stack dependency is explicit and recoverable through the external network declaration in each Compose stack.
+
+The external `manager-healthchecks` network must be created deliberately on the Docker host before either stack is recreated with the dependency. It should be an internal bridge network because it exists only for same-host service communication.
 
 ## Normalized Fields
 
@@ -108,7 +120,9 @@ Expected states are:
 - `misconfigured` — required API URL or API key is absent;
 - `healthy` — read-only data was retrieved and no check is in `down` or `grace`;
 - `degraded` — live data was retrieved but at least one check is in `down` or `grace`, or the configured project returned no checks;
-- `unavailable` — timeout, reachability, authentication, HTTP, or malformed-response failure.
+- `unavailable` — timeout, reachability, authentication, authorization/path denial, HTTP, or malformed-response failure.
+
+HTTP `401` is classified as a rejected credential. HTTP `403` is deliberately classified separately as a denied API request path so an infrastructure access-control response is not misreported as a bad read-only key.
 
 Raw response bodies, API keys, authentication headers, ping URLs, and other reusable credentials are not rendered.
 
