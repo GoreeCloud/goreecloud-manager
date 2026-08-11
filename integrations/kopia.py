@@ -130,7 +130,10 @@ class KopiaAttempt:
             "snapshot-failed": "Snapshot creation failed",
             "concurrent-run": "Another backup run was already active",
             "bootstrap": "Initial status bootstrap",
-        }.get(self.reason, self.reason.replace("-", " ").strip().capitalize() or "Not reported")
+        }.get(
+            self.reason,
+            self.reason.replace("-", " ").strip().capitalize() or "Not reported",
+        )
 
 
 @dataclass(frozen=True)
@@ -195,12 +198,18 @@ def _parse_attempt(value: Any) -> KopiaAttempt | None:
 
     state = value.get("state")
     reason = value.get("reason")
-    if state not in ATTEMPT_STATES or not isinstance(reason, str):
+    at = _parse_timestamp(value.get("at"))
+    if (
+        state not in ATTEMPT_STATES
+        or not isinstance(reason, str)
+        or not reason.strip()
+        or at is None
+    ):
         return None
 
     return KopiaAttempt(
         state=state,
-        at=_parse_timestamp(value.get("at")),
+        at=at,
         reason=reason.strip(),
     )
 
@@ -215,6 +224,11 @@ def _parse_snapshot(value: Any) -> KopiaSnapshot | None:
     if not isinstance(snapshot_id, str) or not snapshot_id.strip():
         return None
 
+    start_time = _parse_timestamp(value.get("start_time"))
+    end_time = _parse_timestamp(value.get("end_time"))
+    if start_time is None or end_time is None or end_time < start_time:
+        return None
+
     description = value.get("description", "")
     if not isinstance(description, str):
         description = ""
@@ -225,8 +239,8 @@ def _parse_snapshot(value: Any) -> KopiaSnapshot | None:
 
     return KopiaSnapshot(
         snapshot_id=snapshot_id.strip(),
-        start_time=_parse_timestamp(value.get("start_time")),
-        end_time=_parse_timestamp(value.get("end_time")),
+        start_time=start_time,
+        end_time=end_time,
         description=description.strip(),
         size_bytes=_nonnegative_int(value.get("size_bytes")),
         file_count=_nonnegative_int(value.get("file_count")),
@@ -289,6 +303,9 @@ def kopia_status(*, now: datetime | None = None) -> KopiaStatus:
         return _unavailable("Kopia status artifact repository state is invalid.")
 
     repository_checked_at = _parse_timestamp(repository_query.get("checked_at"))
+    if repository_state != "not_attempted" and repository_checked_at is None:
+        return _unavailable("Kopia status artifact repository timestamp is invalid.")
+
     latest_attempt = _parse_attempt(payload.get("latest_attempt"))
     if latest_attempt is None:
         return _unavailable("Kopia status artifact latest-attempt data is malformed.")
@@ -314,19 +331,28 @@ def kopia_status(*, now: datetime | None = None) -> KopiaStatus:
     )
 
     concerns: list[str] = []
-    if artifact_age is not None and artifact_age > artifact_max_age:
+    if generated_at > current:
+        concerns.append("status artifact timestamp is in the future")
+    elif artifact_age is not None and artifact_age > artifact_max_age:
         concerns.append("status artifact is stale")
+
     if latest_attempt.state == "skipped":
         concerns.append("latest scheduled backup attempt was skipped")
     elif latest_attempt.state == "failed":
         concerns.append("latest backup attempt failed")
     elif latest_attempt.state == "unknown":
         concerns.append("latest backup attempt is not yet known")
+
     if repository_state in {"unavailable", "error"}:
         concerns.append("latest repository query did not succeed")
+    elif latest_attempt.state == "success" and repository_state != "ok":
+        concerns.append("latest successful attempt was not verified by a repository query")
+
     if latest_snapshot is None:
         concerns.append("no latest snapshot is recorded")
     else:
+        if latest_snapshot.end_time and latest_snapshot.end_time > current:
+            concerns.append("latest snapshot timestamp is in the future")
         if latest_snapshot.error_count not in {None, 0}:
             concerns.append("latest snapshot reports errors")
         if snapshot_age is not None and snapshot_age > snapshot_max_age:
