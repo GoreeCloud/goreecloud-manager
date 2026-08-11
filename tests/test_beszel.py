@@ -44,6 +44,7 @@ class BeszelAdapterTests(SimpleTestCase):
                 "updated_at": generated.isoformat().replace("+00:00", "Z"),
                 "agent_version": "0.18.7",
                 "beszel_version": "0.18.7",
+                "uptime_seconds": 1740557,
             },
             "stats": {
                 "observed_at": observed.isoformat().replace("+00:00", "Z"),
@@ -122,6 +123,8 @@ class BeszelAdapterTests(SimpleTestCase):
         self.assertEqual(status.source_status, "up")
         self.assertEqual(status.agent_version, "0.18.7")
         self.assertEqual(status.beszel_version, "0.18.7")
+        self.assertEqual(status.uptime_seconds, 1740557)
+        self.assertEqual(status.uptime_label, "20 days")
         self.assertEqual(status.stats.cpu_label, "5.0%")
         self.assertEqual(status.stats.memory_label, "4.18 / 7.58 GB")
         self.assertEqual(status.stats.disk_percent_label, "29.8%")
