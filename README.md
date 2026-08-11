@@ -35,7 +35,10 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 cp .env.example .env
-export DJANGO_SECRET_KEY='development-only-secret'
+# Replace DJANGO_SECRET_KEY in .env with a unique development value.
+set -a
+. ./.env
+set +a
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
