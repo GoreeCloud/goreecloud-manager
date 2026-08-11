@@ -15,10 +15,6 @@ services:
       # Development-only loopback binding. Production publication will use the
       # approved private Caddy/Docker network path instead of a public host port.
       - "127.0.0.1:${GOREECLOUD_MANAGER_PORT:-8090}:8000"
-    extra_hosts:
-      # Preserve the private HTTPS hostname/TLS path for the self-hosted
-      # Healthchecks API without changing host-wide DNS resolution.
-      - "${HEALTHCHECKS_API_HOST:-healthchecks.goreecloud.com}:${HEALTHCHECKS_API_IP:-100.71.27.119}"
     volumes:
       - manager-data:/app/data
     command:
@@ -42,9 +38,12 @@ services:
       - no-new-privileges:true
     networks:
       - manager-internal
-      # Read-only integration adapters require outbound HTTPS. This egress network
-      # does not publish the Manager backend; the only host binding remains loopback.
+      # Read-only internet/API integrations use a general egress path without
+      # publishing the Manager backend.
       - manager-egress
+      # Healthchecks is reached directly over a dedicated cross-stack service
+      # network. Manager does not join Healthchecks' application/database network.
+      - manager-healthchecks
 
 networks:
   manager-internal:
@@ -52,6 +51,9 @@ networks:
     internal: true
   manager-egress:
     driver: bridge
+  manager-healthchecks:
+    external: true
+    name: manager-healthchecks
 
 volumes:
   manager-data:

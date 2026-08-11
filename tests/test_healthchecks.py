@@ -151,6 +151,25 @@ class HealthchecksAdapterTests(SimpleTestCase):
         self.assertNotIn("secret-value", snapshot.detail)
 
     @patch("integrations.healthchecks.httpx.get")
+    def test_forbidden_path_is_not_misreported_as_bad_credential(self, mocked_get):
+        mocked_get.return_value = self._response(status_code=403)
+        with patch.dict(
+            os.environ,
+            {
+                "HEALTHCHECKS_ENABLED": "true",
+                "HEALTHCHECKS_API_URL": "https://healthchecks.example.test/api/v3",
+                "HEALTHCHECKS_API_KEY": "secret-value",
+            },
+            clear=False,
+        ):
+            snapshot = healthchecks_snapshot()
+
+        self.assertEqual(snapshot.state, "unavailable")
+        self.assertIn("request path", snapshot.detail)
+        self.assertNotIn("credential", snapshot.detail)
+        self.assertNotIn("secret-value", snapshot.detail)
+
+    @patch("integrations.healthchecks.httpx.get")
     def test_malformed_response_is_unavailable(self, mocked_get):
         mocked_get.return_value = self._response(payload={"unexpected": []})
         with patch.dict(
