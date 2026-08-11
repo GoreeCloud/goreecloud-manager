@@ -242,6 +242,7 @@ class BeszelStatus:
     source_status: str = ""
     source_updated_at: datetime | None = None
     agent_version: str = ""
+    uptime_seconds: int | None = None
     stats: BeszelStats | None = None
     details: BeszelDetails | None = None
     containers: tuple[BeszelContainer, ...] = ()
@@ -249,6 +250,10 @@ class BeszelStatus:
     @property
     def artifact_age_label(self) -> str:
         return _duration_label(self.artifact_age_seconds)
+
+    @property
+    def uptime_label(self) -> str:
+        return _duration_label(self.uptime_seconds)
 
     @property
     def container_total(self) -> int:
@@ -440,6 +445,7 @@ def beszel_status(*, now: datetime | None = None) -> BeszelStatus:
     source_updated_at = _parse_timestamp(source.get("updated_at"))
     agent_version = source.get("agent_version", "")
     beszel_version = source.get("beszel_version", "")
+    uptime_seconds = _integer(source.get("uptime_seconds"))
     if (
         not isinstance(source_name, str)
         or not source_name.strip()
@@ -448,6 +454,7 @@ def beszel_status(*, now: datetime | None = None) -> BeszelStatus:
         or source_updated_at is None
         or not isinstance(agent_version, str)
         or not isinstance(beszel_version, str)
+        or uptime_seconds is None
     ):
         return _unavailable("Beszel status artifact source data is malformed.")
 
@@ -517,6 +524,7 @@ def beszel_status(*, now: datetime | None = None) -> BeszelStatus:
         source_status=source_status.strip(),
         source_updated_at=source_updated_at,
         agent_version=agent_version.strip(),
+        uptime_seconds=uptime_seconds,
         stats=stats,
         details=details,
         containers=tuple(sorted(containers, key=lambda item: item.name.casefold())),
