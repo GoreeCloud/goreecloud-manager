@@ -48,6 +48,9 @@ services:
       # Healthchecks is reached directly over a dedicated cross-stack service
       # network. Manager does not join Healthchecks' application/database network.
       - manager-healthchecks
+      # Uptime Kuma metrics are reached over a separate dedicated service network.
+      # Manager receives no access to Uptime Kuma's data volume or management API.
+      - manager-uptime
 
 networks:
   manager-internal:
@@ -58,6 +61,9 @@ networks:
   manager-healthchecks:
     external: true
     name: manager-healthchecks
+  manager-uptime:
+    external: true
+    name: manager-uptime
 
 volumes:
   manager-data:
