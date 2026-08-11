@@ -83,6 +83,13 @@ def normalize_snapshot(raw: Any) -> dict[str, Any]:
     if not isinstance(snapshot_id, str) or not snapshot_id.strip():
         raise ValueError("Kopia snapshot ID is missing")
 
+    start_raw = raw.get("startTime")
+    end_raw = raw.get("endTime")
+    start_time = parse_timestamp(start_raw)
+    end_time = parse_timestamp(end_raw)
+    if start_time is None or end_time is None or end_time < start_time:
+        raise ValueError("Kopia snapshot timestamps are invalid")
+
     root_entry = raw.get("rootEntry")
     summary = root_entry.get("summ") if isinstance(root_entry, dict) else None
     stats = raw.get("stats") if isinstance(raw.get("stats"), dict) else {}
@@ -108,8 +115,8 @@ def normalize_snapshot(raw: Any) -> dict[str, Any]:
 
     return {
         "id": snapshot_id.strip(),
-        "start_time": raw.get("startTime") if isinstance(raw.get("startTime"), str) else None,
-        "end_time": raw.get("endTime") if isinstance(raw.get("endTime"), str) else None,
+        "start_time": start_raw.strip(),
+        "end_time": end_raw.strip(),
         "description": description.strip(),
         "size_bytes": size_bytes,
         "file_count": nonnegative_int(summary.get("files")),
@@ -242,7 +249,7 @@ def main() -> int:
             query_failed = True
 
     attempt_at = now
-    if args.attempt_state == "success" and latest_snapshot:
+    if args.attempt_state == "success" and repository_state == "ok" and latest_snapshot:
         snapshot_end = parse_timestamp(latest_snapshot.get("end_time"))
         if snapshot_end is not None:
             attempt_at = snapshot_end
