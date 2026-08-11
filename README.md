@@ -4,7 +4,7 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 
 ## Current Status
 
-**v0.1 development — Milestone 2 implementation.** The authenticated application shell, integration registry, health endpoint, Docker packaging, tests, project documentation, and first read-only NetBird adapter are implemented. NetBird becomes live only when the protected runtime environment supplies the approved service-user token.
+**v0.1 development — Milestone 3 monitoring work.** The authenticated application shell, health endpoint, Docker packaging, tests, project documentation, live read-only NetBird adapter, and read-only Healthchecks monitoring adapter are implemented. Integrations become live only when the protected runtime environment supplies their approved least-privilege credentials.
 
 ## Principles
 
@@ -61,6 +61,27 @@ NETBIRD_TIMEOUT_SECONDS=5
 
 The intended credential is a NetBird service-user personal access token with read-only/Auditor authority. Never commit the populated token, place it in screenshots, or store it in ordinary documentation. When the API is disabled, misconfigured, unreachable, rejects authentication, or returns malformed data, Manager degrades to a sanitized status instead of failing the Overview page.
 
+## Healthchecks Read-Only Integration
+
+Manager uses Healthchecks Management API v3 `GET /checks/` with a project-specific read-only API key. The read-only API response omits write URLs, ping URLs, channel identifiers, and other sensitive management fields.
+
+Configure the protected runtime environment:
+
+```dotenv
+HEALTHCHECKS_ENABLED=true
+HEALTHCHECKS_API_URL=https://healthchecks.goreecloud.com/api/v3
+HEALTHCHECKS_API_KEY=<project read-only API key>
+HEALTHCHECKS_TIMEOUT_SECONDS=5
+HEALTHCHECKS_API_HOST=healthchecks.goreecloud.com
+HEALTHCHECKS_API_IP=100.71.27.119
+```
+
+The Docker development configuration maps the private Healthchecks hostname to the current GoreeCloud private Caddy/NetBird address so the application can preserve the HTTPS hostname and certificate path without changing VPS-wide DNS behavior.
+
+Manager displays normalized check status, last/next ping timing, schedule or period, grace, and tags. A `down` or `grace` check degrades the Healthchecks summary but does not prevent the rest of Manager from loading.
+
+The `GoreeCloud Kopia Backup` Healthchecks check is presented as a **backup monitoring signal only**. Kopia remains authoritative for snapshot, repository, verification, retention, and restore state. Direct Kopia protection visibility is a separate adapter boundary.
+
 ## Tests
 
 ```bash
@@ -68,13 +89,13 @@ python manage.py check
 python manage.py test
 ```
 
-The NetBird adapter tests use mocked responses and do not require or consume a live token.
+Integration tests use mocked API responses and do not require or consume live NetBird or Healthchecks credentials.
 
 ## Docker
 
 ```bash
 cp .env.example .env
-# Set a unique DJANGO_SECRET_KEY and, when testing NetBird, the protected API token.
+# Set a unique DJANGO_SECRET_KEY and any protected integration credentials required for testing.
 docker compose up --build
 ```
 
@@ -82,7 +103,11 @@ The development Compose file binds Manager to loopback only. A dedicated bridge 
 
 ## Documentation
 
-See [`docs/project-specification.md`](docs/project-specification.md) for the v0.1 implementation blueprint and [`docs/integrations/netbird.md`](docs/integrations/netbird.md) for the NetBird adapter contract.
+See:
+
+- [`docs/project-specification.md`](docs/project-specification.md) — v0.1 implementation blueprint.
+- [`docs/integrations/netbird.md`](docs/integrations/netbird.md) — NetBird adapter contract.
+- [`docs/integrations/healthchecks.md`](docs/integrations/healthchecks.md) — Healthchecks adapter contract.
 
 ## License
 
