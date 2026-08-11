@@ -191,6 +191,86 @@
 <section class="integration-section">
   <div class="section-heading">
     <div>
+      <p class="eyebrow">Monitoring visibility</p>
+      <h2>Uptime Kuma</h2>
+    </div>
+    <span class="status status-{{ uptime_kuma.state }}">{{ uptime_kuma.state }}</span>
+  </div>
+
+  {% if uptime_kuma.monitors %}
+    <div class="metrics-grid metrics-grid-four">
+      <article class="metric-card">
+        <span>Total monitors</span>
+        <strong>{{ uptime_kuma.total }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Up</span>
+        <strong>{{ uptime_kuma.up }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Attention</span>
+        <strong>{{ uptime_kuma.attention }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Maintenance</span>
+        <strong>{{ uptime_kuma.maintenance }}</strong>
+      </article>
+    </div>
+
+    <article class="protection-card native-protection-card">
+      <div class="card-topline">
+        <span class="category">Read-only Uptime Kuma metrics</span>
+        <span class="item-state {% if uptime_kuma.attention %}item-warning{% else %}item-good{% endif %}">
+          {% if uptime_kuma.attention %}Attention{% else %}Verified{% endif %}
+        </span>
+      </div>
+      <h3>Service availability monitoring</h3>
+      <p>Manager reads only Uptime Kuma's protected metrics endpoint with a dedicated API key. This visibility does not grant monitor-management authority and does not represent backup or restore readiness. Paused-monitor state and per-monitor heartbeat timestamps are not exposed by this metrics interface.</p>
+      <dl class="detail-grid">
+        <div><dt>Down</dt><dd>{{ uptime_kuma.down }}</dd></div>
+        <div><dt>Pending</dt><dd>{{ uptime_kuma.pending }}</dd></div>
+        <div><dt>Unknown</dt><dd>{{ uptime_kuma.unknown }}</dd></div>
+        <div>
+          <dt>Metrics observed</dt>
+          <dd>
+            {% if uptime_kuma.observed_at %}
+              {{ uptime_kuma.observed_at|localtime|date:"M j, Y g:i A T" }}
+            {% else %}
+              Not reported
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+    </article>
+
+    <div class="detail-list" aria-label="Uptime Kuma monitor status">
+      {% for monitor in uptime_kuma.monitors %}
+        <article class="detail-card">
+          <div class="card-topline">
+            <span class="item-state {% if monitor.state == 'up' %}item-good{% elif monitor.state == 'down' %}check-down{% elif monitor.state == 'maintenance' %}item-muted{% else %}item-warning{% endif %}">
+              {{ monitor.state_label }}
+            </span>
+            <span class="category">{{ monitor.monitor_type }}</span>
+          </div>
+          <h3>{{ monitor.name }}</h3>
+          <dl class="detail-grid">
+            <div><dt>Current state</dt><dd>{{ monitor.state_label }}</dd></div>
+            <div><dt>Response time</dt><dd>{{ monitor.response_time_label }}</dd></div>
+          </dl>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <article class="card integration-message">
+      <h3>Live Uptime Kuma monitor data is not available</h3>
+      <p>{{ uptime_kuma.detail }}</p>
+    </article>
+  {% endif %}
+</section>
+
+<section class="integration-section">
+  <div class="section-heading">
+    <div>
       <p class="eyebrow">Protection visibility</p>
       <h2>Kopia</h2>
     </div>
