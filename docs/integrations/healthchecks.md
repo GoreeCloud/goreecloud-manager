@@ -36,9 +36,13 @@ HEALTHCHECKS_ENABLED=true
 HEALTHCHECKS_API_URL=http://healthchecks:8000/api/v3
 HEALTHCHECKS_API_KEY=<protected read-only project API key>
 HEALTHCHECKS_TIMEOUT_SECONDS=5
+HEALTHCHECKS_CANONICAL_HOST=healthchecks.goreecloud.com
+HEALTHCHECKS_FORWARDED_PROTO=https
 ```
 
 The populated API key must remain in approved protected runtime configuration and must not be committed, pasted into issues, recorded in screenshots, or stored in ordinary documentation.
+
+`HEALTHCHECKS_CANONICAL_HOST` and `HEALTHCHECKS_FORWARDED_PROTO` are non-secret request metadata. They preserve the existing Healthchecks application identity when Manager uses the direct Docker service path. Manager sends these values as `Host` and `X-Forwarded-Proto` respectively. This avoids weakening Healthchecks host validation or changing Caddy's access policy.
 
 ## Service-to-Service Network
 
@@ -63,6 +67,7 @@ The design preserves the following boundaries:
 - Caddy's NetBird-only access policy remains unchanged.
 - Manager does not hairpin through the VPS NetBird address to query a service already running on the same Docker host.
 - Docker service discovery uses the stable `healthchecks` container/service name rather than a temporary container IP.
+- The direct request still presents `healthchecks.goreecloud.com` as the canonical HTTP host and `https` as the forwarded external scheme, matching the existing Healthchecks deployment identity.
 - The cross-stack dependency is explicit and recoverable through the external network declaration in each Compose stack.
 
 The external `manager-healthchecks` network must be created deliberately on the Docker host before either stack is recreated with the dependency. It should be an internal bridge network because it exists only for same-host service communication.

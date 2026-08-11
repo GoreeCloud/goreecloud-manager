@@ -133,6 +133,26 @@ def _timeout_seconds() -> float:
     return min(value, MAX_TIMEOUT_SECONDS)
 
 
+def _request_headers(api_key: str) -> dict[str, str]:
+    """Build non-secret request metadata for the configured Healthchecks path."""
+
+    headers = {
+        "Accept": "application/json",
+        "X-Api-Key": api_key,
+        "User-Agent": "goreecloud-manager/0.1",
+    }
+
+    canonical_host = os.getenv("HEALTHCHECKS_CANONICAL_HOST", "").strip()
+    if canonical_host:
+        headers["Host"] = canonical_host
+
+    forwarded_proto = os.getenv("HEALTHCHECKS_FORWARDED_PROTO", "").strip().lower()
+    if forwarded_proto in {"http", "https"}:
+        headers["X-Forwarded-Proto"] = forwarded_proto
+
+    return headers
+
+
 def _parse_timestamp(value: Any) -> datetime | None:
     if not isinstance(value, str) or not value.strip():
         return None
@@ -271,11 +291,7 @@ def healthchecks_snapshot() -> HealthchecksSnapshot:
     try:
         response = httpx.get(
             f"{api_url}/checks/",
-            headers={
-                "Accept": "application/json",
-                "X-Api-Key": api_key,
-                "User-Agent": "goreecloud-manager/0.1",
-            },
+            headers=_request_headers(api_key),
             timeout=_timeout_seconds(),
         )
     except httpx.TimeoutException:

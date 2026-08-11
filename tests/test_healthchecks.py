@@ -54,8 +54,10 @@ class HealthchecksAdapterTests(SimpleTestCase):
             os.environ,
             {
                 "HEALTHCHECKS_ENABLED": "true",
-                "HEALTHCHECKS_API_URL": "https://healthchecks.example.test/api/v3",
+                "HEALTHCHECKS_API_URL": "http://healthchecks:8000/api/v3",
                 "HEALTHCHECKS_API_KEY": "test-read-only-key",
+                "HEALTHCHECKS_CANONICAL_HOST": "healthchecks.goreecloud.com",
+                "HEALTHCHECKS_FORWARDED_PROTO": "https",
             },
             clear=False,
         ):
@@ -71,7 +73,43 @@ class HealthchecksAdapterTests(SimpleTestCase):
         self.assertEqual(snapshot.kopia_check.grace_label, "12 hours")
         _, kwargs = mocked_get.call_args
         self.assertEqual(kwargs["headers"]["X-Api-Key"], "test-read-only-key")
+        self.assertEqual(kwargs["headers"]["Host"], "healthchecks.goreecloud.com")
+        self.assertEqual(kwargs["headers"]["X-Forwarded-Proto"], "https")
         self.assertNotIn("test-read-only-key", snapshot.detail)
+
+    @patch("integrations.healthchecks.httpx.get")
+    def test_invalid_forwarded_proto_is_not_sent(self, mocked_get):
+        mocked_get.return_value = self._response(
+            payload={
+                "checks": [
+                    {
+                        "name": "Validation",
+                        "slug": "validation",
+                        "status": "up",
+                        "grace": 60,
+                        "timeout": 60,
+                    }
+                ]
+            }
+        )
+
+        with patch.dict(
+            os.environ,
+            {
+                "HEALTHCHECKS_ENABLED": "true",
+                "HEALTHCHECKS_API_URL": "http://healthchecks:8000/api/v3",
+                "HEALTHCHECKS_API_KEY": "test-read-only-key",
+                "HEALTHCHECKS_CANONICAL_HOST": "healthchecks.goreecloud.com",
+                "HEALTHCHECKS_FORWARDED_PROTO": "unexpected",
+            },
+            clear=False,
+        ):
+            snapshot = healthchecks_snapshot()
+
+        self.assertEqual(snapshot.state, "healthy")
+        _, kwargs = mocked_get.call_args
+        self.assertEqual(kwargs["headers"]["Host"], "healthchecks.goreecloud.com")
+        self.assertNotIn("X-Forwarded-Proto", kwargs["headers"])
 
     @patch("integrations.healthchecks.httpx.get")
     def test_down_or_grace_check_degrades_summary(self, mocked_get):
