@@ -24,7 +24,9 @@ def _enabled(name: str) -> bool:
 
 
 def integration_statuses(
-    *, netbird_status: dict[str, str] | None = None
+    *,
+    netbird_status: dict[str, str] | None = None,
+    healthchecks_status: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
     definitions = [
         ("netbird", "NetBird", "Network", "NETBIRD_ENABLED"),
@@ -36,16 +38,22 @@ def integration_statuses(
         ("ntfy", "ntfy", "Notifications", None),
     ]
 
+    live_statuses = {
+        "netbird": netbird_status,
+        "healthchecks": healthchecks_status,
+    }
+
     statuses: list[IntegrationStatus] = []
     for key, name, category, flag in definitions:
-        if key == "netbird" and netbird_status is not None:
+        live_status = live_statuses.get(key)
+        if live_status is not None:
             statuses.append(
                 IntegrationStatus(
                     key=key,
                     name=name,
                     category=category,
-                    state=netbird_status["state"],
-                    detail=netbird_status["detail"],
+                    state=live_status["state"],
+                    detail=live_status["detail"],
                 )
             )
         elif flag is None:
