@@ -38,11 +38,16 @@ services:
       - no-new-privileges:true
     networks:
       - manager-internal
+      # The NetBird REST adapter requires outbound HTTPS. This egress network does
+      # not publish the Manager backend; the only host binding remains loopback.
+      - manager-egress
 
 networks:
   manager-internal:
     driver: bridge
     internal: true
+  manager-egress:
+    driver: bridge
 
 volumes:
   manager-data:
