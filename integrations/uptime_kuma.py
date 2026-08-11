@@ -128,13 +128,8 @@ def _timeout_seconds() -> float:
 
 def _unescape_label(value: str) -> str:
     # Prometheus label escaping is intentionally handled narrowly. We only retain
-    # the approved name/type labels and discard all target-oriented labels.
-    return (
-        value.replace(r"\n", " ")
-        .replace(r'\"', '"')
-        .replace(r"\\", "\")
-        .strip()
-    )
+    # approved display labels, so newline and quoted-string escaping are sufficient.
+    return value.replace(r"\n", " ").replace(r'\"', '"').strip()
 
 
 def _labels(raw: str) -> dict[str, str]:
@@ -211,7 +206,10 @@ def _parse_metrics(text: str, *, observed_at: datetime) -> UptimeKumaSnapshot:
     if not monitors:
         return UptimeKumaSnapshot(
             state="degraded",
-            detail="Uptime Kuma metrics were reachable but reported no monitor status samples.",
+            detail=(
+                "Uptime Kuma metrics were reachable but reported no monitor "
+                "status samples."
+            ),
             observed_at=observed_at,
         )
 
@@ -235,7 +233,9 @@ def _parse_metrics(text: str, *, observed_at: datetime) -> UptimeKumaSnapshot:
     suffix = f"; {maintenance} in maintenance" if maintenance else ""
     return UptimeKumaSnapshot(
         state="healthy",
-        detail=f"Live read-only metrics verified for {len(monitors)} monitor(s){suffix}.",
+        detail=(
+            f"Live read-only metrics verified for {len(monitors)} monitor(s){suffix}."
+        ),
         observed_at=observed_at,
         monitors=monitors,
     )
@@ -277,7 +277,10 @@ def uptime_kuma_snapshot() -> UptimeKumaSnapshot:
         response = httpx.get(
             metrics_url,
             auth=httpx.BasicAuth("", api_key),
-            headers={"Accept": "text/plain", "User-Agent": "goreecloud-manager/0.1"},
+            headers={
+                "Accept": "text/plain",
+                "User-Agent": "goreecloud-manager/0.1",
+            },
             timeout=_timeout_seconds(),
         )
     except httpx.TimeoutException:
