@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 
 from integrations.healthchecks import healthchecks_snapshot
+from integrations.kopia import kopia_status
 from integrations.netbird import netbird_snapshot
 from integrations.registry import integration_statuses
 
@@ -14,6 +15,7 @@ def overview(request):
     """Render the authenticated platform overview."""
     netbird = netbird_snapshot()
     healthchecks = healthchecks_snapshot()
+    kopia = kopia_status()
     return render(
         request,
         "core/overview.html",
@@ -21,9 +23,11 @@ def overview(request):
             "integrations": integration_statuses(
                 netbird_status=netbird.integration_status(),
                 healthchecks_status=healthchecks.integration_status(),
+                kopia_status=kopia.integration_status(),
             ),
             "netbird": netbird,
             "healthchecks": healthchecks,
+            "kopia": kopia,
             "release": "0.1.0-dev",
         },
     )
