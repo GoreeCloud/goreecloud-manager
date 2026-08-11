@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
 
+from integrations.healthchecks import healthchecks_snapshot
 from integrations.netbird import netbird_snapshot
 from integrations.registry import integration_statuses
 
@@ -12,14 +13,17 @@ from integrations.registry import integration_statuses
 def overview(request):
     """Render the authenticated platform overview."""
     netbird = netbird_snapshot()
+    healthchecks = healthchecks_snapshot()
     return render(
         request,
         "core/overview.html",
         {
             "integrations": integration_statuses(
-                netbird_status=netbird.integration_status()
+                netbird_status=netbird.integration_status(),
+                healthchecks_status=healthchecks.integration_status(),
             ),
             "netbird": netbird,
+            "healthchecks": healthchecks,
             "release": "0.1.0-dev",
         },
     )

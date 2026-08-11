@@ -27,10 +27,10 @@
   </div>
 </section>
 
-<section class="netbird-section">
+<section class="integration-section">
   <div class="section-heading">
     <div>
-      <p class="eyebrow">First live integration</p>
+      <p class="eyebrow">Network visibility</p>
       <h2>NetBird peers</h2>
     </div>
     <span class="status status-{{ netbird.state }}">{{ netbird.state }}</span>
@@ -52,17 +52,17 @@
       </article>
     </div>
 
-    <div class="peer-list" aria-label="NetBird peer status">
+    <div class="detail-list" aria-label="NetBird peer status">
       {% for peer in netbird.peers %}
-        <article class="peer-card">
+        <article class="detail-card">
           <div class="card-topline">
-            <span class="peer-state {% if peer.connected %}peer-connected{% else %}peer-disconnected{% endif %}">
+            <span class="item-state {% if peer.connected %}item-good{% else %}item-muted{% endif %}">
               {% if peer.connected %}Connected{% else %}Disconnected{% endif %}
             </span>
             {% if peer.version %}<span class="category">NetBird {{ peer.version }}</span>{% endif %}
           </div>
           <h3>{{ peer.name }}</h3>
-          <dl class="peer-details">
+          <dl class="detail-grid">
             {% if peer.ip %}<div><dt>IPv4</dt><dd>{{ peer.ip }}</dd></div>{% endif %}
             {% if peer.ipv6 %}<div><dt>IPv6</dt><dd>{{ peer.ipv6 }}</dd></div>{% endif %}
             {% if peer.dns_label %}<div><dt>DNS</dt><dd>{{ peer.dns_label }}</dd></div>{% endif %}
@@ -87,6 +87,103 @@
     <article class="card integration-message">
       <h3>Live peer data is not available</h3>
       <p>{{ netbird.detail }}</p>
+    </article>
+  {% endif %}
+</section>
+
+<section class="integration-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Monitoring visibility</p>
+      <h2>Healthchecks</h2>
+    </div>
+    <span class="status status-{{ healthchecks.state }}">{{ healthchecks.state }}</span>
+  </div>
+
+  {% if healthchecks.checks %}
+    <div class="metrics-grid metrics-grid-four">
+      <article class="metric-card">
+        <span>Total checks</span>
+        <strong>{{ healthchecks.total }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Up</span>
+        <strong>{{ healthchecks.up }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Attention</span>
+        <strong>{{ healthchecks.attention }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Paused</span>
+        <strong>{{ healthchecks.paused }}</strong>
+      </article>
+    </div>
+
+    {% if healthchecks.kopia_check %}
+      <article class="protection-card">
+        <div class="card-topline">
+          <span class="category">Protection signal from Healthchecks</span>
+          <span class="check-state check-{{ healthchecks.kopia_check.status }}">{{ healthchecks.kopia_check.status }}</span>
+        </div>
+        <h3>GoreeCloud Kopia Backup</h3>
+        <p>This verifies the backup job's monitoring state. Kopia remains authoritative for snapshot and repository data.</p>
+        <dl class="detail-grid">
+          <div>
+            <dt>Last successful signal</dt>
+            <dd>
+              {% if healthchecks.kopia_check.last_ping %}
+                {{ healthchecks.kopia_check.last_ping|localtime|date:"M j, Y g:i A T" }}
+              {% else %}
+                Not reported
+              {% endif %}
+            </dd>
+          </div>
+          <div><dt>Expected interval</dt><dd>{{ healthchecks.kopia_check.schedule_label }}</dd></div>
+          <div><dt>Grace</dt><dd>{{ healthchecks.kopia_check.grace_label }}</dd></div>
+        </dl>
+      </article>
+    {% endif %}
+
+    <div class="detail-list" aria-label="Healthchecks job status">
+      {% for check in healthchecks.checks %}
+        <article class="detail-card">
+          <div class="card-topline">
+            <span class="check-state check-{{ check.status }}">{{ check.status }}</span>
+            {% if check.tags %}<span class="category">{{ check.tags|join:", " }}</span>{% endif %}
+          </div>
+          <h3>{{ check.name }}</h3>
+          <dl class="detail-grid">
+            <div>
+              <dt>Last ping</dt>
+              <dd>
+                {% if check.last_ping %}
+                  {{ check.last_ping|localtime|date:"M j, Y g:i A T" }}
+                {% else %}
+                  Not reported
+                {% endif %}
+              </dd>
+            </div>
+            <div>
+              <dt>Next expected</dt>
+              <dd>
+                {% if check.next_ping %}
+                  {{ check.next_ping|localtime|date:"M j, Y g:i A T" }}
+                {% else %}
+                  Not reported
+                {% endif %}
+              </dd>
+            </div>
+            <div><dt>Schedule / period</dt><dd>{{ check.schedule_label }}</dd></div>
+            <div><dt>Grace</dt><dd>{{ check.grace_label }}</dd></div>
+          </dl>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <article class="card integration-message">
+      <h3>Live check data is not available</h3>
+      <p>{{ healthchecks.detail }}</p>
     </article>
   {% endif %}
 </section>
