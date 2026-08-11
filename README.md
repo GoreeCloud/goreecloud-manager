@@ -4,7 +4,7 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 
 ## Current Status
 
-**v0.1 development — Milestone 3 protection and monitoring work.** The authenticated application shell, health endpoint, Docker packaging, tests, project documentation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, and delegated read-only Kopia status-artifact adapter are implemented. Integrations become live only when their approved least-privilege runtime sources are configured.
+**v0.1 development — Milestone 3 protection and monitoring work.** The authenticated application shell, health endpoint, Docker packaging, tests, project documentation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, delegated read-only Kopia status-artifact adapter, and Uptime Kuma metrics adapter are implemented. Integrations become live only when their approved least-privilege runtime sources are configured.
 
 ## Principles
 
@@ -82,6 +82,25 @@ Manager displays normalized check status, last/next ping timing, schedule or per
 
 The `GoreeCloud Kopia Backup` Healthchecks check is presented as a **backup monitoring signal only**. Kopia remains authoritative for snapshot, repository, verification, retention, and restore state.
 
+## Uptime Kuma Read-Only Monitoring Visibility
+
+Manager uses Uptime Kuma's protected Prometheus `/metrics` endpoint with a dedicated API key. The key is passed as the password portion of HTTP Basic authentication with an empty username; Manager does not receive the Uptime Kuma administrator password or Socket.IO management authority.
+
+On the GoreeCloud VPS, Manager reaches Uptime Kuma directly over the dedicated external `manager-uptime` Docker network. Uptime Kuma keeps its existing private Caddy path on the separate `proxy` network and publishes no new host port.
+
+Configure the protected runtime environment:
+
+```dotenv
+UPTIME_KUMA_ENABLED=true
+UPTIME_KUMA_METRICS_URL=http://uptime-kuma:3001/metrics
+UPTIME_KUMA_API_KEY=<dedicated metrics API key>
+UPTIME_KUMA_TIMEOUT_SECONDS=5
+```
+
+The raw metrics payload may include target-oriented labels. Manager discards those labels and retains only approved monitor name, monitor type, normalized state, and response-time data. `down`, `pending`, or unknown monitor state degrades the Uptime Kuma summary; maintenance is shown separately.
+
+The metrics interface does not safely expose paused-monitor inventory or per-monitor heartbeat timestamps, so Manager explicitly reports that limitation instead of reading Uptime Kuma's database or inventing values.
+
 ## Kopia Native Read-Only Protection Visibility
 
 Manager does not execute Kopia and does not receive the Docker socket, repository password, SFTP private key, repository configuration, or broad access to Kopia secrets. Instead, the existing root-owned backup workflow invokes the delegated `ops/kopia-status-collector.py` helper. That collector queries only the supported read-only snapshot-list output when appropriate, normalizes an approved non-secret subset, and atomically writes a small status artifact.
@@ -107,7 +126,7 @@ python manage.py check
 python manage.py test
 ```
 
-Integration tests use mocked API responses or fixture status artifacts and do not require or consume live NetBird, Healthchecks, or Kopia repository credentials.
+Integration tests use mocked API responses or fixture status artifacts and do not require or consume live NetBird, Healthchecks, Uptime Kuma, or Kopia repository credentials.
 
 ## Docker
 
@@ -117,7 +136,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only internet/API integrations, the external `manager-healthchecks` network provides only the approved direct Healthchecks service path, and Kopia status enters Manager only through a read-only bind mount containing sanitized status data. None of these paths publishes the Manager backend. Production publication through GoreeCloud private DNS, NetBird, and Caddy remains deferred until production-readiness validation.
+The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only internet/API integrations, the external `manager-healthchecks` network provides only the approved direct Healthchecks service path, the external `manager-uptime` network provides only the approved Uptime Kuma metrics path, and Kopia status enters Manager only through a read-only bind mount containing sanitized status data. None of these paths publishes the Manager backend. Production publication through GoreeCloud private DNS, NetBird, and Caddy remains deferred until production-readiness validation.
 
 ## Documentation
 
@@ -126,6 +145,7 @@ See:
 - [`docs/project-specification.md`](docs/project-specification.md) — v0.1 implementation blueprint.
 - [`docs/integrations/netbird.md`](docs/integrations/netbird.md) — NetBird adapter contract.
 - [`docs/integrations/healthchecks.md`](docs/integrations/healthchecks.md) — Healthchecks adapter contract.
+- [`docs/integrations/uptime-kuma.md`](docs/integrations/uptime-kuma.md) — Uptime Kuma metrics adapter contract.
 - [`docs/integrations/kopia.md`](docs/integrations/kopia.md) — delegated Kopia status-artifact contract.
 
 ## License

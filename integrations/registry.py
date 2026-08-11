@@ -27,13 +27,14 @@ def integration_statuses(
     *,
     netbird_status: dict[str, str] | None = None,
     healthchecks_status: dict[str, str] | None = None,
+    uptime_kuma_status: dict[str, str] | None = None,
     kopia_status: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
     definitions = [
         ("netbird", "NetBird", "Network", "NETBIRD_ENABLED"),
         ("healthchecks", "Healthchecks", "Monitoring", "HEALTHCHECKS_ENABLED"),
         ("docker", "Docker", "Infrastructure", None),
-        ("uptime-kuma", "Uptime Kuma", "Monitoring", None),
+        ("uptime-kuma", "Uptime Kuma", "Monitoring", "UPTIME_KUMA_ENABLED"),
         ("beszel", "Beszel", "Monitoring", None),
         ("kopia", "Kopia", "Protection", "KOPIA_ENABLED"),
         ("ntfy", "ntfy", "Notifications", None),
@@ -42,6 +43,7 @@ def integration_statuses(
     live_statuses = {
         "netbird": netbird_status,
         "healthchecks": healthchecks_status,
+        "uptime-kuma": uptime_kuma_status,
         "kopia": kopia_status,
     }
 
