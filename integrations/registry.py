@@ -1,8 +1,7 @@
 """Integration registry for GoreeCloud Manager.
 
-The registry intentionally returns configuration state only. Live adapters will be added
-individually after their least-privilege credentials, API contracts, failure behavior,
-and tests are approved.
+The registry reports normalized application-facing state. Live adapters remain responsible
+for querying their authoritative systems and returning only approved non-secret fields.
 """
 
 from __future__ import annotations
@@ -24,7 +23,9 @@ def _enabled(name: str) -> bool:
     return os.getenv(name, "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def integration_statuses() -> list[dict[str, str]]:
+def integration_statuses(
+    *, netbird_status: dict[str, str] | None = None
+) -> list[dict[str, str]]:
     definitions = [
         ("netbird", "NetBird", "Network", "NETBIRD_ENABLED"),
         ("healthchecks", "Healthchecks", "Monitoring", "HEALTHCHECKS_ENABLED"),
@@ -37,7 +38,17 @@ def integration_statuses() -> list[dict[str, str]]:
 
     statuses: list[IntegrationStatus] = []
     for key, name, category, flag in definitions:
-        if flag is None:
+        if key == "netbird" and netbird_status is not None:
+            statuses.append(
+                IntegrationStatus(
+                    key=key,
+                    name=name,
+                    category=category,
+                    state=netbird_status["state"],
+                    detail=netbird_status["detail"],
+                )
+            )
+        elif flag is None:
             statuses.append(
                 IntegrationStatus(
                     key=key,

@@ -4,7 +4,7 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 
 ## Current Status
 
-**v0.1 scaffold — development only.** The current code establishes the authenticated application shell, integration registry, health endpoint, Docker packaging, tests, and project documentation. Live infrastructure integrations are intentionally not enabled yet.
+**v0.1 development — Milestone 2 implementation.** The authenticated application shell, integration registry, health endpoint, Docker packaging, tests, project documentation, and first read-only NetBird adapter are implemented. NetBird becomes live only when the protected runtime environment supplies the approved service-user token.
 
 ## Principles
 
@@ -46,6 +46,21 @@ python manage.py runserver
 
 Open `http://127.0.0.1:8000/` and sign in with the administrator account you created.
 
+## NetBird Read-Only Integration
+
+Manager uses NetBird's documented `GET /api/peers` endpoint. The adapter performs no write-capable API operation.
+
+Configure the protected runtime environment:
+
+```dotenv
+NETBIRD_ENABLED=true
+NETBIRD_API_URL=https://netbird.goreecloud.com/api
+NETBIRD_API_TOKEN=<read-only service-user token>
+NETBIRD_TIMEOUT_SECONDS=5
+```
+
+The intended credential is a NetBird service-user personal access token with read-only/Auditor authority. Never commit the populated token, place it in screenshots, or store it in ordinary documentation. When the API is disabled, misconfigured, unreachable, rejects authentication, or returns malformed data, Manager degrades to a sanitized status instead of failing the Overview page.
+
 ## Tests
 
 ```bash
@@ -53,19 +68,21 @@ python manage.py check
 python manage.py test
 ```
 
+The NetBird adapter tests use mocked responses and do not require or consume a live token.
+
 ## Docker
 
 ```bash
 cp .env.example .env
-# Set a unique DJANGO_SECRET_KEY in .env before starting.
+# Set a unique DJANGO_SECRET_KEY and, when testing NetBird, the protected API token.
 docker compose up --build
 ```
 
-The development Compose file binds Manager to loopback only. Production publication through GoreeCloud private DNS, NetBird, and Caddy is intentionally deferred until production-readiness validation.
+The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only integration API calls; it does not publish the Manager backend. Production publication through GoreeCloud private DNS, NetBird, and Caddy remains deferred until production-readiness validation.
 
 ## Documentation
 
-See [`docs/project-specification.md`](docs/project-specification.md) for the v0.1 implementation blueprint.
+See [`docs/project-specification.md`](docs/project-specification.md) for the v0.1 implementation blueprint and [`docs/integrations/netbird.md`](docs/integrations/netbird.md) for the NetBird adapter contract.
 
 ## License
 
