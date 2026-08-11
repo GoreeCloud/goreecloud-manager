@@ -27,6 +27,7 @@ def integration_statuses(
     *,
     netbird_status: dict[str, str] | None = None,
     healthchecks_status: dict[str, str] | None = None,
+    kopia_status: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
     definitions = [
         ("netbird", "NetBird", "Network", "NETBIRD_ENABLED"),
@@ -34,13 +35,14 @@ def integration_statuses(
         ("docker", "Docker", "Infrastructure", None),
         ("uptime-kuma", "Uptime Kuma", "Monitoring", None),
         ("beszel", "Beszel", "Monitoring", None),
-        ("kopia", "Kopia", "Protection", None),
+        ("kopia", "Kopia", "Protection", "KOPIA_ENABLED"),
         ("ntfy", "ntfy", "Notifications", None),
     ]
 
     live_statuses = {
         "netbird": netbird_status,
         "healthchecks": healthchecks_status,
+        "kopia": kopia_status,
     }
 
     statuses: list[IntegrationStatus] = []
@@ -83,7 +85,7 @@ def integration_statuses(
                     name=name,
                     category=category,
                     state="disabled",
-                    detail="Disabled until least-privilege credentials are configured.",
+                    detail="Disabled until its approved read-only status source is configured.",
                 )
             )
 

@@ -17,10 +17,10 @@ GoreeCloud Manager
                          |
                          +-- NetBird REST API (implemented)
                          +-- Healthchecks Management API (implemented)
+                         +-- Kopia delegated status artifact (implemented)
                          +-- Docker via approved delegated source
                          +-- Uptime Kuma
                          +-- Beszel
-                         +-- Kopia
                          +-- ntfy
 ```
 
@@ -42,19 +42,43 @@ The monitoring adapter uses the documented Healthchecks Management API v3 checks
 
 The Healthchecks adapter does not implement write-capable management operations. A `down` or `grace` check changes the Manager summary to `degraded` while preserving availability of the rest of the application.
 
-The existing `GoreeCloud Kopia Backup` check is also displayed as a protection signal. This is intentionally described as Healthchecks-derived monitoring evidence, not as direct Kopia repository or snapshot verification. A future Kopia adapter must independently define how Manager can obtain read-only snapshot/repository status without receiving excessive Docker, host, SSH, or repository authority.
+The existing `GoreeCloud Kopia Backup` check is displayed as a monitoring/protection signal. It is intentionally described as Healthchecks-derived evidence, not as direct Kopia repository or snapshot verification.
 
-## Network Boundary
+### Kopia Status-Artifact Adapter
 
-The Docker development deployment retains an internal application network and a separate bridge for outbound HTTPS required by integration APIs. This egress path does not publish the Manager backend. The development host binding remains loopback-only.
+Native Kopia visibility uses a delegated file boundary rather than direct repository or Docker access.
 
-For the current private Healthchecks service, Compose may map `healthchecks.goreecloud.com` to the configured GoreeCloud private Caddy/NetBird address. The HTTPS hostname is retained, allowing normal TLS certificate validation while avoiding a host-wide DNS change.
+The existing root-owned Kopia backup workflow runs `ops/kopia-status-collector.py` on the host. After successful snapshot creation the collector invokes the existing pinned Kopia Compose service only for a read-only `snapshot list /source --json --max-results=1` query. It normalizes a strict non-secret subset and atomically writes a versioned JSON artifact under the Manager integration-data directory.
 
-Production connectivity must be validated separately and should use the approved GoreeCloud private-service path wherever practical.
+On skipped or failed scheduled attempts the collector updates the attempt state while preserving the last known successful snapshot from the previous artifact. This lets the Manager distinguish an unavailable backup target from the absence of any known successful snapshot.
+
+Manager receives only the sanitized artifact directory through a read-only bind mount. Manager does not execute Kopia and does not receive:
+
+- the Docker socket
+- Kopia repository configuration or password
+- SFTP private keys or known-hosts material
+- the Kopia stack or secrets directory
+- snapshot create/delete/retention/maintenance/restore authority
+
+The adapter treats missing, malformed, unsupported, or stale artifacts as fail-soft integration states. A valid artifact may be `degraded` if the latest scheduled attempt was skipped/failed/unknown, the latest snapshot is too old, the snapshot reports errors, or a repository refresh failed.
+
+Healthchecks and native Kopia visibility remain separate signals. Restore readiness remains a third, independent recovery assurance boundary.
+
+## Network and Data Boundaries
+
+The Docker development deployment retains an internal application network and a separate bridge for outbound HTTPS required by API integrations. This egress path does not publish the Manager backend. The development host binding remains loopback-only.
+
+Healthchecks is reached directly over the dedicated external `manager-healthchecks` Docker network. Manager does not join Healthchecks' application/database network, and the Healthchecks database does not join the Manager service network. The direct request preserves the canonical `healthchecks.goreecloud.com` host and forwarded HTTPS scheme so application host validation remains intact without weakening Caddy's private access policy.
+
+Kopia uses no Manager network path. The only Kopia-to-Manager data path is the sanitized host-side status artifact mounted read-only into the Manager container.
+
+Production connectivity and publication must be validated separately and should use the approved GoreeCloud private-service model wherever practical.
 
 ## Security Boundary
 
 The Manager container must not receive the Docker socket, host root filesystem, SSH private keys, broad administrative tokens, Healthchecks read-write keys, or Kopia repository credentials merely to provide visibility. Production integrations require service-specific least-privilege credentials or an explicitly approved delegated read-only status source.
+
+The Kopia artifact is deliberately non-secret and contains only approved operational metadata. Raw Kopia command stderr/stdout, repository endpoints, usernames, secret paths, root object IDs, and repository configuration are excluded.
 
 ## Static Assets
 

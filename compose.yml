@@ -17,6 +17,10 @@ services:
       - "127.0.0.1:${GOREECLOUD_MANAGER_PORT:-8090}:8000"
     volumes:
       - manager-data:/app/data
+      # Kopia remains external to Manager. Only the sanitized collector output is
+      # mounted, and the Manager container receives it read-only. VPS deployments
+      # override this host path in .env; local development uses ./runtime/kopia.
+      - "${KOPIA_STATUS_HOST_DIR:-./runtime/kopia}:/app/integrations/kopia:ro"
     command:
       - sh
       - -c

@@ -187,4 +187,123 @@
     </article>
   {% endif %}
 </section>
+
+<section class="integration-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Protection visibility</p>
+      <h2>Kopia</h2>
+    </div>
+    <span class="status status-{{ kopia.state }}">{{ kopia.state }}</span>
+  </div>
+
+  {% if kopia.latest_snapshot %}
+    <div class="metrics-grid metrics-grid-four">
+      <article class="metric-card">
+        <span>Snapshot age</span>
+        <strong>{{ kopia.snapshot_age_label }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Protected size</span>
+        <strong>{{ kopia.latest_snapshot.size_label }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Files</span>
+        <strong>{{ kopia.latest_snapshot.file_count|default_if_none:"—" }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Directories</span>
+        <strong>{{ kopia.latest_snapshot.directory_count|default_if_none:"—" }}</strong>
+      </article>
+    </div>
+
+    <article class="protection-card native-protection-card">
+      <div class="card-topline">
+        <span class="category">Native Kopia status artifact</span>
+        {% if kopia.latest_attempt %}
+          <span class="attempt-state attempt-{{ kopia.latest_attempt.state }}">{{ kopia.latest_attempt.state_label }}</span>
+        {% endif %}
+      </div>
+      <h3>{{ kopia.source_label|default:kopia.source_host }}</h3>
+      <p>This is direct, read-only Kopia protection visibility from a delegated host-side collector. The Healthchecks heartbeat above remains a separate monitoring signal, and neither signal proves restore readiness.</p>
+      <dl class="detail-grid">
+        {% if kopia.latest_attempt %}
+          <div><dt>Latest attempt</dt><dd>{{ kopia.latest_attempt.state_label }} — {{ kopia.latest_attempt.reason_label }}</dd></div>
+          <div>
+            <dt>Attempt time</dt>
+            <dd>
+              {% if kopia.latest_attempt.at %}
+                {{ kopia.latest_attempt.at|localtime|date:"M j, Y g:i A T" }}
+              {% else %}
+                Not reported
+              {% endif %}
+            </dd>
+          </div>
+        {% endif %}
+        <div><dt>Repository query</dt><dd>{{ kopia.repository_state_label }}</dd></div>
+        <div>
+          <dt>Artifact updated</dt>
+          <dd>
+            {% if kopia.generated_at %}
+              {{ kopia.generated_at|localtime|date:"M j, Y g:i A T" }} ({{ kopia.artifact_age_label }} ago)
+            {% else %}
+              Not reported
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+    </article>
+
+    <article class="detail-card">
+      <div class="card-topline">
+        <span class="item-state {% if kopia.latest_snapshot.error_count == 0 %}item-good{% else %}item-warning{% endif %}">
+          Latest snapshot
+        </span>
+        <span class="category">{{ kopia.latest_snapshot.snapshot_id }}</span>
+      </div>
+      <h3>{{ kopia.latest_snapshot.description|default:"GoreeCloud VPS snapshot" }}</h3>
+      <dl class="detail-grid">
+        <div>
+          <dt>Started</dt>
+          <dd>
+            {% if kopia.latest_snapshot.start_time %}
+              {{ kopia.latest_snapshot.start_time|localtime|date:"M j, Y g:i A T" }}
+            {% else %}
+              Not reported
+            {% endif %}
+          </dd>
+        </div>
+        <div>
+          <dt>Completed</dt>
+          <dd>
+            {% if kopia.latest_snapshot.end_time %}
+              {{ kopia.latest_snapshot.end_time|localtime|date:"M j, Y g:i A T" }}
+            {% else %}
+              Not reported
+            {% endif %}
+          </dd>
+        </div>
+        <div><dt>Protected size</dt><dd>{{ kopia.latest_snapshot.size_label }}</dd></div>
+        <div><dt>Files</dt><dd>{{ kopia.latest_snapshot.file_count|default_if_none:"Not reported" }}</dd></div>
+        <div><dt>Directories</dt><dd>{{ kopia.latest_snapshot.directory_count|default_if_none:"Not reported" }}</dd></div>
+        <div><dt>Snapshot errors</dt><dd>{{ kopia.latest_snapshot.error_count|default_if_none:"Not reported" }}</dd></div>
+        <div>
+          <dt>Retention</dt>
+          <dd>
+            {% if kopia.latest_snapshot.retention_reasons %}
+              {{ kopia.latest_snapshot.retention_reasons|join:", " }}
+            {% else %}
+              Not reported
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+    </article>
+  {% else %}
+    <article class="card integration-message">
+      <h3>Native Kopia snapshot data is not available</h3>
+      <p>{{ kopia.detail }}</p>
+    </article>
+  {% endif %}
+</section>
 {% endblock %}
