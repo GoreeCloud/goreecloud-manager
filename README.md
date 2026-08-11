@@ -4,7 +4,7 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 
 ## Current Status
 
-**v0.1 development — Milestone 3 protection and monitoring work.** The authenticated application shell, health endpoint, Docker packaging, tests, project documentation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, delegated read-only Kopia status-artifact adapter, and Uptime Kuma metrics adapter are implemented. Integrations become live only when their approved least-privilege runtime sources are configured.
+**v0.1 development — Milestone 3 protection and monitoring work.** The authenticated application shell, health endpoint, Docker packaging, tests, project documentation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, delegated read-only Kopia status-artifact adapter, Uptime Kuma metrics adapter, and delegated read-only Beszel resource adapter are implemented. Integrations become live only when their approved least-privilege runtime sources are configured.
 
 ## Principles
 
@@ -101,6 +101,26 @@ The raw metrics payload may include target-oriented labels. Manager discards tho
 
 The metrics interface does not safely expose paused-monitor inventory or per-monitor heartbeat timestamps, so Manager explicitly reports that limitation instead of reading Uptime Kuma's database or inventing values.
 
+## Beszel Native Read-Only Resource Visibility
+
+Manager does not receive the Beszel service-account password, PocketBase auth token, Hub data volume, Beszel Agent key/token, or Docker socket. Instead, a root-owned host-side collector authenticates with a dedicated Beszel `readonly` identity that can see only the explicitly shared `goreecloud-vps-01` system.
+
+The collector performs the required PocketBase authentication POST, verifies the role and one-system scope, then performs only approved GET reads for current system/resource data. It writes a sanitized versioned JSON artifact containing current CPU/load, uptime, memory, swap, root-disk, selected network/temperature data, approved system details, and current container resource/state fields.
+
+Configure Manager to read only the sanitized artifact:
+
+```dotenv
+BESZEL_ENABLED=true
+BESZEL_STATUS_HOST_DIR=/srv/docker/appdata/goreecloud-manager/integrations/beszel
+BESZEL_STATUS_PATH=/app/integrations/beszel/status.json
+BESZEL_STATUS_MAX_AGE_SECONDS=900
+BESZEL_DATA_MAX_AGE_SECONDS=1800
+```
+
+The populated collector credential stays outside Manager under protected host-side secret storage. A collector authentication/network/query failure is represented by sanitized collector state; previously sanitized data may be preserved for context while Manager marks the integration degraded. Missing or malformed artifacts fail soft without affecting `/healthz/`.
+
+Beszel remains authoritative for historical charts, alerting, and resource-monitoring configuration. Manager's Beszel section is resource visibility only and is not a substitute for Uptime Kuma service-availability monitoring, Healthchecks scheduled-job monitoring, or Kopia protection state.
+
 ## Kopia Native Read-Only Protection Visibility
 
 Manager does not execute Kopia and does not receive the Docker socket, repository password, SFTP private key, repository configuration, or broad access to Kopia secrets. Instead, the existing root-owned backup workflow invokes the delegated `ops/kopia-status-collector.py` helper. That collector queries only the supported read-only snapshot-list output when appropriate, normalizes an approved non-secret subset, and atomically writes a small status artifact.
@@ -126,7 +146,7 @@ python manage.py check
 python manage.py test
 ```
 
-Integration tests use mocked API responses or fixture status artifacts and do not require or consume live NetBird, Healthchecks, Uptime Kuma, or Kopia repository credentials.
+Integration tests use mocked API responses or fixture status artifacts and do not require or consume live NetBird, Healthchecks, Uptime Kuma, Beszel, or Kopia repository credentials.
 
 ## Docker
 
@@ -136,7 +156,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only internet/API integrations, the external `manager-healthchecks` network provides only the approved direct Healthchecks service path, the external `manager-uptime` network provides only the approved Uptime Kuma metrics path, and Kopia status enters Manager only through a read-only bind mount containing sanitized status data. None of these paths publishes the Manager backend. Production publication through GoreeCloud private DNS, NetBird, and Caddy remains deferred until production-readiness validation.
+The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only internet/API integrations, the external `manager-healthchecks` network provides only the approved direct Healthchecks service path, the external `manager-uptime` network provides only the approved Uptime Kuma metrics path, and Kopia/Beszel status enters Manager only through read-only bind mounts containing sanitized status data. None of these paths publishes the Manager backend. Production publication through GoreeCloud private DNS, NetBird, and Caddy remains deferred until production-readiness validation.
 
 ## Documentation
 
@@ -146,6 +166,7 @@ See:
 - [`docs/integrations/netbird.md`](docs/integrations/netbird.md) — NetBird adapter contract.
 - [`docs/integrations/healthchecks.md`](docs/integrations/healthchecks.md) — Healthchecks adapter contract.
 - [`docs/integrations/uptime-kuma.md`](docs/integrations/uptime-kuma.md) — Uptime Kuma metrics adapter contract.
+- [`docs/integrations/beszel.md`](docs/integrations/beszel.md) — delegated Beszel status-artifact contract.
 - [`docs/integrations/kopia.md`](docs/integrations/kopia.md) — delegated Kopia status-artifact contract.
 
 ## License
