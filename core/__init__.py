@@ -1,0 +1,1 @@
+"""Core GoreeCloud Manager application."""

@@ -1,0 +1,28 @@
+{% extends "core/base.html" %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Central platform administration</p>
+  <h1>GoreeCloud Manager</h1>
+  <p>Read-only operational visibility first. Administrative automation comes later.</p>
+  <div class="release">Development release {{ release }}</div>
+</section>
+
+<section>
+  <div class="section-heading">
+    <h2>Integrations</h2>
+    <p>Configuration state is shown separately from verified live health.</p>
+  </div>
+  <div class="grid">
+    {% for integration in integrations %}
+      <article class="card">
+        <div class="card-topline">
+          <span class="category">{{ integration.category }}</span>
+          <span class="status status-{{ integration.state }}">{{ integration.state }}</span>
+        </div>
+        <h3>{{ integration.name }}</h3>
+        <p>{{ integration.detail }}</p>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

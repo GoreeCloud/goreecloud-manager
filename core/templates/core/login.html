@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+{% block title %}Sign in · GoreeCloud Manager{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <p class="eyebrow">Private administrative application</p>
+  <h1>Sign in to GoreeCloud Manager</h1>
+  {% if form.errors %}<p class="error">The username or password was not accepted.</p>{% endif %}
+  <form method="post">
+    {% csrf_token %}
+    <label>Username {{ form.username }}</label>
+    <label>Password {{ form.password }}</label>
+    <button type="submit">Sign in</button>
+  </form>
+</section>
+{% endblock %}
