@@ -289,10 +289,16 @@ def healthchecks_snapshot() -> HealthchecksSnapshot:
             detail="Manager could not reach the configured Healthchecks API endpoint.",
         )
 
-    if response.status_code in {401, 403}:
+    if response.status_code == 401:
         return HealthchecksSnapshot(
             state="unavailable",
             detail="Healthchecks rejected the configured read-only API credential.",
+        )
+
+    if response.status_code == 403:
+        return HealthchecksSnapshot(
+            state="unavailable",
+            detail="Healthchecks denied the configured API request path.",
         )
 
     try:
