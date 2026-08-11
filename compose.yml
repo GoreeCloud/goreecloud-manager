@@ -17,6 +17,9 @@ services:
       - "127.0.0.1:${GOREECLOUD_MANAGER_PORT:-8090}:8000"
     volumes:
       - manager-data:/app/data
+      # Kopia remains external to Manager. Only the sanitized collector output is
+      # mounted, and the Manager container receives it read-only.
+      - "${KOPIA_STATUS_HOST_DIR:-/srv/docker/appdata/goreecloud-manager/integrations/kopia}:/app/integrations/kopia:ro"
     command:
       - sh
       - -c
