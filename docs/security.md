@@ -13,9 +13,14 @@
 - Healthchecks API keys are read only from protected process environment configuration and are never rendered by Manager.
 - Manager does not reconstruct or expose Healthchecks ping, update, pause, resume, channel, or other management URLs omitted from read-only API responses.
 - The Healthchecks-derived Kopia signal does not grant Manager Kopia repository credentials, SFTP credentials, Docker authority, or restore/delete capability.
-- API authentication failures and malformed responses are sanitized before they reach the user interface.
+- Native Kopia visibility uses a delegated host-side collector and a versioned sanitized JSON artifact rather than direct repository or Docker access.
+- The Manager container receives the Kopia status directory **read-only** and does not receive the Kopia stack, repository configuration, repository password, SFTP private key, known-hosts file, or `/srv/docker/secrets/kopia`.
+- The Kopia artifact excludes repository endpoints, usernames, secret paths, root object IDs, raw Kopia stdout/stderr, and other fields not required by the Overview.
+- The host-side Kopia collector may use the protected Kopia deployment, but collector failure is not allowed to convert a successful snapshot into a failed backup merely because Manager status could not be refreshed.
+- A valid recent snapshot is operational evidence only. Manager must not present Healthchecks or native Kopia visibility as proof that restore or integrity validation has succeeded.
+- API authentication failures, artifact parsing failures, stale artifacts, and malformed responses are sanitized before they reach the user interface.
 - `/var/run/docker.sock` is explicitly excluded from the Manager container.
 - The Manager container does not receive the host root filesystem or SSH private keys.
 - The health endpoint contains no private infrastructure details.
-- Integrated-service failures must not leak credentials, raw authentication headers, raw upstream response bodies, or reusable secret-bearing URLs into the UI.
-- Outbound API connectivity does not authorize direct public inbound access to Manager; the development backend remains loopback-bound.
+- Integrated-service failures must not leak credentials, raw authentication headers, raw upstream response bodies, reusable secret-bearing URLs, or protected file contents into the UI.
+- Outbound API connectivity and delegated status mounts do not authorize direct public inbound access to Manager; the development backend remains loopback-bound.
