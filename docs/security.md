@@ -1,15 +1,21 @@
 # Security Model
 
-- Application authentication is required independently of NetBird reachability.
+- Application authentication is required independently of integration reachability.
 - Production uses HTTPS termination through Caddy and the approved private-service publication model.
 - Session and CSRF cookies are secure when `DJANGO_DEBUG=false`.
 - Reusable secrets are environment-specific and are excluded from source control.
-- Read-only API credentials are preferred.
+- Read-only API credentials are preferred and must be scoped to one integration wherever the upstream system supports that model.
 - The NetBird adapter is intentionally limited to `GET /api/peers` and contains no write-capable API method.
 - The intended NetBird credential is a dedicated service-user token with read-only/Auditor authority.
 - NetBird tokens are read only from process environment configuration and are never returned by the adapter, registry, templates, or health endpoint.
+- The Healthchecks adapter is intentionally limited to the documented read-only checks-list request.
+- Healthchecks must use a project-specific **read-only** API key, not a read-write project key.
+- Healthchecks API keys are read only from protected process environment configuration and are never rendered by Manager.
+- Manager does not reconstruct or expose Healthchecks ping, update, pause, resume, channel, or other management URLs omitted from read-only API responses.
+- The Healthchecks-derived Kopia signal does not grant Manager Kopia repository credentials, SFTP credentials, Docker authority, or restore/delete capability.
 - API authentication failures and malformed responses are sanitized before they reach the user interface.
 - `/var/run/docker.sock` is explicitly excluded from the Manager container.
+- The Manager container does not receive the host root filesystem or SSH private keys.
 - The health endpoint contains no private infrastructure details.
-- Integrated-service failures must not leak credentials, raw authentication headers, or upstream response bodies into the UI.
+- Integrated-service failures must not leak credentials, raw authentication headers, raw upstream response bodies, or reusable secret-bearing URLs into the UI.
 - Outbound API connectivity does not authorize direct public inbound access to Manager; the development backend remains loopback-bound.
