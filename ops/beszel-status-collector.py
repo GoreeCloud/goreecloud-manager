@@ -226,6 +226,10 @@ def normalize_system(
     ):
         raise CollectorError("error", "Beszel system record is malformed")
 
+    uptime_seconds = integer(info.get("u"))
+    if uptime_seconds is None:
+        raise CollectorError("error", "Beszel system uptime is malformed")
+
     stats = stats_record.get("stats")
     observed_at = stats_record.get("created") or stats_record.get("updated")
     if not isinstance(stats, dict) or parse_timestamp(observed_at) is None:
@@ -296,6 +300,7 @@ def normalize_system(
             "updated_at": str(updated).strip(),
             "agent_version": str(info.get("v", "")).strip(),
             "beszel_version": beszel_version.strip(),
+            "uptime_seconds": uptime_seconds,
         },
         "stats": {
             "observed_at": str(observed_at).strip(),
