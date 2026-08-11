@@ -14,6 +14,9 @@ staticfiles/
 .env.*
 !.env.example
 
+# Local delegated integration data
+runtime/
+
 # Test / tooling
 .coverage
 .pytest_cache/
