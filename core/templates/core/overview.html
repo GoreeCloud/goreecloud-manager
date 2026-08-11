@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load tz %}
 {% block content %}
 <section class="hero">
   <p class="eyebrow">Central platform administration</p>
@@ -24,5 +25,69 @@
       </article>
     {% endfor %}
   </div>
+</section>
+
+<section class="netbird-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">First live integration</p>
+      <h2>NetBird peers</h2>
+    </div>
+    <span class="status status-{{ netbird.state }}">{{ netbird.state }}</span>
+  </div>
+
+  {% if netbird.state == "healthy" %}
+    <div class="metrics-grid">
+      <article class="metric-card">
+        <span>Total peers</span>
+        <strong>{{ netbird.total }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Connected</span>
+        <strong>{{ netbird.connected }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Disconnected</span>
+        <strong>{{ netbird.disconnected }}</strong>
+      </article>
+    </div>
+
+    <div class="peer-list" aria-label="NetBird peer status">
+      {% for peer in netbird.peers %}
+        <article class="peer-card">
+          <div class="card-topline">
+            <span class="peer-state {% if peer.connected %}peer-connected{% else %}peer-disconnected{% endif %}">
+              {% if peer.connected %}Connected{% else %}Disconnected{% endif %}
+            </span>
+            {% if peer.version %}<span class="category">NetBird {{ peer.version }}</span>{% endif %}
+          </div>
+          <h3>{{ peer.name }}</h3>
+          <dl class="peer-details">
+            {% if peer.ip %}<div><dt>IPv4</dt><dd>{{ peer.ip }}</dd></div>{% endif %}
+            {% if peer.ipv6 %}<div><dt>IPv6</dt><dd>{{ peer.ipv6 }}</dd></div>{% endif %}
+            {% if peer.dns_label %}<div><dt>DNS</dt><dd>{{ peer.dns_label }}</dd></div>{% endif %}
+            <div><dt>OS</dt><dd>{{ peer.os }}</dd></div>
+            <div>
+              <dt>Last seen</dt>
+              <dd>
+                {% if peer.last_seen %}
+                  {{ peer.last_seen|localtime|date:"M j, Y g:i A T" }}
+                {% else %}
+                  Not reported
+                {% endif %}
+              </dd>
+            </div>
+          </dl>
+        </article>
+      {% empty %}
+        <article class="card"><p>NetBird returned no peers.</p></article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <article class="card integration-message">
+      <h3>Live peer data is not available</h3>
+      <p>{{ netbird.detail }}</p>
+    </article>
+  {% endif %}
 </section>
 {% endblock %}
