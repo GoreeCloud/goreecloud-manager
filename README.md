@@ -4,7 +4,7 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 
 ## Current Status
 
-**v0.1 development — Milestone 3 protection and monitoring work.** The authenticated application shell, health endpoint, Docker packaging, tests, project documentation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, delegated read-only Kopia status-artifact adapter, Uptime Kuma metrics adapter, and delegated read-only Beszel resource adapter are implemented. Integrations become live only when their approved least-privilege runtime sources are configured.
+**v0.1 development — read-only integration work.** The authenticated application shell, health endpoint, Docker packaging, tests, project documentation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, delegated read-only Kopia status-artifact adapter, Uptime Kuma metrics adapter, delegated read-only Beszel resource adapter, and the initial GoreeCloud Tasks read-only API adapter are implemented. Integrations become live only when their approved least-privilege runtime sources are configured.
 
 ## Principles
 
@@ -15,6 +15,7 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 - No direct public backend exposure.
 - No Docker socket mounted into the Manager container.
 - Specialized services remain authoritative for their own operations.
+- GoreeCloud Tasks remains authoritative for task content and task authorization.
 - Backup and recovery are required before production dependency.
 
 ## Initial Stack
@@ -139,6 +140,27 @@ The native Kopia section can show the latest backup-attempt state, repository-qu
 
 This is deliberately separate from Healthchecks. A current heartbeat and a recent Kopia snapshot are both useful evidence, but neither proves that a restore will succeed. Restore and integrity validation remain separate recovery concerns.
 
+## GoreeCloud Tasks Read-Only Integration
+
+Manager consumes the dedicated GoreeCloud Tasks Manager API and never reads the Tasks database directly. Tasks maps the bearer token to one existing active Tasks account and applies its normal task-visibility authorization before returning active project-scoped work marked as GoreeCloud operational work.
+
+Configure Manager with the Tasks application base URL and exactly one token source:
+
+```dotenv
+TASKS_ENABLED=true
+TASKS_API_URL=https://tasks.goreecloud.com
+TASKS_ACCESS_TOKEN_FILE=/run/secrets/goreecloud_tasks_manager_api_token
+TASKS_TIMEOUT_SECONDS=5
+```
+
+For an isolated development environment only, `TASKS_ACCESS_TOKEN` may be used in the uncommitted `.env` instead of the file setting.
+
+Manager appends `/api/v1/manager/operational-tasks/`, authenticates with Bearer authorization, validates the `goreecloud.tasks.manager.v1` response contract, and normalizes only approved operational fields. The authenticated `/tasks/` page displays the resulting read-only task summary and task details.
+
+The intended Tasks principal is a dedicated integration account with Viewer membership only in projects explicitly approved for Manager visibility. Manager cannot choose another Tasks identity through the API. Membership revocation is therefore the task-visibility revocation mechanism. The integration does not expose personal Inbox tasks, ordinary non-operational tasks, descriptions, comments, labels, reminder state, account details, or task mutation operations.
+
+No real Tasks integration account, token, protected secret mount, production network path, DNS/Caddy route, or deployment is provisioned by the repository feature. See `docs/tasks-integration.md` for the complete security and production boundary.
+
 ## Tests
 
 ```bash
@@ -146,7 +168,7 @@ python manage.py check
 python manage.py test
 ```
 
-Integration tests use mocked API responses or fixture status artifacts and do not require or consume live NetBird, Healthchecks, Uptime Kuma, Beszel, or Kopia repository credentials.
+Integration tests use mocked API responses or fixture status artifacts and do not require or consume live NetBird, Healthchecks, Uptime Kuma, Beszel, Kopia, or GoreeCloud Tasks production credentials.
 
 ## Docker
 
@@ -156,7 +178,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only internet/API integrations, the external `manager-healthchecks` network provides only the approved direct Healthchecks service path, the external `manager-uptime` network provides only the approved Uptime Kuma metrics path, and Kopia/Beszel status enters Manager only through read-only bind mounts containing sanitized status data. None of these paths publishes the Manager backend. Production publication through GoreeCloud private DNS, NetBird, and Caddy remains deferred until production-readiness validation.
+The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only internet/API integrations, including a separately deployed Tasks endpoint when explicitly configured. The external `manager-healthchecks` network provides only the approved direct Healthchecks service path, the external `manager-uptime` network provides only the approved Uptime Kuma metrics path, and Kopia/Beszel status enters Manager only through read-only bind mounts containing sanitized status data. None of these paths publishes the Manager backend. Production publication and any dedicated Manager-to-Tasks private service path remain deferred until production-readiness validation.
 
 ## Documentation
 
@@ -168,6 +190,7 @@ See:
 - [`docs/integrations/uptime-kuma.md`](docs/integrations/uptime-kuma.md) — Uptime Kuma metrics adapter contract.
 - [`docs/integrations/beszel.md`](docs/integrations/beszel.md) — delegated Beszel status-artifact contract.
 - [`docs/integrations/kopia.md`](docs/integrations/kopia.md) — delegated Kopia status-artifact contract.
+- [`docs/tasks-integration.md`](docs/tasks-integration.md) — GoreeCloud Tasks API and authorization boundary.
 
 ## License
 

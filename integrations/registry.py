@@ -30,6 +30,7 @@ def integration_statuses(
     uptime_kuma_status: dict[str, str] | None = None,
     beszel_status: dict[str, str] | None = None,
     kopia_status: dict[str, str] | None = None,
+    tasks_status: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
     definitions = [
         ("netbird", "NetBird", "Network", "NETBIRD_ENABLED"),
@@ -38,6 +39,7 @@ def integration_statuses(
         ("uptime-kuma", "Uptime Kuma", "Monitoring", "UPTIME_KUMA_ENABLED"),
         ("beszel", "Beszel", "Monitoring", "BESZEL_ENABLED"),
         ("kopia", "Kopia", "Protection", "KOPIA_ENABLED"),
+        ("tasks", "GoreeCloud Tasks", "Work Management", "TASKS_ENABLED"),
         ("ntfy", "ntfy", "Notifications", None),
     ]
 
@@ -47,6 +49,7 @@ def integration_statuses(
         "uptime-kuma": uptime_kuma_status,
         "beszel": beszel_status,
         "kopia": kopia_status,
+        "tasks": tasks_status,
     }
 
     statuses: list[IntegrationStatus] = []

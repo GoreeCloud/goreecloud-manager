@@ -12,6 +12,12 @@
     <div>
       <strong>GoreeCloud</strong>
       <span>Manager</span>
+      {% if user.is_authenticated %}
+        <span>·</span>
+        <a href="{% url 'overview' %}">Overview</a>
+        <span>·</span>
+        <a href="{% url 'tasks' %}">Tasks</a>
+      {% endif %}
     </div>
     {% if user.is_authenticated %}
       <form method="post" action="{% url 'logout' %}">
