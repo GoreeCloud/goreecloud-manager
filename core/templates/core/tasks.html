@@ -1,0 +1,117 @@
+{% extends "core/base.html" %}
+{% load tz %}
+{% block title %}Operational Tasks — GoreeCloud Manager{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Read-only operational work</p>
+  <h1>GoreeCloud Tasks</h1>
+  <p>Manager displays only the operational task data exposed to its explicitly scoped GoreeCloud Tasks integration identity. Tasks remains authoritative for task content and permissions.</p>
+  <div class="release">Development release {{ release }}</div>
+</section>
+
+<section class="integration-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Work-management visibility</p>
+      <h2>Active operational tasks</h2>
+    </div>
+    <span class="status status-{{ tasks.state }}">{{ tasks.state }}</span>
+  </div>
+
+  {% if tasks.state == "healthy" %}
+    <div class="metrics-grid metrics-grid-four">
+      <article class="metric-card">
+        <span>Open</span>
+        <strong>{{ tasks.total_open }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>Blocked</span>
+        <strong>{{ tasks.blocked }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>P0</span>
+        <strong>{{ tasks.p0 }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>P1</span>
+        <strong>{{ tasks.p1 }}</strong>
+      </article>
+    </div>
+
+    <article class="protection-card native-protection-card">
+      <div class="card-topline">
+        <span class="category">Authorization-scoped Tasks API</span>
+        <span class="item-state item-good">Read only</span>
+      </div>
+      <h3>Integration boundary</h3>
+      <p>{{ tasks.detail }}</p>
+      <dl class="detail-grid">
+        <div><dt>Tasks identity</dt><dd>{{ tasks.identity }}</dd></div>
+        <div><dt>Records returned</dt><dd>{{ tasks.returned }}</dd></div>
+        <div>
+          <dt>Observed</dt>
+          <dd>
+            {% if tasks.observed_at %}
+              {{ tasks.observed_at|localtime|date:"M j, Y g:i A T" }}
+            {% else %}
+              Not reported
+            {% endif %}
+          </dd>
+        </div>
+      </dl>
+    </article>
+
+    <div class="detail-list" aria-label="GoreeCloud operational tasks">
+      {% for task in tasks.tasks %}
+        <article class="detail-card">
+          <div class="card-topline">
+            <span class="item-state {% if task.status == 'blocked' %}item-warning{% else %}item-good{% endif %}">{{ task.status_label }}</span>
+            <span class="category">{{ task.priority_label }}</span>
+          </div>
+          <h3>{{ task.title }}</h3>
+          <dl class="detail-grid">
+            <div><dt>Project</dt><dd>{{ task.project_name }}</dd></div>
+            {% if task.assigned_system %}<div><dt>System</dt><dd>{{ task.assigned_system }}</dd></div>{% endif %}
+            {% if task.assigned_service %}<div><dt>Service</dt><dd>{{ task.assigned_service }}</dd></div>{% endif %}
+            {% if task.environment %}<div><dt>Environment</dt><dd>{{ task.environment }}</dd></div>{% endif %}
+            {% if task.workload_category %}<div><dt>Workload</dt><dd>{{ task.workload_category }}</dd></div>{% endif %}
+            <div>
+              <dt>Due</dt>
+              <dd>
+                {% if task.due_at %}
+                  {{ task.due_at|localtime|date:"M j, Y g:i A T" }}
+                {% else %}
+                  No due time
+                {% endif %}
+              </dd>
+            </div>
+            {% if task.blocker %}<div><dt>Blocker</dt><dd>{{ task.blocker }}</dd></div>{% endif %}
+            {% if task.resume_condition %}<div><dt>Resume condition</dt><dd>{{ task.resume_condition }}</dd></div>{% endif %}
+            {% if task.related_change_record %}<div><dt>Change record</dt><dd>{{ task.related_change_record }}</dd></div>{% endif %}
+            {% if task.related_documentation %}<div><dt>Documentation</dt><dd>{{ task.related_documentation }}</dd></div>{% endif %}
+          </dl>
+          {% if task.backup_required or task.recovery_required or task.validation_required or task.documentation_required %}
+            <p>
+              Requirements:
+              {% if task.backup_required %}Backup{% endif %}
+              {% if task.recovery_required %}{% if task.backup_required %}, {% endif %}Recovery{% endif %}
+              {% if task.validation_required %}{% if task.backup_required or task.recovery_required %}, {% endif %}Validation{% endif %}
+              {% if task.documentation_required %}{% if task.backup_required or task.recovery_required or task.validation_required %}, {% endif %}Documentation{% endif %}
+            </p>
+          {% endif %}
+        </article>
+      {% empty %}
+        <article class="card integration-message">
+          <h3>No operational tasks are currently visible</h3>
+          <p>The configured Tasks identity has no active GoreeCloud operational project tasks in its current authorization scope.</p>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <article class="card integration-message">
+      <h3>Live task data is not available</h3>
+      <p>{{ tasks.detail }}</p>
+    </article>
+  {% endif %}
+</section>
+{% endblock %}
