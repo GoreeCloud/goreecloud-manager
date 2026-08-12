@@ -75,6 +75,22 @@ Manager does not receive task descriptions, comments, labels, email addresses, p
 - HTTP 404: endpoint unavailable, including a Tasks deployment where the Manager API remains disabled.
 - Unsupported or malformed response: `unavailable` with no raw upstream body rendered to the user.
 
+## Identity and credential lifecycle
+
+The authoritative lifecycle for the integration identity and bearer token is maintained in GoreeCloud Tasks at:
+
+[`GoreeCloud Tasks — Manager Integration Identity and Credential Lifecycle`](https://github.com/GoreeCloud/goreecloud-tasks/blob/main/docs/manager-integration-credential-lifecycle.md)
+
+Manager is the credential consumer. It does not create the Tasks service identity, grant project memberships, generate a Tasks user password, or decide which projects are authorized. Those decisions remain on the Tasks side.
+
+For long-lived deployment I will use the file-backed token source and keep the direct `TASKS_ACCESS_TOKEN` variable empty. If Tasks and Manager are deployed together on the planned Infrastructure Services VM, the preferred design uses one protected host-side runtime source under the approved GoreeCloud Docker secrets structure and mounts that same credential only into the two containers that require it. I will not duplicate the bearer token across unrelated `.env` files merely for convenience.
+
+Manager must be disabled or stopped during a planned single-token rotation until the replacement protected source is installed and both applications have been restarted or recreated as required by the final production secret-mount design. A brief fail-soft integration interruption is preferable to retaining multiple long-lived overlapping tokens without a separately approved requirement.
+
+If the token may be exposed, Manager should stop presenting it immediately, Tasks may disable the Manager API, and the credential must be replaced rather than merely deleting a local copy. If the integration is retired, Manager must be disabled before the Tasks identity, memberships, secret source, and integration-specific network path are retired through the authoritative Tasks lifecycle procedure.
+
+No active bearer value belongs in Manager logs, screenshots, support output, change logs, pull requests, or ordinary documentation.
+
 ## Production boundary
 
 This repository increment establishes the application-to-application contract and read-only Manager presentation. It does not provision the real Tasks integration account, project memberships, production bearer token, private inter-service network, DNS route, Caddy route, Vaultwarden record, monitoring check, or production deployment.
