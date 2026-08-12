@@ -33,6 +33,8 @@ For an isolated development environment only, `TASKS_ACCESS_TOKEN` may be suppli
 
 The production container/deployment must mount the protected token file at the configured path. The repository does not create, commit, or provision a production token.
 
+For the planned same-VM production design, the preferred application-to-application path is a dedicated `manager-tasks` Docker network with a stable Tasks alias such as `goreecloud-tasks`, allowing Manager to use `http://goreecloud-tasks:8000` inside the approved Docker network. The user-facing `https://tasks.goreecloud.com` private Caddy path remains a separate publication control. The final topology must be validated before activation.
+
 ## Manager behavior
 
 The adapter:
@@ -90,6 +92,20 @@ Manager must be disabled or stopped during a planned single-token rotation until
 If the token may be exposed, Manager should stop presenting it immediately, Tasks may disable the Manager API, and the credential must be replaced rather than merely deleting a local copy. If the integration is retired, Manager must be disabled before the Tasks identity, memberships, secret source, and integration-specific network path are retired through the authoritative Tasks lifecycle procedure.
 
 No active bearer value belongs in Manager logs, screenshots, support output, change logs, pull requests, or ordinary documentation.
+
+## Production-readiness validation
+
+The Tasks-authoritative shared production-readiness plan is maintained at:
+
+[`GoreeCloud Tasks — Manager Production-Readiness Validation Plan`](https://github.com/GoreeCloud/goreecloud-tasks/blob/main/docs/manager-production-readiness-validation.md)
+
+Manager's consumer-specific responsibilities are maintained locally at:
+
+[`GoreeCloud Manager — Tasks Production-Readiness Validation Plan`](tasks-production-readiness-validation.md)
+
+Together, those plans require evidence for the final `manager-tasks` network, stable Tasks alias, no Tasks database reachability, no unnecessary public backend ports, restrictive file-backed secret mounting, real-adapter authorization and fail-soft behavior, positive and negative data-minimization tests, integration-specific monitoring, logging review, backup/recovery treatment, rollback, upgrade compatibility, and explicit go/no-go criteria.
+
+Documenting the target architecture does not create the network, secret, account, project memberships, Caddy/DNS/NetBird configuration, monitoring, or production deployment.
 
 ## Production boundary
 
