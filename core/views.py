@@ -9,6 +9,7 @@ from integrations.healthchecks import healthchecks_snapshot
 from integrations.kopia import kopia_status
 from integrations.netbird import netbird_snapshot
 from integrations.registry import integration_statuses
+from integrations.tasks import tasks_snapshot
 from integrations.uptime_kuma import uptime_kuma_snapshot
 
 
@@ -20,6 +21,7 @@ def overview(request):
     uptime_kuma = uptime_kuma_snapshot()
     beszel = beszel_status()
     kopia = kopia_status()
+    tasks = tasks_snapshot()
     return render(
         request,
         "core/overview.html",
@@ -30,12 +32,14 @@ def overview(request):
                 uptime_kuma_status=uptime_kuma.integration_status(),
                 beszel_status=beszel.integration_status(),
                 kopia_status=kopia.integration_status(),
+                tasks_status=tasks.integration_status(),
             ),
             "netbird": netbird,
             "healthchecks": healthchecks,
             "uptime_kuma": uptime_kuma,
             "beszel": beszel,
             "kopia": kopia,
+            "tasks": tasks,
             "release": "0.1.0-dev",
         },
     )
