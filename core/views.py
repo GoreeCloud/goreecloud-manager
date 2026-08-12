@@ -45,6 +45,19 @@ def overview(request):
     )
 
 
+@login_required
+def tasks_view(request):
+    """Render authorization-scoped GoreeCloud operational work from Tasks."""
+    return render(
+        request,
+        "core/tasks.html",
+        {
+            "tasks": tasks_snapshot(),
+            "release": "0.1.0-dev",
+        },
+    )
+
+
 def healthz(request):
     """Return a minimal liveness response without exposing private state."""
     return JsonResponse({"status": "ok", "service": "goreecloud-manager"})
