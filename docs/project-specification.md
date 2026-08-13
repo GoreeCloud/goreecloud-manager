@@ -6,11 +6,12 @@
 - Version: v0.1
 - Status: Draft
 - Created: August 11, 2026
+- Last Updated: August 13, 2026
 - Classification: Internal
 - Document Type: Software Project Specification and Implementation Blueprint
 - Project Name: GoreeCloud Manager
-- Project Status: Initiated — Initial Implementation
-- Planned Repository: GoreeCloud/goreecloud-manager
+- Project Status: In Development — Tasks Production-Readiness Validation; Beszel Milestone 3D Complete
+- Repository: GoreeCloud/goreecloud-manager
 - Development Model: Original GoreeCloud-owned software development
 - Initial Deployment Model: Docker and Docker Compose
 - Initial Production Placement: Not approved; development and validation first
@@ -20,48 +21,63 @@
 
 ## 1. Role
 
-I will use GoreeCloud Manager as the central GoreeCloud management and operational console. It will provide a GoreeCloud-native control plane for understanding the platform as one environment while preserving the specialized responsibilities of Proxmox, Docker, NetBird, Caddy, AdGuard Home, Healthchecks, Uptime Kuma, Beszel, Kopia, ntfy, TrueNAS, and other approved systems.
+I will use GoreeCloud Manager as the central GoreeCloud management and operational console. It will provide a GoreeCloud-native control plane for understanding the platform as one environment while preserving the specialized responsibilities of Proxmox, Docker, NetBird, Caddy, AdGuard Home, Healthchecks, Uptime Kuma, Beszel, Kopia, ntfy, TrueNAS, GoreeCloud Tasks, and other approved systems.
+
+Manager is an aggregation and context layer. It must not become an unnecessarily privileged replacement for the native interfaces, APIs, data stores, or recovery mechanisms owned by the systems it observes.
 
 ## 2. Purpose
 
-I am building GoreeCloud Manager to reduce operational fragmentation. I currently administer GoreeCloud through multiple independent applications, inventories, APIs, dashboards, command-line tools, and documents. Manager will collect only the information required for its approved functions, normalize selected status information, and present it through one secure GoreeCloud-specific interface.
+I am building GoreeCloud Manager to reduce operational fragmentation. I administer GoreeCloud through multiple independent applications, inventories, APIs, dashboards, command-line tools, and documents. Manager will collect only the information required for its approved functions, normalize selected status information, and present it through one secure GoreeCloud-specific interface.
 
-The initial purpose is visibility rather than automation. I will establish a trustworthy read-only foundation before adding administrative actions.
+The v0.1 direction remains visibility before automation. I will continue to establish trustworthy read-only integrations, explicit authority boundaries, sanitized failure handling, and recoverable deployment practices before introducing write-capable administration.
 
 ## 3. Problem Being Solved
 
-GoreeCloud is becoming a platform rather than a single server or application. As the environment grows, I need one place to answer questions such as: What is healthy? What requires attention? Which systems are reachable? Which backups are current? Which peers and services are active? Which component owns a capability? What supporting service does another component depend on?
+As GoreeCloud grows into a platform, I need one place to answer questions such as:
 
-Without a central application, understanding the platform requires switching among multiple interfaces and manually correlating information. Manager will reduce that fragmentation without creating a second competing management authority for the underlying systems.
+- What is healthy?
+- What requires attention?
+- Which systems are reachable?
+- Which scheduled jobs are current?
+- Which services are available?
+- Which backups and protection signals are current?
+- What system owns a particular capability?
+- Which operational tasks are active?
+- What supporting component does another service depend on?
+
+Without a central application, answering these questions requires switching among multiple interfaces and manually correlating information. Manager reduces that fragmentation while keeping each integrated system authoritative for its own data and operations.
 
 ## 4. Intended Users
 
-The initial user is me as GoreeCloud owner and administrator. The v0.1 application is administrative and is not a family-facing service.
+The initial user is me as GoreeCloud owner and administrator. Manager v0.1 is an administrative application and is not a family-facing service.
 
-Future versions may support additional individually assigned administrative accounts or restricted read-only roles. Family-facing functionality will remain separate unless a future specification explicitly approves a limited view.
+Future versions may support additional individually assigned administrative accounts or explicitly restricted read-only roles. Family-facing functionality will remain separate unless a future specification approves a limited view.
 
-## 5. v0.1 Required Features
+## 5. Current Implemented Foundation
 
-The first usable release will include:
+The current v0.1 development line includes:
 
-- Secure application login using Django's built-in authentication and session framework.
+- Django authentication and session handling.
 - An authenticated Overview page.
-- A platform identity panel identifying the application as GoreeCloud Manager.
-- A normalized integration registry that reports whether each supported integration is configured, disabled, unavailable, or healthy.
-- Read-only integration architecture with no write-capable service credentials required by default.
-- Initial adapter framework for NetBird, Healthchecks, Docker visibility through an approved delegated source, Uptime Kuma, Beszel, Kopia, and ntfy.
-- A health endpoint for container and monitoring validation.
-- Environment-based configuration with a committed `.env.example` but no live secrets.
-- Dockerfile and Docker Compose deployment artifacts.
-- Automated Django system checks and test execution in CI.
-- Basic responsive interface suitable for desktop and mobile administration.
-- Documentation covering role, purpose, architecture, development, deployment boundaries, configuration, security, backup, recovery, and retirement.
+- A minimal public `/healthz/` liveness endpoint that does not expose private platform state.
+- A normalized integration registry.
+- Loopback-only development publication through Docker Compose.
+- SQLite-backed Manager-owned application state.
+- Gunicorn and WhiteNoise for containerized serving.
+- Automated Django checks and tests in GitHub Actions.
+- Glaze UI design tokens, responsive shared navigation, accessible focus handling, a keyboard skip link, reduced-motion/reduced-transparency support, and browser-local System/Light/Dark appearance selection.
+- Live read-only NetBird peer visibility.
+- Live read-only Healthchecks scheduled-job visibility.
+- Live read-only Uptime Kuma service-availability visibility through the protected metrics interface.
+- Delegated read-only Kopia protection visibility through a sanitized host-produced status artifact.
+- Delegated read-only Beszel host and container resource visibility through a sanitized host-produced status artifact.
+- A read-only GoreeCloud Tasks adapter and authenticated Tasks page using the versioned `goreecloud.tasks.manager.v1` application API.
 
-The scaffold may expose placeholder integration states before live credentials are configured. A placeholder state must be visibly distinguished from verified live data.
+Docker inventory visibility and ntfy remain planned integration entries rather than active Manager adapters.
 
 ## 6. Explicitly Excluded From v0.1
 
-The following are out of scope for the first release:
+The following remain outside the first release unless a later approved specification changes the boundary:
 
 - Starting, stopping, restarting, deleting, or modifying containers.
 - Direct Proxmox administrative actions.
@@ -69,7 +85,7 @@ The following are out of scope for the first release:
 - Editing DNS records, AdGuard Home configuration, Caddy routes, firewall rules, or open ports.
 - Running backup restores or deleting backup snapshots.
 - Executing arbitrary shell commands.
-- Mounting the Docker socket directly into the Manager container.
+- Mounting `/var/run/docker.sock` into Manager.
 - Storing SSH private keys or reusable infrastructure secrets in the Manager database.
 - Family access, media access, surveillance access, or camera functionality.
 - AI agents that autonomously modify production infrastructure.
@@ -78,103 +94,207 @@ The following are out of scope for the first release:
 
 ## 7. Security Requirements
 
-Manager will be treated as an administrative application. I will require authentication even when it is reachable only through GoreeCloud private networking. I will use individual accounts, least privilege, secure sessions, CSRF protection, secure cookies in production, and service-specific credentials.
+Manager is an administrative application. Authentication is required even when it is reached only through GoreeCloud private networking.
 
-Read-only service identities will be preferred. A service integration will not receive write permission merely because an upstream API offers it. Reusable secrets will be supplied through environment-specific secret handling and will never be committed to the repository.
+I require:
 
-Manager v0.1 will not mount `/var/run/docker.sock`. Direct Docker socket access would give the application excessive host authority. Docker visibility must instead use an approved delegated interface or a purpose-built least-privilege collection method before it becomes a live production integration.
+- individual accounts;
+- least privilege;
+- Django CSRF protection;
+- secure cookies for production HTTPS deployment;
+- service-specific integration credentials;
+- no reusable secrets committed to Git;
+- no raw Docker socket;
+- no unnecessary host filesystem access;
+- no direct public backend exposure;
+- sanitized integration errors;
+- explicit separation between Manager-owned state and authoritative infrastructure state.
 
-Production publication must follow the GoreeCloud private web service model: stable HTTPS through Caddy, private DNS through the approved DNS path, and reachability limited to authorized private-network clients. No Manager backend port will be intentionally exposed directly to the public Internet.
+Read-only identities are preferred. A service integration must not receive write permission merely because the upstream platform makes write APIs available.
+
+### 7.1 Delegated Artifact Boundary
+
+Kopia and Beszel use delegated collectors because their safest approved Manager path is not a broad direct credential inside the Manager container.
+
+The collector credential and collection authority stay outside Manager. Manager mounts only the sanitized artifact path read-only. The artifact must contain only approved display fields and must not include passwords, tokens, authentication headers, agent keys, raw database content, container environment secrets, or other reusable credentials.
+
+### 7.2 Tasks Boundary
+
+Manager consumes the dedicated GoreeCloud Tasks Manager API and never reads the Tasks database directly.
+
+Tasks remains authoritative for:
+
+- task content;
+- project membership;
+- visibility and authorization;
+- ownership;
+- operational-work classification.
+
+The intended production pattern uses a dedicated non-interactive Tasks identity, Viewer-only memberships on explicitly approved shared projects, and a protected file-backed bearer credential. Manager cannot select another Tasks identity or broaden its project scope.
 
 ## 8. Privacy Requirements
 
-Manager will collect only information needed to administer GoreeCloud. It will not include advertising, analytics, behavioral tracking, external telemetry, or unnecessary third-party scripts.
+Manager will collect and display only information needed for approved administrative visibility.
 
-Logs will avoid passwords, API tokens, private keys, full authentication headers, session identifiers, and unnecessary personal information. Integration responses will be normalized so that the user interface receives only fields required for the feature being displayed.
+It will not include advertising, analytics, behavioral tracking, external telemetry, or unnecessary third-party browser scripts. Logs must avoid passwords, API tokens, private keys, complete authentication headers, session identifiers, and unnecessary personal information.
+
+The Glaze UI appearance preference is browser-local state only. It is not sent to Manager or an integration and is not used for tracking.
 
 ## 9. Data Requirements
 
-The v0.1 database will store application users, Django session/authentication data, Manager configuration state that is appropriate for database storage, and normalized local metadata required by Manager itself.
+Manager-owned data may include:
 
-Live infrastructure facts should remain source-of-truth data in their authoritative systems. Manager will initially query or cache selected read-only status rather than becoming the authoritative database for NetBird peers, Docker containers, backup snapshots, DNS records, or monitoring checks.
+- application users;
+- Django session and authentication state;
+- Manager configuration appropriate for database storage;
+- normalized local metadata genuinely owned by Manager.
 
-SQLite is approved for development and the initial MVP because the application begins as a single-instance administrative service with low write volume. I may migrate to PostgreSQL when concurrency, durability, reporting, background jobs, clustering, or operational evidence demonstrates that SQLite is no longer appropriate.
+Live infrastructure facts must remain authoritative in their originating systems. Manager may query or temporarily normalize selected status, but it must not silently become the authoritative database for NetBird peers, Uptime Kuma monitors, Healthchecks jobs, Beszel resource history, Kopia snapshots, Docker containers, DNS records, or Tasks content.
+
+SQLite remains approved for development and the initial MVP because Manager is a low-write single-instance administrative application. I may migrate to PostgreSQL if concurrency, durability, reporting, background processing, clustering, or operational evidence justifies the additional complexity.
 
 ## 10. Integration Requirements
 
-The integration layer will use explicit adapters with a common health/status contract. Each adapter must declare its role, configuration requirements, permissions, timeout behavior, failure behavior, and data fields returned to Manager.
+Each adapter must define:
 
-Initial integration targets are:
+- role and purpose;
+- configuration requirements;
+- credential/permission boundary;
+- timeout behavior;
+- malformed-response behavior;
+- authentication-failure behavior;
+- unavailable-service behavior;
+- normalized fields returned to the UI;
+- logging and secret-minimization requirements.
 
-- NetBird — peer and private-network visibility using read-only API credentials.
-- Healthchecks — check and scheduled-job status.
-- Docker — container visibility only through a separately approved least-privilege source.
-- Uptime Kuma — monitor status where a supported integration method is available.
-- Beszel — host and system health where a supported integration method is available.
-- Kopia — backup and snapshot status without restore or deletion capability.
-- ntfy — notification status and later controlled Manager-generated administrative notifications.
+Current integration state:
 
-Proxmox, TrueNAS, AdGuard Home, Caddy, DNS inventories, GoreeCloud documentation, tasks, dependency mapping, security findings, and AI capabilities are future integrations or modules and are not required to make the first scaffold usable.
+### NetBird
 
-## 11. Technology Stack
+Implemented and live-validated read-only peer/private-network visibility through the approved Auditor-style API identity.
 
-The initial implementation stack is deliberately conservative:
+### Healthchecks
+
+Implemented and live-validated read-only scheduled-job monitoring. Healthchecks signals do not replace the authoritative state of the underlying job or backup system.
+
+### Uptime Kuma
+
+Implemented and live-validated read-only availability visibility through the protected metrics endpoint. Manager does not receive the Uptime Kuma administrator password or write-capable management authority.
+
+### Beszel
+
+Implemented and live-validated through the delegated host-side collector and sanitized artifact boundary. Milestone 3D is complete for development/live validation. The authenticated UI, live resource data, credential separation, fail-soft behavior, artifact restoration, timer state, and minimal `/healthz/` behavior were validated. This completion does not approve production publication.
+
+### Kopia
+
+Implemented through a delegated host-side collector and sanitized read-only artifact. Manager does not receive repository credentials, SFTP keys, restore/delete authority, or the Docker socket.
+
+### GoreeCloud Tasks
+
+Implemented as a read-only application-to-application integration. Repository-local tests and disposable cross-application/final-topology gates validate schema handling, authorization, data minimization, invalid credentials, membership revocation/restoration, database isolation, file-backed synthetic credential behavior, and fail-soft conditions. Actual production identity, credential, network, publication, monitoring, and activation remain separate approval-controlled work.
+
+### Docker
+
+Planned. Direct Docker socket access is prohibited. Live Docker inventory visibility requires a separately approved least-privilege delegated source.
+
+### ntfy
+
+Planned. Any future notification integration must define whether Manager is only observing notification state or is permitted to publish a narrowly scoped administrative notification.
+
+Proxmox, TrueNAS, AdGuard Home, Caddy, DNS inventories, GoreeCloud documentation, dependency mapping, security findings, and AI capabilities remain future integrations or modules unless separately implemented and validated.
+
+## 11. User Interface and Glaze UI Requirements
+
+Manager uses GoreeCloud Glaze UI as its visual and interaction language while remaining an operational console first.
+
+The interface should provide:
+
+- clear information hierarchy;
+- consistent typography and spacing;
+- rounded layered surfaces;
+- restrained translucency;
+- semantic status colors;
+- high-quality light and dark themes;
+- System appearance support;
+- responsive desktop/tablet/mobile behavior;
+- keyboard-accessible navigation;
+- visible focus indicators;
+- appropriate touch targets;
+- reduced-motion and reduced-transparency behavior where supported;
+- clear error and empty-state presentation.
+
+Visual design must not obscure operational information or weaken accessibility. Manager should complement terminal administration and specialized service interfaces rather than reproduce every possible command or control as a button.
+
+## 12. Technology Stack
+
+The v0.1 implementation intentionally remains conservative:
 
 - Python 3.14.
 - Django 5.2 LTS.
-- Django server-rendered templates for the user interface.
+- Django server-rendered templates.
 - Plain CSS and minimal vanilla JavaScript; no frontend framework in v0.1.
 - SQLite for development and initial MVP state.
-- Gunicorn for containerized WSGI serving.
-- WhiteNoise for self-contained static-file serving in the application container.
-- Docker and Docker Compose for reproducible deployment.
-- GitHub Actions for automated checks.
-- Django's built-in test framework for initial automated tests.
+- Gunicorn.
+- WhiteNoise.
+- Docker and Docker Compose.
+- GitHub Actions.
+- Django's built-in test framework.
 
-I am choosing Django 5.2 rather than a pre-release or non-LTS framework line because it provides built-in authentication, sessions, CSRF protection, ORM, migrations, templates, and a long-term support window while reducing the number of separate components I must maintain.
+This keeps authentication, sessions, CSRF protection, templates, database migrations, configuration, and application logic inside one understandable codebase while requirements are still evolving.
 
-## 12. Deployment Environment
+## 13. Deployment Environment
 
-Development may occur on my administrative workstation and in isolated Docker environments. Development data, secrets, and credentials must remain separate from production.
+Development may occur on an administrative workstation and in isolated Docker environments. Development data, secrets, and credentials must remain separate from production.
 
-The first production deployment is not approved by this specification alone. Before production, I must validate authentication, secret handling, private service publication, backup coverage, restore procedures, container security, monitoring, and the selected live integrations.
+The current VPS validation deployment remains loopback-only. Production publication is not approved by this specification or by successful development/live validation alone.
 
-The long-term placement is the GoreeCloud Infrastructure Services VM because Manager is an administrative and infrastructure application rather than a family service.
+Before production publication I must validate:
 
-## 13. Backup Requirements
+- final private DNS and Caddy publication;
+- authorized private-network reachability;
+- secure cookie behavior over HTTPS;
+- secret management;
+- backup coverage;
+- tested restoration;
+- container security;
+- monitoring;
+- rollback and upgrade procedures;
+- selected production integration identities and network paths.
 
-Before production use, I will protect:
+The long-term placement remains the GoreeCloud Infrastructure Services VM because Manager is an administrative/infrastructure application rather than a family service.
 
-- Source code and release history.
-- Application configuration that is not reproducible from source.
-- SQLite database or future database state.
-- Required persistent Manager data.
-- Deployment files.
-- Documentation.
-- Secret recovery references without storing reusable secrets in ordinary backups that are not approved for them.
+## 14. Backup and Recovery Requirements
 
-GitHub is a source-control location, not the complete backup strategy.
+Before Manager becomes a critical production dependency I will protect:
 
-## 14. Recovery Requirements
+- source code and release history;
+- non-reproducible application configuration;
+- SQLite or future database state;
+- required Manager persistent data;
+- deployment files;
+- documentation;
+- secret recovery references without placing reusable secrets into inappropriate ordinary backups.
 
-A documented recovery procedure must be validated before Manager becomes a critical production dependency. Recovery must be possible by rebuilding the container image, restoring required configuration and persistent data, recreating secrets through the approved secret-recovery process, running database migrations, and validating login, health checks, and read-only integrations.
+GitHub is source control, not the complete backup strategy.
+
+Recovery must be demonstrably possible by rebuilding the application, restoring required configuration and persistent data, recreating secrets through the approved process, applying migrations, and validating authentication, `/healthz/`, and approved read-only integrations.
 
 Manager must never become the only location containing information required to recover GoreeCloud.
 
 ## 15. Repository Structure
 
-The initial repository structure is:
+The repository uses the following primary structure:
 
 ```text
 goreecloud-manager/
 ├── goreecloud_manager/        # Django project configuration
-├── core/                      # Core UI, health, and application views
+├── core/                      # Shared UI, health, and application views
 ├── integrations/              # Service adapter framework
-├── tests/                     # Cross-application tests
+├── ops/                       # Delegated collector helpers
+├── tests/                     # Integration and UI regression tests
 ├── docs/                      # Architecture and operational documentation
 ├── .github/workflows/         # CI workflows
 ├── .env.example               # Non-secret configuration template
-├── .gitignore
 ├── compose.yml
 ├── Dockerfile
 ├── LICENSE
@@ -187,79 +307,89 @@ The repository must remain understandable without depending on my memory.
 
 ## 16. Testing Requirements
 
-The initial test suite will verify:
+The test and CI baseline verifies, as applicable:
 
-- Django configuration passes system checks.
-- The health endpoint responds without authentication.
-- The Overview page requires authentication.
-- An authenticated administrator can load the Overview page.
-- Integration registry states are rendered without exposing secrets.
-- Environment parsing behaves predictably.
+- dependency consistency with `pip check`;
+- browser JavaScript syntax;
+- static-file collection;
+- Django system checks;
+- public minimal health endpoint behavior;
+- authentication requirements;
+- authenticated Overview and Tasks rendering;
+- integration-registry states;
+- adapter-specific success and fail-soft paths;
+- authentication failures;
+- malformed/unsupported upstream data;
+- stale artifact handling;
+- no reusable secret leakage in normalized output;
+- shared Glaze UI shell/navigation regressions.
 
-Future integration adapters must add adapter-specific success, timeout, malformed-response, authentication-failure, and unavailable-service tests before production activation.
+Cross-application Tasks validation additionally exercises the real Manager adapter/UI against disposable Tasks environments without provisioning production credentials or production infrastructure.
 
 ## 17. Release Model
 
 The initial development line is `0.1.x`.
 
-- `0.1.0` will represent the first complete MVP release after live validation.
+- `0.1.0` will represent the first complete MVP after the required live and production-readiness gates are satisfied.
 - Patch releases will contain compatible fixes and small improvements.
 - Minor releases may add integrations or significant functionality while the application remains pre-1.0.
-- `1.0.0` will not be used until the core architecture, security model, upgrade process, backup process, recovery process, and operational role are stable enough to support long-term production administration.
+- `1.0.0` will not be used until the architecture, security model, upgrade process, backup process, recovery process, and operational role are stable enough for long-term production administration.
 
-The default branch will represent accepted project state. Material changes should normally be developed on separate branches and reviewed through pull requests.
+The default branch represents accepted repository state. Material changes should normally be developed on separate branches and reviewed through pull requests.
 
 ## 18. Maintenance Responsibilities
 
-I am responsible for approving Manager's architecture, dependencies, integrations, permissions, releases, and production deployment. Ongoing maintenance includes dependency review, security updates, container-image review, authentication and authorization review, test maintenance, backup validation, documentation updates, integration compatibility review, and removal of obsolete functionality.
+I am responsible for approving Manager's architecture, dependencies, integrations, permissions, releases, and production deployment.
 
-AI-assisted code remains subject to the same review and validation requirements as manually written code.
+Ongoing maintenance includes:
+
+- dependency and security update review;
+- container-image review;
+- authentication and authorization review;
+- integration compatibility review;
+- test maintenance;
+- backup and restore validation;
+- documentation synchronization;
+- Glaze UI accessibility and responsive review;
+- removal of obsolete functionality.
+
+AI-assisted code is subject to the same review and validation requirements as manually written code.
 
 ## 19. Retirement and Data Export
 
-Manager must remain replaceable. If I retire or rewrite it, I must be able to export or reconstruct the information that Manager itself owns using documented, non-proprietary formats where practical.
+Manager must remain replaceable.
 
-Retiring Manager must not impair the independent operation of Proxmox, Docker, NetBird, Caddy, AdGuard Home, Healthchecks, Uptime Kuma, Beszel, Kopia, ntfy, TrueNAS, or other integrated systems. Integrated systems remain authoritative for their own data and operations.
+If I retire or rewrite Manager, I must be able to export or reconstruct the information Manager itself owns using documented, non-proprietary formats where practical.
 
-## 20. MVP Acceptance Criteria
+Retiring Manager must not impair the independent operation of Proxmox, Docker, NetBird, Caddy, AdGuard Home, Healthchecks, Uptime Kuma, Beszel, Kopia, ntfy, TrueNAS, GoreeCloud Tasks, or other integrated systems.
 
-I will consider the v0.1 foundation ready for MVP integration work when:
+## 20. Development Milestones
 
-1. The repository contains the documented scaffold and open-source license.
-2. The application builds and starts in an isolated environment.
-3. The health endpoint passes.
-4. Authentication protects the administrative interface.
-5. The Overview page renders the integration registry.
-6. No reusable credentials are committed.
-7. No direct public service exposure is required.
-8. No Docker socket is mounted into the Manager container.
-9. Automated tests pass.
-10. The project documentation clearly distinguishes implemented features from planned integrations.
+### Milestone 1 — Foundation — Complete
 
-## 21. Initial Implementation Decision
+Repository, Django application, authentication, Overview, health endpoint, Docker artifacts, tests, CI, and core documentation established.
 
-I approve GoreeCloud Manager to begin as a small Django monolith rather than a distributed frontend/backend architecture. This keeps authentication, templates, database migrations, configuration, and application logic inside one maintainable codebase while the product requirements are still developing.
+### Milestone 2 — First Live Integration — Complete
 
-I may split the application into separate services later if measured requirements justify that complexity. The architecture is not permanent; the GoreeCloud data, security, ownership, recoverability, and administrative outcomes are more important than preserving a framework choice.
+Read-only NetBird visibility implemented and live-validated.
 
-## 22. Initial Development Milestones
+### Milestone 3 — Monitoring, Protection, and Operational Work — In Progress with Major Sub-Milestones Complete
 
-### Milestone 1 — Foundation
+Completed development/live-validation work includes:
 
-Create the repository, Django project, core application, login flow, Overview page, health endpoint, Docker artifacts, tests, CI, and project documentation.
+- 3A — Healthchecks monitoring visibility.
+- 3B — delegated native Kopia protection visibility.
+- 3C — Uptime Kuma service-availability visibility.
+- 3D — delegated Beszel host/container resource visibility.
+- GoreeCloud Tasks read-only application integration foundation and disposable production-pattern topology validation.
+- Glaze UI shared application-shell foundation.
 
-### Milestone 2 — First Live Integration
+The remaining Tasks production activation work is separate from disposable CI validation.
 
-Implement the first read-only live adapter using a service-specific least-privilege credential. NetBird is the preferred first candidate because GoreeCloud already maintains an Auditor service identity for monitoring and API-derived inventory.
+### Milestone 4 — Production Readiness — Not Complete
 
-### Milestone 3 — Monitoring and Protection Visibility
+Before declaring Manager production-ready I must validate the final private publication path, production secret handling, monitoring, backup, restoration, rollback, upgrade procedure, secure cookie behavior, container hardening, and all production integration identities and network paths.
 
-Add approved read-only monitoring and backup adapters, normalize their states, and establish warning/error presentation.
-
-### Milestone 4 — Production Readiness
-
-Validate private publication, secure cookies, secret management, monitoring, backup, restoration, rollback, update procedures, and production container hardening before declaring Manager production-ready.
-
-## 23. Governing Principle
+## 21. Governing Principle
 
 I will build GoreeCloud Manager as the interface that helps me understand GoreeCloud as one platform without turning Manager into an unnecessary single point of failure or an over-privileged replacement for the specialized systems it integrates.
