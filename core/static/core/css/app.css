@@ -167,18 +167,18 @@ button { color: inherit; }
 .link-button { color: var(--text-secondary); }
 .brand:focus-visible, .nav-link:focus-visible, .theme-toggle:focus-visible, .link-button:focus-visible, button:focus-visible, input:focus-visible { outline: none; box-shadow: var(--focus); }
 
-.container { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 3rem 0 5rem; }
+.container { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 2.5rem 0 4.5rem; }
 .hero, .card, .metric-card, .detail-card, .protection-card, .auth-card {
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: var(--shadow);
   backdrop-filter: blur(14px) saturate(125%);
 }
-.hero { padding: clamp(1.5rem, 3vw, 2.3rem); border-radius: var(--radius-lg); margin-bottom: 2rem; }
-.hero h1 { font-size: clamp(2.2rem, 7vw, 4.6rem); line-height: .98; letter-spacing: -.045em; margin: .35rem 0 1rem; }
+.hero { padding: clamp(1.25rem, 2.4vw, 1.8rem); border-radius: var(--radius-lg); margin-bottom: 1.5rem; }
+.hero h1 { font-size: clamp(2.2rem, 6vw, 3.9rem); line-height: .98; letter-spacing: -.045em; margin: .25rem 0 .8rem; }
 .hero p { max-width: 760px; color: var(--text-secondary); font-size: 1.04rem; }
 .eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; color: var(--text-muted); font-weight: 800; }
-.release { display: inline-block; margin-top: .75rem; padding: .45rem .75rem; border: 1px solid var(--border); border-radius: var(--pill); background: var(--surface-soft); color: var(--text-secondary); font-size: .84rem; }
+.release { display: inline-block; margin-top: .6rem; padding: .42rem .7rem; border: 1px solid var(--border); border-radius: var(--pill); background: var(--surface-soft); color: var(--text-secondary); font-size: .82rem; }
 .section-heading { display: flex; justify-content: space-between; gap: 1rem; align-items: end; margin: 1.75rem 0 1rem; }
 .section-heading h2 { margin-bottom: 0; }
 .section-heading p { color: var(--text-muted); margin: 0; }
@@ -205,15 +205,25 @@ button { border: 0; border-radius: var(--radius-sm); padding: .75rem 1rem; font-
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .auth-card button[type="submit"] { color: #fff; } }
 .error { color: var(--danger); border: 1px solid var(--danger-border); border-radius: var(--radius-sm); padding: .7rem .8rem; }
 
-.integration-section { margin-top: 2.75rem; scroll-margin-top: 5.5rem; }
+.integration-section { margin-top: 2.35rem; scroll-margin-top: 5.5rem; }
 .metrics-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
 .metrics-grid-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .metric-card { padding: 1.15rem 1.2rem; border-radius: var(--radius-md); }
 .metric-card span { display: block; color: var(--text-muted); font-size: .82rem; margin-bottom: .45rem; }
 .metric-card strong { font-size: clamp(1.6rem, 4vw, 1.95rem); letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
 .detail-list { display: grid; gap: .85rem; }
+.detail-list[aria-label="Uptime Kuma monitor status"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.detail-list[aria-label="Beszel container resource status"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.detail-list[aria-label="Uptime Kuma monitor status"] .detail-grid,
+.detail-list[aria-label="Beszel container resource status"] .detail-grid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: .65rem 1rem; }
+.detail-list[aria-label="Uptime Kuma monitor status"] .detail-card,
+.detail-list[aria-label="Beszel container resource status"] .detail-card { padding: 1rem; }
+.detail-card:has(.check-down), .detail-card:has(.attempt-failed) { border-color: var(--danger-border); }
+.detail-card:has(.item-warning), .detail-card:has(.check-grace), .detail-card:has(.attempt-skipped) { border-color: var(--warning-border); }
 .detail-card, .protection-card { padding: 1.15rem 1.2rem; border-radius: var(--radius-md); }
 .detail-card h3, .protection-card h3 { margin: .75rem 0 1rem; }
+.detail-list[aria-label="Uptime Kuma monitor status"] .detail-card h3,
+.detail-list[aria-label="Beszel container resource status"] .detail-card h3 { margin: .6rem 0 .75rem; }
 .protection-card { margin-bottom: 1rem; border-color: var(--good-border); }
 .native-protection-card { border-color: var(--border-strong); }
 .item-state, .check-state, .attempt-state { font-size: .76rem; font-weight: 800; text-transform: capitalize; }
@@ -227,11 +237,15 @@ button { border: 0; border-radius: var(--radius-sm); padding: .75rem 1rem; font-
 .detail-grid dd { margin: 0; color: var(--text-secondary); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .integration-message { max-width: 760px; }
 
+@media (max-width: 1000px) {
+  .detail-list[aria-label="Uptime Kuma monitor status"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 860px) {
   .site-header-inner { align-items: flex-start; padding: .65rem 0; }
   .header-cluster { min-width: 0; flex-wrap: wrap; }
   .primary-nav { width: 100%; order: 3; }
   .metrics-grid-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .detail-list[aria-label="Beszel container resource status"] { grid-template-columns: 1fr; }
 }
 @media (max-width: 680px) {
   .site-header-inner, .container { width: min(100% - 1rem, 1180px); }
@@ -242,8 +256,10 @@ button { border: 0; border-radius: var(--radius-sm); padding: .75rem 1rem; font-
   .container { padding-top: 1.6rem; }
   .section-heading { display: block; }
   .section-heading .status { display: inline-block; margin-top: .65rem; }
-  .hero { padding: 1.4rem; }
-  .metrics-grid, .metrics-grid-four, .detail-grid { grid-template-columns: 1fr; }
+  .hero { padding: 1.25rem; }
+  .metrics-grid, .metrics-grid-four, .detail-grid,
+  .detail-list[aria-label="Uptime Kuma monitor status"],
+  .detail-list[aria-label="Beszel container resource status"] { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .001ms !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
