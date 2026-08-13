@@ -72,6 +72,15 @@ class BeszelCollectorTests(SimpleTestCase):
             },
             container_records=[
                 {
+                    "id": "stale-container-record-id",
+                    "name": "CADDY",
+                    "status": "Up 2 minutes",
+                    "health": 3,
+                    "cpu": 99.0,
+                    "memory": 999.0,
+                    "updated": "2026-08-11T22:10:00Z",
+                },
+                {
                     "id": "container-record-id",
                     "name": "caddy",
                     "image": "secret-registry/image",
@@ -80,6 +89,7 @@ class BeszelCollectorTests(SimpleTestCase):
                     "health": 2,
                     "cpu": 9.9,
                     "memory": 128.0,
+                    "updated": "2026-08-11T22:20:00Z",
                 },
                 {
                     "id": "fallback-container-record-id",
@@ -88,13 +98,14 @@ class BeszelCollectorTests(SimpleTestCase):
                     "health": 2,
                     "cpu": 0.1,
                     "memory": 256.0,
+                    "updated": "2026-08-11T22:19:00Z",
                 },
             ],
             container_stats_record={
                 "created": "2026-08-11T22:20:00Z",
                 "stats": [
                     {
-                        "n": "caddy",
+                        "n": "CADDY",
                         "c": 0.2,
                         "m": 512.0,
                         "b": [300, 500],
@@ -107,7 +118,9 @@ class BeszelCollectorTests(SimpleTestCase):
         self.assertEqual(normalized["stats"]["memory_used_gb"], 4.18)
         self.assertEqual(normalized["stats"]["network"]["sent_bytes"], 1000)
         self.assertEqual(normalized["details"]["memory_bytes"], 8134107136)
+        self.assertEqual(len(normalized["containers"]), 2)
         self.assertEqual(normalized["containers"][0]["name"], "caddy")
+        self.assertEqual(normalized["containers"][0]["state"], "Up 4 days")
         self.assertEqual(normalized["containers"][0]["cpu_percent"], 0.2)
         self.assertEqual(normalized["containers"][0]["memory_gb"], 0.5)
         self.assertEqual(normalized["containers"][0]["health"], "healthy")
@@ -118,10 +131,38 @@ class BeszelCollectorTests(SimpleTestCase):
         self.assertNotIn("internal-target.example", serialized)
         self.assertNotIn("system-secret-id-not-needed", serialized)
         self.assertNotIn("container-record-id", serialized)
+        self.assertNotIn("stale-container-record-id", serialized)
         self.assertNotIn("secret-registry", serialized)
         self.assertNotIn("443/tcp", serialized)
         self.assertNotIn("users", serialized)
         self.assertNotIn("unapproved", serialized)
+
+    def test_newest_container_records_prefers_newest_valid_timestamp(self):
+        records = [
+            {
+                "name": "vaultwarden",
+                "status": "Up 11 days",
+                "updated": "2026-08-13T14:00:00Z",
+            },
+            {
+                "name": "Vaultwarden",
+                "status": "Up 15 seconds",
+                "updated": "2026-08-13T14:05:00Z",
+            },
+            {
+                "name": "caddy",
+                "status": "Up 4 days",
+                "updated": "not-a-timestamp",
+            },
+        ]
+
+        selected = collector.newest_container_records(records)
+        by_name = {item["name"].casefold(): item for item in selected}
+
+        self.assertEqual(len(selected), 2)
+        self.assertEqual(by_name["vaultwarden"]["name"], "Vaultwarden")
+        self.assertEqual(by_name["vaultwarden"]["status"], "Up 15 seconds")
+        self.assertEqual(by_name["caddy"]["status"], "Up 4 days")
 
     def test_build_failure_payload_preserves_only_previous_sanitized_data(self):
         now = datetime(2026, 8, 11, 22, 30, tzinfo=UTC)

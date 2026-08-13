@@ -210,6 +210,29 @@ def normalize_bandwidth(value: Any) -> dict[str, int | None]:
     }
 
 
+def newest_container_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep one Beszel container record per normalized name, preferring newest update."""
+
+    selected: dict[str, dict[str, Any]] = {}
+    for record in records:
+        raw_name = record.get("name")
+        if not isinstance(raw_name, str) or not raw_name.strip():
+            continue
+
+        key = raw_name.strip().casefold()
+        current = selected.get(key)
+        if current is None:
+            selected[key] = record
+            continue
+
+        updated = parse_timestamp(record.get("updated"))
+        current_updated = parse_timestamp(current.get("updated"))
+        if updated is not None and (current_updated is None or updated > current_updated):
+            selected[key] = record
+
+    return list(selected.values())
+
+
 def normalize_system(
     *,
     system: dict[str, Any],
@@ -265,15 +288,15 @@ def normalize_system(
                     continue
                 stat_name = item.get("n")
                 if isinstance(stat_name, str) and stat_name.strip():
-                    latest_container_stats[stat_name.strip()] = item
+                    latest_container_stats[stat_name.strip().casefold()] = item
 
     containers: list[dict[str, Any]] = []
-    for record in container_records:
+    for record in newest_container_records(container_records):
         container_name = record.get("name")
         if not isinstance(container_name, str) or not container_name.strip():
             continue
         container_name = container_name.strip()
-        dynamic = latest_container_stats.get(container_name, {})
+        dynamic = latest_container_stats.get(container_name.casefold(), {})
         state = record.get("status") or "Unknown"
         if not isinstance(state, str):
             state = "Unknown"
