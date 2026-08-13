@@ -4,29 +4,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}GoreeCloud Manager{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'core/css/app.css' %}">
+  <script defer src="{% static 'core/js/theme.js' %}"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
   <header class="site-header">
-    <div>
-      <strong>GoreeCloud</strong>
-      <span>Manager</span>
-      {% if user.is_authenticated %}
-        <span>·</span>
-        <a href="{% url 'overview' %}">Overview</a>
-        <span>·</span>
-        <a href="{% url 'tasks' %}">Tasks</a>
-      {% endif %}
+    <div class="site-header-inner">
+      <div class="header-cluster">
+        <a class="brand" href="{% url 'overview' %}" aria-label="GoreeCloud Manager overview">
+          <span class="brand-mark">GoreeCloud</span>
+          <span class="brand-product">Manager</span>
+        </a>
+        {% if user.is_authenticated %}
+          <nav class="primary-nav" aria-label="Primary">
+            <a class="nav-link" href="{% url 'overview' %}" {% if request.resolver_match.url_name == 'overview' %}aria-current="page"{% endif %}>Overview</a>
+            <a class="nav-link" href="{% url 'tasks' %}" {% if request.resolver_match.url_name == 'tasks' %}aria-current="page"{% endif %}>Tasks</a>
+          </nav>
+        {% endif %}
+      </div>
+      <div class="header-actions">
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Change appearance">
+          <span class="theme-icon" aria-hidden="true">◐</span>
+          <span class="theme-label" data-theme-label>System</span>
+        </button>
+        {% if user.is_authenticated %}
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="link-button" type="submit">Sign out</button>
+          </form>
+        {% endif %}
+      </div>
     </div>
-    {% if user.is_authenticated %}
-      <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <button class="link-button" type="submit">Sign out</button>
-      </form>
-    {% endif %}
   </header>
-  <main class="container">
+  <main class="container" id="main-content">
     {% block content %}{% endblock %}
   </main>
 </body>
