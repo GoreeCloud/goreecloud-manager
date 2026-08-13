@@ -4,7 +4,11 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 
 ## Current Status
 
-**v0.1 development — read-only integration work.** The authenticated application shell, health endpoint, Docker packaging, tests, project documentation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, delegated read-only Kopia status-artifact adapter, Uptime Kuma metrics adapter, delegated read-only Beszel resource adapter, and the initial GoreeCloud Tasks read-only API adapter are implemented. Integrations become live only when their approved least-privilege runtime sources are configured.
+**v0.1 development — read-only integration and production-readiness work.** The authenticated Django application shell, minimal health endpoint, Docker packaging, CI, Glaze UI foundation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, Uptime Kuma metrics adapter, delegated read-only Kopia status-artifact adapter, delegated read-only Beszel resource adapter, and GoreeCloud Tasks read-only API adapter are implemented.
+
+Beszel Milestone 3D has completed its development/live-validation gate, including the delegated credential boundary, live resource data, fail-soft behavior, timer operation, minimal health endpoint, and authenticated loopback/SSH-tunnel UI review. This does **not** approve production publication. GoreeCloud Tasks has passed disposable cross-application and final-topology validation, while its actual production identity, credential, network, publication, monitoring, and activation remain separate approval-controlled work.
+
+Docker inventory visibility and ntfy remain planned Manager integrations.
 
 ## Principles
 
@@ -17,17 +21,29 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 - Specialized services remain authoritative for their own operations.
 - GoreeCloud Tasks remains authoritative for task content and task authorization.
 - Backup and recovery are required before production dependency.
+- Glaze UI must improve usability without obscuring operational state or weakening accessibility.
 
-## Initial Stack
+## Technology Stack
 
 - Python 3.14
 - Django 5.2 LTS
 - Server-rendered Django templates
+- Plain CSS and minimal vanilla JavaScript
 - SQLite for development / initial MVP
 - Gunicorn
 - WhiteNoise for containerized static-file serving
 - Docker / Docker Compose
 - GitHub Actions
+
+## Glaze UI
+
+Manager uses the GoreeCloud Glaze UI design language for its shared application shell and operational surfaces. The implementation includes reusable design tokens, layered surfaces, semantic status colors, responsive navigation, visible keyboard focus, a skip link, reduced-motion and reduced-transparency behavior, and System/Light/Dark appearance modes.
+
+The explicit appearance preference is stored only in browser `localStorage` under `goreecloud-manager-theme`. Returning to System removes the stored override. No theme choice is written to the Manager database or sent to an integration.
+
+No external font, analytics package, telemetry SDK, or third-party browser script is required by the Glaze UI implementation.
+
+See [`docs/glaze-ui.md`](docs/glaze-ui.md) for the repository-local UI, privacy, and accessibility contract.
 
 ## Development
 
@@ -100,13 +116,13 @@ UPTIME_KUMA_TIMEOUT_SECONDS=5
 
 The raw metrics payload may include target-oriented labels. Manager discards those labels and retains only approved monitor name, monitor type, normalized state, and response-time data. `down`, `pending`, or unknown monitor state degrades the Uptime Kuma summary; maintenance is shown separately.
 
-The metrics interface does not safely expose paused-monitor inventory or per-monitor heartbeat timestamps, so Manager explicitly reports that limitation instead of reading Uptime Kuma's database or inventing values.
+The metrics interface does not safely expose paused-monitor inventory or per-monitor heartbeat timestamps, so Manager reports that limitation instead of reading Uptime Kuma's database or inventing values.
 
 ## Beszel Native Read-Only Resource Visibility
 
-Manager does not receive the Beszel service-account password, PocketBase auth token, Hub data volume, Beszel Agent key/token, or Docker socket. Instead, a root-owned host-side collector authenticates with a dedicated Beszel `readonly` identity that can see only the explicitly shared `goreecloud-vps-01` system.
+Manager does not receive the Beszel service-account password, PocketBase auth token, Hub data volume, Beszel Agent key/token, or Docker socket. Instead, a root-owned host-side collector authenticates with a dedicated Beszel `readonly` identity scoped to the approved system.
 
-The collector performs the required PocketBase authentication POST, verifies the role and one-system scope, then performs only approved GET reads for current system/resource data. It writes a sanitized versioned JSON artifact containing current CPU/load, uptime, memory, swap, root-disk, selected network/temperature data, approved system details, and current container resource/state fields.
+The collector performs the required PocketBase authentication POST, verifies the role and system scope, then performs only approved GET reads for current resource data. It writes a sanitized versioned JSON artifact containing approved CPU/load, uptime, memory, swap, root-disk, network/temperature, system-detail, and current container resource/state fields.
 
 Configure Manager to read only the sanitized artifact:
 
@@ -118,13 +134,13 @@ BESZEL_STATUS_MAX_AGE_SECONDS=900
 BESZEL_DATA_MAX_AGE_SECONDS=1800
 ```
 
-The populated collector credential stays outside Manager under protected host-side secret storage. A collector authentication/network/query failure is represented by sanitized collector state; previously sanitized data may be preserved for context while Manager marks the integration degraded. Missing or malformed artifacts fail soft without affecting `/healthz/`.
+The populated collector credential stays outside Manager under protected host-side secret storage. Collector authentication/network/query failures are represented by sanitized collector state; previously sanitized data may be preserved for context while Manager marks the integration degraded. Missing or malformed artifacts fail soft without affecting `/healthz/`.
 
-Beszel remains authoritative for historical charts, alerting, and resource-monitoring configuration. Manager's Beszel section is resource visibility only and is not a substitute for Uptime Kuma service-availability monitoring, Healthchecks scheduled-job monitoring, or Kopia protection state.
+Beszel remains authoritative for historical charts, alerting, and resource-monitoring configuration. Manager's Beszel section is resource visibility only and is not a substitute for Uptime Kuma service availability, Healthchecks scheduled-job monitoring, or Kopia protection state.
 
 ## Kopia Native Read-Only Protection Visibility
 
-Manager does not execute Kopia and does not receive the Docker socket, repository password, SFTP private key, repository configuration, or broad access to Kopia secrets. Instead, the existing root-owned backup workflow invokes the delegated `ops/kopia-status-collector.py` helper. That collector queries only the supported read-only snapshot-list output when appropriate, normalizes an approved non-secret subset, and atomically writes a small status artifact.
+Manager does not execute Kopia and does not receive the Docker socket, repository password, SFTP private key, repository configuration, or broad access to Kopia secrets. Instead, the existing root-owned backup workflow invokes the delegated `ops/kopia-status-collector.py` helper. The collector normalizes an approved non-secret subset and atomically writes a small status artifact.
 
 The Manager container receives only that sanitized directory as a read-only bind mount:
 
@@ -142,7 +158,7 @@ This is deliberately separate from Healthchecks. A current heartbeat and a recen
 
 ## GoreeCloud Tasks Read-Only Integration
 
-Manager consumes the dedicated GoreeCloud Tasks Manager API and never reads the Tasks database directly. Tasks maps the bearer token to one existing active Tasks account and applies its normal task-visibility authorization before returning active project-scoped work marked as GoreeCloud operational work.
+Manager consumes the dedicated GoreeCloud Tasks Manager API and never reads the Tasks database directly. Tasks maps the bearer token to one existing active Tasks identity and applies normal task-visibility authorization before returning active project-scoped work marked as GoreeCloud operational work.
 
 Configure Manager with the Tasks application base URL and exactly one token source:
 
@@ -157,18 +173,25 @@ For an isolated development environment only, `TASKS_ACCESS_TOKEN` may be used i
 
 Manager appends `/api/v1/manager/operational-tasks/`, authenticates with Bearer authorization, validates the `goreecloud.tasks.manager.v1` response contract, and normalizes only approved operational fields. The authenticated `/tasks/` page displays the resulting read-only task summary and task details.
 
-The intended Tasks principal is a dedicated integration account with Viewer membership only in projects explicitly approved for Manager visibility. Manager cannot choose another Tasks identity through the API. Membership revocation is therefore the task-visibility revocation mechanism. The integration does not expose personal Inbox tasks, ordinary non-operational tasks, descriptions, comments, labels, reminder state, account details, or task mutation operations.
+The intended Tasks principal is a dedicated non-interactive integration account with Viewer membership only in projects explicitly approved for Manager visibility. Manager cannot choose another Tasks identity through the API. Membership revocation is therefore the task-visibility revocation mechanism. The integration does not expose personal Inbox tasks, ordinary non-operational tasks, descriptions, comments, labels, reminder state, account details, or task mutation operations.
 
-No real Tasks integration account, token, protected secret mount, production network path, DNS/Caddy route, or deployment is provisioned by the repository feature. See `docs/tasks-integration.md` for the complete security and production boundary.
+Disposable cross-application and final-topology CI validate the application contract, authorization/data minimization, file-backed synthetic credential pattern, database isolation, membership revocation/restoration, invalid credentials, fail-soft behavior, and secret/log minimization. Those tests do not provision or authorize a real production integration identity, token, network, private publication path, or activation.
 
-## Tests
+See [`docs/tasks-integration.md`](docs/tasks-integration.md) for the complete security and production boundary.
+
+## Tests and Validation
 
 ```bash
+python -m pip check
+node --check core/static/core/js/theme.js
+python manage.py collectstatic --noinput
 python manage.py check
 python manage.py test
 ```
 
-Integration tests use mocked API responses or fixture status artifacts and do not require or consume live NetBird, Healthchecks, Uptime Kuma, Beszel, Kopia, or GoreeCloud Tasks production credentials.
+Integration tests use mocked API responses, disposable application environments, or fixture status artifacts and do not require or consume live production credentials.
+
+Material interface changes should additionally receive authenticated browser review at supported desktop and mobile widths in both light and dark appearance modes before release promotion.
 
 ## Docker
 
@@ -178,13 +201,16 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for read-only internet/API integrations, including a separately deployed Tasks endpoint when explicitly configured. The external `manager-healthchecks` network provides only the approved direct Healthchecks service path, the external `manager-uptime` network provides only the approved Uptime Kuma metrics path, and Kopia/Beszel status enters Manager only through read-only bind mounts containing sanitized status data. None of these paths publishes the Manager backend. Production publication and any dedicated Manager-to-Tasks private service path remain deferred until production-readiness validation.
+The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for approved read-only API integrations. The external `manager-healthchecks` network provides only the approved Healthchecks service path, the external `manager-uptime` network provides only the approved Uptime Kuma metrics path, and Kopia/Beszel status enters Manager only through read-only bind mounts containing sanitized status data. None of these paths publishes the Manager backend.
+
+Production publication and the real production Tasks integration path remain deferred until their production-readiness requirements are separately satisfied.
 
 ## Documentation
 
 See:
 
-- [`docs/project-specification.md`](docs/project-specification.md) — v0.1 implementation blueprint.
+- [`docs/project-specification.md`](docs/project-specification.md) — current v0.1 implementation blueprint and milestone state.
+- [`docs/glaze-ui.md`](docs/glaze-ui.md) — Manager Glaze UI, appearance, privacy, and accessibility contract.
 - [`docs/integrations/netbird.md`](docs/integrations/netbird.md) — NetBird adapter contract.
 - [`docs/integrations/healthchecks.md`](docs/integrations/healthchecks.md) — Healthchecks adapter contract.
 - [`docs/integrations/uptime-kuma.md`](docs/integrations/uptime-kuma.md) — Uptime Kuma metrics adapter contract.
