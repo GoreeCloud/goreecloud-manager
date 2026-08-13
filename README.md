@@ -6,7 +6,7 @@ GoreeCloud Manager is an original GoreeCloud application intended to become the 
 
 **v0.1 development — read-only integration and production-readiness work.** The authenticated Django application shell, minimal health endpoint, Docker packaging, CI, Glaze UI foundation, live read-only NetBird adapter, read-only Healthchecks monitoring adapter, Uptime Kuma metrics adapter, delegated read-only Kopia status-artifact adapter, delegated read-only Beszel resource adapter, and GoreeCloud Tasks read-only API adapter are implemented.
 
-Beszel Milestone 3D has completed its development/live-validation gate, including the delegated credential boundary, live resource data, fail-soft behavior, timer operation, minimal health endpoint, and authenticated loopback/SSH-tunnel UI review. This does **not** approve production publication. GoreeCloud Tasks has passed disposable cross-application and final-topology validation, while its actual production identity, credential, network, publication, monitoring, and activation remain separate approval-controlled work.
+Beszel Milestone 3D has completed its development/live-validation gate, including the delegated credential boundary, live resource data, fail-soft behavior, timer operation, minimal health endpoint, and authenticated loopback/SSH-tunnel UI review. This does **not** approve production publication. GoreeCloud Tasks has passed disposable cross-application and final-topology validation, and Manager now provides a data-minimized Tasks integration-specific monitoring signal. The actual production Tasks identity, credential, network, private publication, external monitor registration/alert delivery, and activation remain separate approval-controlled work.
 
 Docker inventory visibility and ntfy remain planned Manager integrations.
 
@@ -175,7 +175,9 @@ Manager appends `/api/v1/manager/operational-tasks/`, authenticates with Bearer 
 
 The intended Tasks principal is a dedicated non-interactive integration account with Viewer membership only in projects explicitly approved for Manager visibility. Manager cannot choose another Tasks identity through the API. Membership revocation is therefore the task-visibility revocation mechanism. The integration does not expose personal Inbox tasks, ordinary non-operational tasks, descriptions, comments, labels, reminder state, account details, or task mutation operations.
 
-Disposable cross-application and final-topology CI validate the application contract, authorization/data minimization, file-backed synthetic credential pattern, database isolation, membership revocation/restoration, invalid credentials, fail-soft behavior, and secret/log minimization. Those tests do not provision or authorize a real production integration identity, token, network, private publication path, or activation.
+Manager also exposes a dedicated sanitized integration signal at `GET /healthz/integrations/tasks/`. The endpoint exercises the real adapter but returns only Manager service identity, the GoreeCloud Tasks integration label, the broad adapter state, and a fine-grained monitoring condition. It returns HTTP 200 only when the integration condition is `healthy`; disabled, misconfigured, unreachable, authentication-rejected, authorization-denied, endpoint-unavailable, upstream-error, and schema-invalid conditions return HTTP 503. The response is uncached and contains no task data, task counts, configured Tasks username, token value, secret path, raw upstream response, or adapter detail string. Manager's generic `/healthz/` remains independent.
+
+Disposable cross-application and final-topology CI validate the application contract, authorization/data minimization, file-backed synthetic credential pattern, database isolation, membership revocation/restoration, invalid credentials, fail-soft behavior, and secret/log minimization. The final-topology gate is the production-pattern compatibility location for the new monitoring signal. These tests do not provision or authorize a real production integration identity, token, network, private publication path, external monitor, alert route, or activation.
 
 See [`docs/tasks-integration.md`](docs/tasks-integration.md) for the complete security and production boundary.
 
@@ -203,7 +205,7 @@ docker compose up --build
 
 The development Compose file binds Manager to loopback only. A dedicated bridge provides outbound connectivity required for approved read-only API integrations. The external `manager-healthchecks` network provides only the approved Healthchecks service path, the external `manager-uptime` network provides only the approved Uptime Kuma metrics path, and Kopia/Beszel status enters Manager only through read-only bind mounts containing sanitized status data. None of these paths publishes the Manager backend.
 
-Production publication and the real production Tasks integration path remain deferred until their production-readiness requirements are separately satisfied.
+Production publication, external Tasks integration monitor registration/alert delivery, and the real production Tasks integration path remain deferred until their production-readiness requirements are separately satisfied.
 
 ## Documentation
 
@@ -216,7 +218,8 @@ See:
 - [`docs/integrations/uptime-kuma.md`](docs/integrations/uptime-kuma.md) — Uptime Kuma metrics adapter contract.
 - [`docs/integrations/beszel.md`](docs/integrations/beszel.md) — delegated Beszel status-artifact contract.
 - [`docs/integrations/kopia.md`](docs/integrations/kopia.md) — delegated Kopia status-artifact contract.
-- [`docs/tasks-integration.md`](docs/tasks-integration.md) — GoreeCloud Tasks API and authorization boundary.
+- [`docs/tasks-integration.md`](docs/tasks-integration.md) — GoreeCloud Tasks API, authorization, and monitoring boundary.
+- [`docs/tasks-production-readiness-validation.md`](docs/tasks-production-readiness-validation.md) — Manager-side Tasks production-readiness evidence plan.
 
 ## License
 
