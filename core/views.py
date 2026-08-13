@@ -3,6 +3,7 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.views.decorators.http import require_GET
 
 from integrations.beszel import beszel_status
 from integrations.healthchecks import healthchecks_snapshot
@@ -61,3 +62,24 @@ def tasks_view(request):
 def healthz(request):
     """Return a minimal liveness response without exposing private state."""
     return JsonResponse({"status": "ok", "service": "goreecloud-manager"})
+
+
+@require_GET
+def tasks_integration_healthz(request):
+    """Return a sanitized health signal for the read-only GoreeCloud Tasks integration."""
+
+    snapshot = tasks_snapshot()
+    monitoring = snapshot.monitoring_status()
+    is_healthy = monitoring["condition"] == "healthy"
+    response = JsonResponse(
+        {
+            "status": "ok" if is_healthy else "unhealthy",
+            "service": "goreecloud-manager",
+            "integration": "goreecloud-tasks",
+            "state": monitoring["state"],
+            "condition": monitoring["condition"],
+        },
+        status=200 if is_healthy else 503,
+    )
+    response["Cache-Control"] = "no-store"
+    return response
