@@ -45,7 +45,8 @@ The adapter:
 - rejects malformed task objects, invalid timestamps, impossible summary counts, and unsupported schemas;
 - normalizes only the approved operational fields;
 - never returns the access token in the snapshot or user interface;
-- fails soft to `disabled`, `misconfigured`, or `unavailable` states instead of breaking the Manager Overview page; and
+- fails soft to `disabled`, `misconfigured`, or `unavailable` presentation states instead of breaking the Manager Overview page;
+- records a separate data-minimized monitoring condition so monitoring can distinguish failure classes without exposing task content; and
 - preserves Tasks as the authoritative source instead of caching or rewriting task records in Manager's database.
 
 The authenticated Manager `/tasks/` page shows the current summary and returned operational task records. The existing integration registry also reports the Tasks adapter state on the Overview page.
@@ -69,13 +70,41 @@ Manager does not receive task descriptions, comments, labels, email addresses, p
 
 ## Failure handling
 
-- Tasks integration disabled in Manager: no network request is made.
-- Missing or ambiguous Manager token configuration: `misconfigured`.
-- Tasks timeout or connection failure: `unavailable`.
-- HTTP 401: sanitized credential rejection state.
-- HTTP 403: sanitized authorization denial state.
-- HTTP 404: endpoint unavailable, including a Tasks deployment where the Manager API remains disabled.
-- Unsupported or malformed response: `unavailable` with no raw upstream body rendered to the user.
+Manager retains its broad UI states while also classifying the condition for monitoring:
+
+- Tasks integration disabled in Manager: `state=disabled`, `condition=disabled`; no network request is made.
+- Missing or ambiguous Manager token/configuration: `state=misconfigured`, `condition=misconfigured`.
+- Tasks timeout or connection failure: `state=unavailable`, `condition=unreachable`.
+- HTTP 401: `state=unavailable`, `condition=authentication-rejected`.
+- HTTP 403: `state=unavailable`, `condition=authorization-denied`.
+- HTTP 404: `state=unavailable`, `condition=endpoint-unavailable`.
+- Other upstream HTTP failure: `state=unavailable`, `condition=upstream-error`.
+- Unsupported schema/version, malformed JSON, or response normalization failure: `state=unavailable`, `condition=schema-invalid`.
+
+Raw upstream response bodies, Authorization headers, bearer-token values, and private task content are never part of the monitoring condition.
+
+## Integration-specific monitoring
+
+Manager implements a dedicated read-only monitoring endpoint:
+
+```text
+GET /healthz/integrations/tasks/
+```
+
+This endpoint deliberately exercises the real `integrations.tasks.tasks_snapshot()` adapter. It does not accept a caller-supplied Tasks URL, credential, username, project, or task selector.
+
+The response contains only:
+
+- Manager service identity;
+- integration identity (`goreecloud-tasks` as a service label, not the Tasks user account);
+- broad adapter state; and
+- sanitized monitoring condition.
+
+It never returns task titles, task counts, project names, configured Tasks usernames, bearer tokens, configuration paths, upstream response bodies, or adapter detail text.
+
+A healthy integration returns HTTP 200. Any non-healthy integration-specific condition returns HTTP 503 so an approved Uptime Kuma, Healthchecks, or other HTTP monitor can alert when the integration itself is not operational. The generic `/healthz/` endpoint remains independent and continues to report Manager liveness even when Tasks is unavailable.
+
+Responses use `Cache-Control: no-store`. The endpoint is GET-only. Production registration of an external monitor, notification routing, alert delivery, and target-runtime publication remain separate approval-controlled work.
 
 ## Identity and credential lifecycle
 
@@ -105,12 +134,12 @@ Manager's consumer-specific responsibilities are maintained locally at:
 
 Together, those plans require evidence for the final `manager-tasks` network, stable Tasks alias, no Tasks database reachability, no unnecessary public backend ports, restrictive file-backed secret mounting, real-adapter authorization and fail-soft behavior, positive and negative data-minimization tests, integration-specific monitoring, logging review, backup/recovery treatment, rollback, upgrade compatibility, and explicit go/no-go criteria.
 
-Documenting the target architecture does not create the network, secret, account, project memberships, Caddy/DNS/NetBird configuration, monitoring, or production deployment.
+Documenting or implementing the monitoring signal does not create the production network, secret, account, project memberships, Caddy/DNS/NetBird configuration, external monitoring registration, alert routing, or production deployment.
 
 ## Production boundary
 
-This repository increment establishes the application-to-application contract and read-only Manager presentation. It does not provision the real Tasks integration account, project memberships, production bearer token, private inter-service network, DNS route, Caddy route, Vaultwarden record, monitoring check, or production deployment.
+This repository increment establishes the application-to-application contract, read-only Manager presentation, and sanitized integration-specific monitoring signal. It does not provision the real Tasks integration account, project memberships, production bearer token, private inter-service network, DNS route, Caddy route, Vaultwarden record, external monitoring check, alert delivery, or production deployment.
 
-Before production use, the integration requires separately approved credential generation/storage, private service reachability, transport validation, token rotation/revocation procedure, backup/recovery treatment for any Manager-owned configuration, and production acceptance testing.
+Before production use, the integration requires separately approved credential generation/storage, private service reachability, transport validation, token rotation/revocation procedure, target-runtime monitoring registration and alert validation, backup/recovery treatment for any Manager-owned configuration, and production acceptance testing.
 
-A successful API response does not authorize Manager to modify Tasks data or to execute infrastructure changes.
+A successful API or monitoring response does not authorize Manager to modify Tasks data or to execute infrastructure changes.

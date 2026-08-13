@@ -56,6 +56,7 @@ class TasksSnapshot:
 
     state: str
     detail: str
+    condition: str = "unknown"
     tasks: tuple[ManagerTask, ...] = ()
     total_open: int = 0
     blocked: int = 0
@@ -70,6 +71,11 @@ class TasksSnapshot:
 
     def integration_status(self) -> dict[str, str]:
         return {"state": self.state, "detail": self.detail}
+
+    def monitoring_status(self) -> dict[str, str]:
+        """Return the data-minimized state approved for integration monitoring."""
+
+        return {"state": self.state, "condition": self.condition}
 
 
 class TasksProtocolError(ValueError):
@@ -236,6 +242,7 @@ def _healthy_snapshot(payload: Any) -> TasksSnapshot:
     return TasksSnapshot(
         state="healthy",
         detail=detail,
+        condition="healthy",
         tasks=tasks,
         total_open=total_open,
         blocked=blocked,
@@ -253,6 +260,7 @@ def tasks_snapshot() -> TasksSnapshot:
         return TasksSnapshot(
             state="disabled",
             detail="Disabled until the scoped GoreeCloud Tasks integration is explicitly enabled.",
+            condition="disabled",
         )
 
     api_url, url_error = _api_url()
@@ -262,6 +270,7 @@ def tasks_snapshot() -> TasksSnapshot:
         return TasksSnapshot(
             state="misconfigured",
             detail=" ".join(configuration_errors),
+            condition="misconfigured",
         )
 
     headers = {
@@ -276,27 +285,32 @@ def tasks_snapshot() -> TasksSnapshot:
         return TasksSnapshot(
             state="unavailable",
             detail="GoreeCloud Tasks did not respond before the configured timeout.",
+            condition="unreachable",
         )
     except httpx.RequestError:
         return TasksSnapshot(
             state="unavailable",
             detail="Manager could not reach the configured GoreeCloud Tasks API endpoint.",
+            condition="unreachable",
         )
 
     if response.status_code == 401:
         return TasksSnapshot(
             state="unavailable",
             detail="GoreeCloud Tasks rejected the configured integration credential.",
+            condition="authentication-rejected",
         )
     if response.status_code == 403:
         return TasksSnapshot(
             state="unavailable",
             detail="GoreeCloud Tasks denied the configured integration request.",
+            condition="authorization-denied",
         )
     if response.status_code == 404:
         return TasksSnapshot(
             state="unavailable",
             detail="The configured GoreeCloud Tasks Manager API endpoint is not available.",
+            condition="endpoint-unavailable",
         )
 
     try:
@@ -305,6 +319,7 @@ def tasks_snapshot() -> TasksSnapshot:
         return TasksSnapshot(
             state="unavailable",
             detail=f"GoreeCloud Tasks API returned HTTP {response.status_code}.",
+            condition="upstream-error",
         )
 
     try:
@@ -313,4 +328,5 @@ def tasks_snapshot() -> TasksSnapshot:
         return TasksSnapshot(
             state="unavailable",
             detail="GoreeCloud Tasks returned a response Manager could not safely interpret.",
+            condition="schema-invalid",
         )

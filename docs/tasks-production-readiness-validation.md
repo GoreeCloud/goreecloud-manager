@@ -26,7 +26,7 @@ Manager is the read-only consumer of the Tasks Manager API. It does not own:
 
 Tasks remains authoritative for those controls.
 
-Manager owns only its integration configuration, its protected credential mount as a consumer, its network membership, its adapter behavior, its user-interface presentation, and its fail-soft operational state.
+Manager owns only its integration configuration, its protected credential mount as a consumer, its network membership, its adapter behavior, its user-interface presentation, its fail-soft operational state, and the data-minimized monitoring signal derived from that adapter state.
 
 ## Preferred Same-VM Network Design
 
@@ -182,21 +182,33 @@ No Manager administrative role may be interpreted as permission to browse Tasks 
 
 ## Monitoring Responsibilities
 
-Manager's minimal `/healthz/` endpoint intentionally does not fail when an optional integration is unavailable. Therefore `/healthz/` alone cannot monitor the Tasks integration.
+Manager's minimal `/healthz/` endpoint intentionally does not fail when an optional integration is unavailable. Therefore `/healthz/` alone does not monitor the Tasks integration.
 
-Before the integration is treated as production-operational, I require an integration-specific signal that exercises the real Tasks adapter and reports only a sanitized state.
+Manager now implements the separate integration-specific signal:
 
-A future implementation may use an approved scheduled validation command or delegated monitoring path. The signal should distinguish at least:
+```text
+GET /healthz/integrations/tasks/
+```
 
-- healthy;
-- disabled;
-- misconfigured;
-- unreachable/timeout;
-- authentication rejected;
-- authorization denied; and
-- schema invalid.
+The endpoint exercises the real `integrations.tasks.tasks_snapshot()` adapter and returns only a sanitized Manager service label, integration label, broad adapter state, and monitoring condition. It does not return task titles, counts, project names, Tasks usernames, token values, secret paths, upstream response bodies, or adapter detail text.
 
-Any alert forwarded through Healthchecks, ntfy, or another approved monitor must exclude the bearer token and private task content.
+The monitoring condition distinguishes at least:
+
+- `healthy`;
+- `disabled`;
+- `misconfigured`;
+- `unreachable`;
+- `authentication-rejected`;
+- `authorization-denied`; and
+- `schema-invalid`.
+
+It additionally distinguishes `endpoint-unavailable` and `upstream-error` when the HTTP failure can be categorized more precisely.
+
+A healthy condition returns HTTP 200. Every non-healthy integration-specific condition returns HTTP 503 so an approved HTTP monitor can alert on the integration without changing Manager's generic liveness semantics. Responses are GET-only and use `Cache-Control: no-store`.
+
+Repository tests must prove that monitoring responses do not include bearer-token values, private task content, task counts, configured Tasks identities, or adapter detail text. The Tasks disposable final-topology gate should exercise the endpoint against the real cross-application adapter before production preflight.
+
+The endpoint implementation does not itself create an Uptime Kuma monitor, Healthchecks check, ntfy subscription, notification route, or production publication. Those remain separately approval-controlled target-runtime work. Any alert forwarded through Healthchecks, ntfy, or another approved monitor must continue to exclude the bearer token and private task content.
 
 ## Logging Review
 
@@ -257,7 +269,8 @@ Before an upgrade I must verify:
 - final Docker network compatibility;
 - final secret-file compatibility;
 - no expansion of displayed private fields;
-- fail-soft behavior against unsupported schema; and
+- fail-soft behavior against unsupported schema;
+- the integration-specific monitoring condition remains accurate and data-minimized; and
 - a known-good Manager rollback revision.
 
 ## Evidence Manager Must Contribute
@@ -283,7 +296,8 @@ schema-rejection test: Pass/Fail
 membership-revocation visibility test: Pass/Fail
 Manager /tasks/ authenticated UI test: Pass/Fail
 Manager logs reviewed: Yes/No
-integration-specific monitoring test: Pass/Fail
+integration-specific monitoring endpoint test: Pass/Fail
+external monitor registration and alert-delivery test: Pass/Fail
 rollback test with TASKS_ENABLED=false: Pass/Fail
 recovery test reference
 responsible administrator
@@ -300,10 +314,10 @@ It is **NO-GO** if Manager requires broader Tasks access, direct database access
 
 ## Relationship to Existing CI
 
-The existing Tasks-maintained `manager-cross-app` CI job exercises the actual Manager adapter and authenticated Manager Tasks page against a disposable Tasks API. It is a required compatibility gate and should remain green.
+The existing Tasks-maintained `manager-cross-app` CI job exercises the actual Manager adapter and authenticated Manager Tasks page against a disposable Tasks API. The newer `manager-final-topology` job reproduces the planned same-VM application network and file-backed secret pattern with synthetic data and credentials.
 
-That job does not yet prove the final production Docker network, final mounted secret permissions, user-facing Tasks private publication, production monitoring, or production-representative recovery. The shared production-readiness plan keeps those controls separate on purpose.
+The integration-specific monitoring endpoint is implemented in Manager and must be exercised by the Tasks final-topology gate against the selected Manager revision. Together these tests remain compatibility evidence only; they do not prove the final target-host owner/group/GID, user-facing private publication, external production monitor registration/alert delivery, or production-representative recovery.
 
 ## Governing Principle
 
-I will keep GoreeCloud Manager useful without making it a privileged shortcut around GoreeCloud Tasks. Production readiness means Manager can reliably read only the operational work explicitly authorized to its service identity, through a private and recoverable path, while remaining easy to disable when any authorization, secret, network, or compatibility boundary is uncertain.
+I will keep GoreeCloud Manager useful without making it a privileged shortcut around GoreeCloud Tasks. Production readiness means Manager can reliably read only the operational work explicitly authorized to its service identity, through a private and recoverable path, while remaining easy to disable when any authorization, secret, network, monitoring, or compatibility boundary is uncertain.
