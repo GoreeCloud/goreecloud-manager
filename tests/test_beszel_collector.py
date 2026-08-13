@@ -79,8 +79,16 @@ class BeszelCollectorTests(SimpleTestCase):
                     "status": "Up 4 days",
                     "health": 2,
                     "cpu": 9.9,
-                    "memory": 1.0,
-                }
+                    "memory": 128.0,
+                },
+                {
+                    "id": "fallback-container-record-id",
+                    "name": "fallback",
+                    "status": "Up 1 day",
+                    "health": 2,
+                    "cpu": 0.1,
+                    "memory": 256.0,
+                },
             ],
             container_stats_record={
                 "created": "2026-08-11T22:20:00Z",
@@ -88,7 +96,7 @@ class BeszelCollectorTests(SimpleTestCase):
                     {
                         "n": "caddy",
                         "c": 0.2,
-                        "m": 0.05,
+                        "m": 512.0,
                         "b": [300, 500],
                     }
                 ],
@@ -101,7 +109,10 @@ class BeszelCollectorTests(SimpleTestCase):
         self.assertEqual(normalized["details"]["memory_bytes"], 8134107136)
         self.assertEqual(normalized["containers"][0]["name"], "caddy")
         self.assertEqual(normalized["containers"][0]["cpu_percent"], 0.2)
+        self.assertEqual(normalized["containers"][0]["memory_gb"], 0.5)
         self.assertEqual(normalized["containers"][0]["health"], "healthy")
+        self.assertEqual(normalized["containers"][1]["name"], "fallback")
+        self.assertEqual(normalized["containers"][1]["memory_gb"], 0.25)
 
         serialized = repr(normalized)
         self.assertNotIn("internal-target.example", serialized)

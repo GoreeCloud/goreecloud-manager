@@ -74,6 +74,13 @@ def number(value: Any, *, minimum: float = 0) -> float | None:
     return result if result >= minimum else None
 
 
+def megabytes_to_gigabytes(value: Any) -> float | None:
+    """Normalize Beszel container-memory values from MiB-equivalent MB to GiB."""
+
+    parsed = number(value)
+    return None if parsed is None else parsed / 1024
+
+
 def integer(value: Any, *, minimum: int = 0) -> int | None:
     if isinstance(value, bool):
         return None
@@ -279,9 +286,9 @@ def normalize_system(
                 "cpu_percent": number(dynamic.get("c"))
                 if dynamic
                 else number(record.get("cpu")),
-                "memory_gb": number(dynamic.get("m"))
+                "memory_gb": megabytes_to_gigabytes(dynamic.get("m"))
                 if dynamic
-                else number(record.get("memory")),
+                else megabytes_to_gigabytes(record.get("memory")),
                 "network": normalize_bandwidth(dynamic.get("b")) if dynamic else {
                     "sent_bytes": None,
                     "recv_bytes": None,
