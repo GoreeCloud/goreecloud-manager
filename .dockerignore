@@ -1,0 +1,34 @@
+# Prevent local deployment state and secrets from entering Docker build contexts.
+.git
+.gitignore
+
+# Environment and secret material
+.env
+.env.*
+!.env.example
+secrets/
+*.pem
+*.key
+
+# Local delegated integration/runtime data
+runtime/
+
+# Python/test/editor artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.vscode/
+.idea/
+.DS_Store
+
+# Local databases, generated assets, and operational backups
+*.sqlite3
+staticfiles/
+*.bak
+*.tmp
