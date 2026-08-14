@@ -89,7 +89,8 @@ def clone_database(source: Path, destination: Path, operation: str) -> dict[str,
 
         os.chmod(temp_path, 0o600)
         metadata = validate_database(temp_path)
-        with temp_path.open("rb") as handle:
+        with temp_path.open("rb+") as handle:
+            handle.flush()
             os.fsync(handle.fileno())
         publish_exclusive(temp_path, destination)
         metadata["operation"] = operation
