@@ -7,6 +7,7 @@ file-backed secret mounts so reusable credentials never need to live in source c
 
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
 
@@ -41,6 +42,30 @@ def env_non_negative_int(name: str, default: int = 0) -> int:
 
     if value < 0:
         raise ImproperlyConfigured(f"{name} must be a non-negative integer.")
+    return value
+
+
+def env_positive_float(
+    name: str,
+    default: float,
+    *,
+    maximum: float | None = None,
+) -> float:
+    """Read a finite positive float and reject unsafe deployment bounds."""
+
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{name} must be a positive finite number.") from exc
+
+    if not math.isfinite(value) or value <= 0:
+        raise ImproperlyConfigured(f"{name} must be a positive finite number.")
+    if maximum is not None and value > maximum:
+        raise ImproperlyConfigured(f"{name} must be no greater than {maximum:g} seconds.")
     return value
 
 
@@ -94,6 +119,15 @@ if not DEBUG and SECRET_KEY == DEFAULT_DEVELOPMENT_SECRET_KEY:
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
+# Adapter-specific network calls retain their own timeouts. This tighter Manager-level
+# response budget prevents one slow or wedged adapter from holding the administrative
+# request open indefinitely. The upper bound stays below the Gunicorn hard timeout.
+MANAGER_INTEGRATION_BUDGET_SECONDS = env_positive_float(
+    "MANAGER_INTEGRATION_BUDGET_SECONDS",
+    7.0,
+    maximum=20.0,
+)
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -107,6 +141,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "core.middleware.RequestContextMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -168,6 +203,29 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "overview"
 LOGOUT_REDIRECT_URL = "login"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "manager": {
+            "format": "%(asctime)s level=%(levelname)s logger=%(name)s %(message)s",
+        }
+    },
+    "handlers": {
+        "manager_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "manager",
+        }
+    },
+    "loggers": {
+        "core.views": {
+            "handlers": ["manager_console"],
+            "level": "INFO",
+            "propagate": False,
+        }
+    },
+}
 
 # Production publication terminates HTTPS at Caddy. Trust only the conventional
 # X-Forwarded-Proto value supplied by that controlled reverse-proxy boundary.

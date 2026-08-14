@@ -23,9 +23,11 @@ RUN DJANGO_DEBUG=true python manage.py collectstatic --noinput
 
 EXPOSE 8000
 
-# Image-level liveness is database-aware so container health reflects Manager-owned
+# Image-level health is database-aware so container health reflects Manager-owned
 # readiness rather than only the presence of a Gunicorn process.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz/', timeout=3).read()" || exit 1
 
-CMD ["gunicorn", "goreecloud_manager.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-", "--error-logfile", "-"]
+# Gunicorn's source-controlled configuration provides explicit worker deadlines,
+# bounded worker recycling, and a sanitized access-log format without query strings.
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "goreecloud_manager.wsgi:application"]
