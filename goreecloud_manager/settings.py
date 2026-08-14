@@ -7,6 +7,7 @@ file-backed secret mounts so reusable credentials never need to live in source c
 
 from __future__ import annotations
 
+import math
 import os
 from pathlib import Path
 
@@ -50,7 +51,7 @@ def env_positive_float(
     *,
     maximum: float | None = None,
 ) -> float:
-    """Read a positive float and reject unsafe deployment bounds."""
+    """Read a finite positive float and reject unsafe deployment bounds."""
 
     raw = os.getenv(name)
     if raw is None or not raw.strip():
@@ -59,10 +60,10 @@ def env_positive_float(
     try:
         value = float(raw)
     except ValueError as exc:
-        raise ImproperlyConfigured(f"{name} must be a positive number.") from exc
+        raise ImproperlyConfigured(f"{name} must be a positive finite number.") from exc
 
-    if value <= 0:
-        raise ImproperlyConfigured(f"{name} must be a positive number.")
+    if not math.isfinite(value) or value <= 0:
+        raise ImproperlyConfigured(f"{name} must be a positive finite number.")
     if maximum is not None and value > maximum:
         raise ImproperlyConfigured(f"{name} must be no greater than {maximum:g} seconds.")
     return value
