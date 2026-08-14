@@ -29,7 +29,6 @@ services:
       - -c
       - >-
         python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput &&
         exec gunicorn goreecloud_manager.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile - --error-logfile -
     healthcheck:
       test:
@@ -42,11 +41,10 @@ services:
       start_period: 10s
       retries: 3
     # Keep the application image immutable at runtime. SQLite persists only in the
-    # named data volume; collected static files and temporary runtime state use tmpfs.
+    # named data volume; transient process state may use the bounded /tmp tmpfs.
     read_only: true
     tmpfs:
       - /tmp:rw,nosuid,nodev,noexec,size=32m
-      - /app/staticfiles:rw,nosuid,nodev,noexec,size=32m
     security_opt:
       - no-new-privileges:true
     cap_drop:
