@@ -1,0 +1,21 @@
+name: Runtime Publication Readiness
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-publication-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate hardened runtime and private publication
+        run: bash scripts/validate_runtime_publication_readiness.sh
