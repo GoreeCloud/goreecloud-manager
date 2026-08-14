@@ -34,6 +34,20 @@ class AuthenticationSessionResilienceTests(TestCase):
         self.assertNotEqual(authenticated_session.session_key, previous_key)
         self.assertEqual(authenticated_session["pre_auth_marker"], "retained")
 
+    def test_read_only_authenticated_request_does_not_rewrite_session(self):
+        self.assertTrue(self.client.login(username=self.username, password=self.password))
+        active_session_key = self.client.session.session_key
+        before = Session.objects.get(session_key=active_session_key)
+        before_data = before.session_data
+        before_expiry = before.expire_date
+
+        response = self.client.get(reverse("overview"))
+
+        self.assertEqual(response.status_code, 200)
+        after = Session.objects.get(session_key=active_session_key)
+        self.assertEqual(after.session_data, before_data)
+        self.assertEqual(after.expire_date, before_expiry)
+
     def test_logout_requires_post_and_flushes_server_side_session(self):
         self.assertTrue(self.client.login(username=self.username, password=self.password))
         active_session_key = self.client.session.session_key
