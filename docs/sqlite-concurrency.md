@@ -19,7 +19,7 @@ Manager configures Django's SQLite backend with the following runtime behavior:
 
 ## Why the Timeout Is Bounded
 
-A longer SQLite timeout can reduce failures caused by brief write overlap, but it does not increase SQLite's underlying write concurrency. Manager therefore keeps the database wait below both the Gunicorn hard request timeout and the integration response budget boundary.
+A longer SQLite timeout can reduce failures caused by brief write overlap, but it does not increase SQLite's underlying write concurrency. Manager therefore keeps the database wait well below the 30-second Gunicorn hard request timeout. The SQLite timeout is independent from the separate integration response budget, which governs external integration work rather than database locking.
 
 The timeout is a contention cushion, not a capacity mechanism.
 
