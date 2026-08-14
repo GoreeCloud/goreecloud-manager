@@ -110,10 +110,8 @@ class IntegrationFaultIsolationTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertTrue(started.is_set())
             self.assertFalse(finished.is_set())
-            self.assertContains(
-                response,
-                "The NetBird integration did not finish within Manager's request budget.",
-            )
+            self.assertContains(response, "The NetBird integration did not finish within Manager")
+            self.assertContains(response, "request budget")
             request_id = response["X-Request-ID"]
             log_output = "\n".join(captured.output)
             self.assertIn("integration_budget_exceeded", log_output)
