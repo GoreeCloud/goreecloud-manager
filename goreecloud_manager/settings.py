@@ -128,6 +128,16 @@ MANAGER_INTEGRATION_BUDGET_SECONDS = env_positive_float(
     maximum=20.0,
 )
 
+# Manager currently uses SQLite for its small private administrative workload. Give
+# short-lived writes enough time to ride out brief lock contention without allowing a
+# database wait to consume the full Gunicorn request deadline. Django's IMMEDIATE mode
+# makes explicit transactions acquire their write intent up front and honor this timeout.
+SQLITE_BUSY_TIMEOUT_SECONDS = env_positive_float(
+    "DJANGO_SQLITE_TIMEOUT_SECONDS",
+    10.0,
+    maximum=20.0,
+)
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -175,6 +185,12 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": Path(DATABASE_PATH) if DATABASE_PATH else BASE_DIR / "db.sqlite3",
+        "ATOMIC_REQUESTS": False,
+        "CONN_MAX_AGE": 0,
+        "OPTIONS": {
+            "timeout": SQLITE_BUSY_TIMEOUT_SECONDS,
+            "transaction_mode": "IMMEDIATE",
+        },
     }
 }
 
@@ -223,7 +239,12 @@ LOGGING = {
             "handlers": ["manager_console"],
             "level": "INFO",
             "propagate": False,
-        }
+        },
+        "core.middleware": {
+            "handlers": ["manager_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 
