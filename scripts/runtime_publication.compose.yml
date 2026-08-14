@@ -37,7 +37,7 @@ services:
         - -c
         - >-
           import urllib.request;
-          request=urllib.request.Request('http://127.0.0.1:8000/healthz/', headers={'Host':'manager.goreecloud.com','X-Forwarded-Proto':'https'});
+          request=urllib.request.Request('http://127.0.0.1:8000/readyz/', headers={'Host':'manager.goreecloud.com','X-Forwarded-Proto':'https'});
           urllib.request.urlopen(request, timeout=3)
       interval: 5s
       timeout: 5s
