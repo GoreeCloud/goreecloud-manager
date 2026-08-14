@@ -98,7 +98,7 @@ class RuntimeConfigurationTests(SimpleTestCase):
             )
 
     def test_integration_budget_parser_rejects_invalid_or_unsafe_value(self):
-        for value in ("not-a-number", "0", "-1", "21"):
+        for value in ("not-a-number", "0", "-1", "21", "nan", "inf", "-inf"):
             with self.subTest(value=value):
                 with patch.dict(
                     os.environ,
