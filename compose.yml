@@ -12,7 +12,7 @@ services:
     environment:
       DJANGO_DB_PATH: /app/data/db.sqlite3
     ports:
-      # Development-only loopback binding. Production publication will use the
+      # Development/live-validation loopback binding. Production publication will use the
       # approved private Caddy/Docker network path instead of a public host port.
       - "127.0.0.1:${GOREECLOUD_MANAGER_PORT:-8090}:8000"
     volumes:
@@ -29,7 +29,6 @@ services:
       - -c
       - >-
         python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput &&
         exec gunicorn goreecloud_manager.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile - --error-logfile -
     healthcheck:
       test:
@@ -41,8 +40,16 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+    # Keep the application image immutable at runtime. SQLite persists only in the
+    # named data volume; transient process state may use the bounded /tmp tmpfs.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=32m
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
     networks:
       - manager-internal
       # Read-only internet/API integrations use a general egress path without
