@@ -13,7 +13,7 @@ COPY requirements.txt ./
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN mkdir -p /app/staticfiles /app/data && chown -R manager:manager /app
+RUN mkdir -p /app/staticfiles /app/data /app/backups && chown -R manager:manager /app
 
 USER manager
 
