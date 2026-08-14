@@ -27,6 +27,23 @@ def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
 
+def env_non_negative_int(name: str, default: int = 0) -> int:
+    """Read a non-negative integer and fail closed on invalid deployment input."""
+
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{name} must be a non-negative integer.") from exc
+
+    if value < 0:
+        raise ImproperlyConfigured(f"{name} must be a non-negative integer.")
+    return value
+
+
 def env_secret(
     value_name: str,
     file_name: str,
@@ -163,3 +180,17 @@ CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
 X_FRAME_OPTIONS = "DENY"
+
+# Keep HTTPS redirect/HSTS deployment-controlled until the final private Caddy path is
+# approved. This preserves current loopback validation while allowing CI and future
+# production to fail closed against Django's deployment security checks.
+SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", default=False)
+SECURE_HSTS_SECONDS = env_non_negative_int("DJANGO_SECURE_HSTS_SECONDS", default=0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool(
+    "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False
+)
+SECURE_HSTS_PRELOAD = env_bool("DJANGO_SECURE_HSTS_PRELOAD", default=False)
+
+# Docker checks Manager directly over loopback. These minimal operational endpoints
+# remain available on the internal backend even when browser traffic is HTTPS-only.
+SECURE_REDIRECT_EXEMPT = [r"^healthz/$", r"^readyz/$"]

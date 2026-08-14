@@ -46,6 +46,14 @@ jobs:
           DJANGO_DEBUG: "false"
         run: python manage.py check
 
+      - name: Django deployment security check
+        env:
+          DJANGO_SECRET_KEY: ci-only-7C9pR2xV5mK8qL4nT6wH3sD1fG9jB2zX8uN5aM7eQ4rY6tP3cF
+          DJANGO_DEBUG: "false"
+          DJANGO_SECURE_SSL_REDIRECT: "true"
+          DJANGO_SECURE_HSTS_SECONDS: "31536000"
+        run: python manage.py check --deploy --fail-level WARNING
+
       - name: Run tests
         env:
           DJANGO_SECRET_KEY: ci-only-secret-key
