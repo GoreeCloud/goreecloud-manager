@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "service": "GoreeCloud Manager",
+  "production_state": {
+    "status": "not-approved",
+    "approval_reference": null,
+    "approved_at": null
+  },
+  "declared_effective_check_count": 6,
+  "source_evidence_gates": [
+    {
+      "workflow_path": ".github/workflows/ci.yml",
+      "workflow_name": "CI",
+      "required_jobs": [
+        "django"
+      ],
+      "evidence_scope": "application checks, static assets, migrations, browser JavaScript, and Django test suite"
+    },
+    {
+      "workflow_path": ".github/workflows/runtime-publication-readiness.yml",
+      "workflow_name": "Runtime Publication Readiness",
+      "required_jobs": [
+        "runtime-publication-readiness"
+      ],
+      "evidence_scope": "file-backed application secret handling, hardened container runtime, private HTTPS publication, authentication, and publication isolation"
+    },
+    {
+      "workflow_path": ".github/workflows/backup-restore-readiness.yml",
+      "workflow_name": "Backup Restore Readiness",
+      "required_jobs": [
+        "backup-restore-readiness"
+      ],
+      "evidence_scope": "SQLite-native recovery points, destructive primary-data loss, clean restoration, recovered authentication, and backup resumption"
+    },
+    {
+      "workflow_path": ".github/workflows/upgrade-rollback-readiness.yml",
+      "workflow_name": "Upgrade Rollback Readiness",
+      "required_jobs": [
+        "upgrade-rollback-readiness"
+      ],
+      "evidence_scope": "previous-revision compatibility, candidate migration, immutable pre-upgrade recovery point, and backup-backed rollback"
+    },
+    {
+      "workflow_path": ".github/workflows/monitoring-alert-readiness.yml",
+      "workflow_name": "Monitoring Alert Readiness",
+      "required_jobs": [
+        "monitoring-alert-readiness"
+      ],
+      "evidence_scope": "private external health monitoring, fixed monitor source, least-privilege alert ACLs, outage and recovery transitions, and alert-data minimization"
+    },
+    {
+      "workflow_path": ".github/workflows/production-readiness-evidence-manifest.yml",
+      "workflow_name": "Production Readiness Evidence Manifest",
+      "required_jobs": [
+        "production-readiness-evidence-manifest"
+      ],
+      "evidence_scope": "aggregate workflow and job inventory, target-environment evidence status, and production-approval consistency"
+    }
+  ],
+  "target_environment_evidence": [
+    {
+      "id": "infrastructure-services-vm-runtime-inspection",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-docker-engine-compose-and-container-state",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-secret-file-ownership-permissions-acls-and-recovery",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-adguard-private-dns",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-netbird-manager-peer-group-policy",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-caddy-route-tls-source-and-listeners",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-firewall-port-ownership-and-denial",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-private-publication-approved-denied-client-and-authentication",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-uptime-kuma-monitor-registration-source-retry-timeout",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-alert-administrator-receipt",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-monitor-removal-rollback",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "independent-out-of-band-alert-path-if-required",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-backup-repository-and-kopia-protection",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-backup-schedule-and-retention",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-backup-monitor-and-notification-receipt",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "independent-off-host-or-off-site-recovery-copy",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-recovery-credentials-independent-availability",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-sqlite-restore-test",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-full-environment-recovery-test",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-backup-resumption-after-recovery",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-update-and-rollback-execution",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-release-image-retention-and-capacity",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-maintenance-window-and-rto",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-integration-identities-credentials-and-networks",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-read-only-integration-acceptance",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-administrator-account-and-acceptance",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-documentation-and-recovery-records",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    },
+    {
+      "id": "production-deployment-and-activation",
+      "status": "outstanding",
+      "evidence_reference": null,
+      "verified_at": null,
+      "verified_by": null
+    }
+  ]
+}
