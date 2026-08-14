@@ -1,0 +1,165 @@
+name: goreecloud-manager-backup-restore
+
+x-manager-environment: &manager-environment
+  DJANGO_DEBUG: "false"
+  DJANGO_SECRET_KEY_FILE: /run/secrets/django_secret_key
+  DJANGO_ALLOWED_HOSTS: 127.0.0.1,localhost,manager.goreecloud.com
+  DJANGO_CSRF_TRUSTED_ORIGINS: https://manager.goreecloud.com
+  DJANGO_DB_PATH: /app/data/db.sqlite3
+  NETBIRD_ENABLED: "false"
+  HEALTHCHECKS_ENABLED: "false"
+  UPTIME_KUMA_ENABLED: "false"
+  BESZEL_ENABLED: "false"
+  KOPIA_ENABLED: "false"
+  TASKS_ENABLED: "false"
+
+x-hardened-runtime: &hardened-runtime
+  read_only: true
+  tmpfs:
+    - /tmp:rw,nosuid,nodev,noexec,size=32m
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  pids_limit: 256
+
+services:
+  manager-primary:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment: *manager-environment
+    secrets:
+      - django_secret_key
+      - admin_password
+    volumes:
+      - manager_primary_data:/app/data
+    command:
+      - sh
+      - -c
+      - >-
+        python manage.py migrate --noinput &&
+        exec gunicorn goreecloud_manager.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile - --error-logfile -
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz/', timeout=3).read()
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    <<: *hardened-runtime
+    networks:
+      - manager_recovery
+
+  manager-restored:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment: *manager-environment
+    secrets:
+      - django_secret_key
+      - admin_password
+    volumes:
+      - manager_restored_data:/app/data
+    command:
+      - sh
+      - -c
+      - >-
+        python manage.py migrate --noinput &&
+        exec gunicorn goreecloud_manager.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile - --error-logfile -
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz/', timeout=3).read()
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    <<: *hardened-runtime
+    networks:
+      - manager_recovery
+
+  backup-primary:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    volumes:
+      - manager_primary_data:/app/source:ro
+      - manager_backup_data:/app/backups
+    command:
+      - python
+      - /app/ops/sqlite-backup.py
+      - backup
+      - /app/source/db.sqlite3
+      - /app/backups/manager-pre-loss.sqlite3
+    <<: *hardened-runtime
+    network_mode: none
+
+  backup-restored:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    volumes:
+      - manager_restored_data:/app/source:ro
+      - manager_backup_data:/app/backups
+    command:
+      - python
+      - /app/ops/sqlite-backup.py
+      - backup
+      - /app/source/db.sqlite3
+      - /app/backups/manager-post-recovery.sqlite3
+    <<: *hardened-runtime
+    network_mode: none
+
+  restore-helper:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    volumes:
+      - manager_backup_data:/app/backups:ro
+      - manager_restored_data:/app/data
+    command:
+      - python
+      - /app/ops/sqlite-backup.py
+      - restore
+      - /app/backups/manager-pre-loss.sqlite3
+      - /app/data/db.sqlite3
+    <<: *hardened-runtime
+    network_mode: none
+
+  verify-backup:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    volumes:
+      - manager_backup_data:/app/backups:ro
+    command:
+      - python
+      - /app/ops/sqlite-backup.py
+      - verify
+      - /app/backups/manager-pre-loss.sqlite3
+    <<: *hardened-runtime
+    network_mode: none
+
+secrets:
+  django_secret_key:
+    file: ${MANAGER_BACKUP_WORK_DIR}/django-secret-key
+  admin_password:
+    file: ${MANAGER_BACKUP_WORK_DIR}/admin-password
+
+volumes:
+  manager_primary_data:
+    name: ${MANAGER_BACKUP_VOLUME_PREFIX}-primary
+  manager_restored_data:
+    name: ${MANAGER_BACKUP_VOLUME_PREFIX}-restored
+  manager_backup_data:
+    name: ${MANAGER_BACKUP_VOLUME_PREFIX}-backup
+
+networks:
+  manager_recovery:
+    internal: true
