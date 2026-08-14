@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import runpy
 from pathlib import Path
 from unittest.mock import patch
@@ -118,6 +119,40 @@ class RuntimeConfigurationTests(SimpleTestCase):
 
         self.assertIn("http://127.0.0.1:8000/readyz/", compose)
         self.assertIn("http://127.0.0.1:8000/readyz/", dockerfile)
+
+    def test_compose_uses_source_controlled_gunicorn_configuration(self):
+        compose = (REPOSITORY_ROOT / "compose.yml").read_text(encoding="utf-8")
+
+        self.assertIn("python manage.py migrate --noinput &&", compose)
+        self.assertIn(
+            "exec gunicorn -c gunicorn.conf.py goreecloud_manager.wsgi:application",
+            compose,
+        )
+        self.assertNotIn("--workers 2 --access-logfile - --error-logfile -", compose)
+
+    def test_ci_runtime_matches_image_python_and_is_bounded(self):
+        workflow = (
+            REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml"
+        ).read_text(encoding="utf-8")
+        dockerfile = (REPOSITORY_ROOT / "Dockerfile").read_text(encoding="utf-8")
+
+        image_python = re.search(
+            r"^FROM python:(\d+\.\d+\.\d+)-slim$",
+            dockerfile,
+            re.MULTILINE,
+        )
+        ci_python = re.search(
+            r'python-version:\s*"(\d+\.\d+\.\d+)"',
+            workflow,
+        )
+
+        self.assertIsNotNone(image_python)
+        self.assertIsNotNone(ci_python)
+        self.assertEqual(ci_python.group(1), image_python.group(1))
+        self.assertIn("runs-on: ubuntu-24.04", workflow)
+        self.assertNotIn("runs-on: ubuntu-latest", workflow)
+        self.assertIn("timeout-minutes: 15", workflow)
+        self.assertIn("python -m pip check", workflow)
 
     def test_gunicorn_runtime_contract_is_bounded_and_query_safe(self):
         config = runpy.run_path(str(REPOSITORY_ROOT / "gunicorn.conf.py"))

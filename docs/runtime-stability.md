@@ -50,6 +50,30 @@ Unexpected adapter failures continue to log only the integration key and excepti
 
 The Manager integration budget is intentionally tighter than the Gunicorn hard timeout. Gunicorn therefore acts as the final process-level guard for requests that become wedged outside the normal integration path, while periodic worker recycling limits the lifetime of accidental process-local resource leaks.
 
+## Compose runtime alignment
+
+The normal Docker Compose path uses the same source-controlled Gunicorn configuration as the image default. Compose still performs the deliberate database migration step before starting the application, then launches:
+
+```text
+exec gunicorn -c gunicorn.conf.py goreecloud_manager.wsgi:application
+```
+
+Compose must not restate the worker count, bind address, access-log destination, worker timeout, recycling controls, or other Gunicorn options already governed by `gunicorn.conf.py`. Duplicating those values creates a second runtime contract that can drift from the validated image configuration and silently bypass later process-level safety changes.
+
+Regression coverage reads the source-controlled Compose file and requires the configuration-file launch path while rejecting the previous direct worker/logging override.
+
+## CI runtime baseline
+
+Normal CI uses an explicit Ubuntu 24.04 runner and a 15-minute job timeout instead of a floating runner label and unbounded job duration.
+
+The CI Python runtime must be a full major/minor/patch version and must exactly match the Python version declared by the application Docker image. At the time this contract was added, both are CPython 3.14.6. This prevents ordinary source validation from silently moving to a different Python patch release than the candidate image.
+
+Node.js remains required only for syntax validation of the small browser-side theme script. Python dependency installation continues to run `python -m pip check` before application validation.
+
+Regression coverage derives the image Python version from the Dockerfile and compares it with the CI `python-version` value rather than treating the current patch release as a permanent constant. A future intentional Python upgrade therefore must move the image and CI runtime together.
+
+The explicit CI baseline reduces runner and language-runtime drift. It does not make the complete software supply chain immutable; dependency-locking and immutable GitHub Actions/base-image identities remain separate production-readiness work.
+
 ## Container health
 
 The Dockerfile and Compose healthchecks use `/readyz/` instead of `/healthz/`. A running Gunicorn process is therefore not sufficient for the container to become healthy when Manager cannot query its own database.
