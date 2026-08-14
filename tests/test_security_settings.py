@@ -31,11 +31,13 @@ class ProductionSecuritySettingsTests(SimpleTestCase):
                 sys.executable,
                 "-c",
                 (
+                    "import os; from pathlib import Path; "
                     "import goreecloud_manager.settings as s; "
                     "print(s.SESSION_COOKIE_SECURE); "
                     "print(s.CSRF_COOKIE_SECURE); "
                     "print(s.SECURE_PROXY_SSL_HEADER); "
-                    "print(s.SECRET_KEY == 'synthetic-file-secret-for-tests')"
+                    "secret_file=os.environ.get('DJANGO_SECRET_KEY_FILE'); "
+                    "print(bool(secret_file) and s.SECRET_KEY == Path(secret_file).read_text(encoding='utf-8').strip())"
                 ),
             ],
             cwd=REPOSITORY_ROOT,
