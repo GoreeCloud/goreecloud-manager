@@ -146,6 +146,29 @@ services:
     <<: *hardened-runtime
     network_mode: none
 
+  secret-scan:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    secrets:
+      - django_secret_key
+      - admin_password
+    volumes:
+      - manager_backup_data:/app/backups:ro
+    command:
+      - python
+      - -c
+      - >-
+        from pathlib import Path;
+        secret_values=[Path('/run/secrets/django_secret_key').read_bytes().strip(),Path('/run/secrets/admin_password').read_bytes().strip()];
+        backups=list(Path('/app/backups').glob('*.sqlite3'));
+        assert len(backups) >= 2, 'expected pre-loss and post-recovery backup files';
+        assert all((path.stat().st_mode & 0o777) == 0o600 for path in backups), 'backup file mode drifted from 0600';
+        assert all(value and all(value not in path.read_bytes() for path in backups) for value in secret_values), 'plaintext synthetic secret appeared in a backup artifact';
+        print('Backup secret and file-mode assertions passed.')
+    <<: *hardened-runtime
+    network_mode: none
+
 secrets:
   django_secret_key:
     file: ${MANAGER_BACKUP_WORK_DIR}/django-secret-key
