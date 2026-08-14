@@ -1,6 +1,5 @@
-# syntax=docker/dockerfile:1
 # GoreeCloud Manager application image.
-FROM python:3.14.6-slim
+FROM python:3.14.6-slim@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -9,8 +8,8 @@ WORKDIR /app
 
 RUN addgroup --system manager && adduser --system --ingroup manager manager
 
-COPY requirements.txt ./
-RUN python -m pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements.lock ./
+RUN python -m pip install --no-cache-dir --require-hashes --only-binary=:all: -r requirements.lock
 
 COPY . .
 RUN mkdir -p /app/staticfiles /app/data /app/backups && chown -R manager:manager /app
