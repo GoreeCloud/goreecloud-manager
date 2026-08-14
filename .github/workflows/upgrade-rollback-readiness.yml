@@ -1,0 +1,23 @@
+name: Upgrade Rollback Readiness
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade-rollback-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate previous-revision upgrade and backup-backed rollback
+        run: bash scripts/validate_upgrade_rollback_readiness.sh
