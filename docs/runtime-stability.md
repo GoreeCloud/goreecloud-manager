@@ -50,6 +50,26 @@ Unexpected adapter failures continue to log only the integration key and excepti
 
 The Manager integration budget is intentionally tighter than the Gunicorn hard timeout. Gunicorn therefore acts as the final process-level guard for requests that become wedged outside the normal integration path, while periodic worker recycling limits the lifetime of accidental process-local resource leaks.
 
+## Compose runtime alignment
+
+The normal Docker Compose path must use the same source-controlled Gunicorn configuration as the image default. Compose may still run the deliberate migration step before application startup, but it must start the application with:
+
+```text
+exec gunicorn -c gunicorn.conf.py goreecloud_manager.wsgi:application
+```
+
+Compose must not restate worker count, bind address, access-log destination, or other Gunicorn options that are already governed by `gunicorn.conf.py`. Duplicating those values creates a second runtime contract that can drift from the validated image configuration and can silently bypass new process-level safety settings.
+
+A regression test reads the source-controlled Compose file and requires this configuration path while rejecting the previous direct worker/logging override.
+
+## CI runtime baseline
+
+The normal CI job uses an explicit Ubuntu 24.04 runner, CPython 3.14.6, and a 15-minute job timeout. The Python version matches the current application-image runtime version so ordinary source validation does not float independently from the deployed language baseline.
+
+Node.js remains required only for syntax validation of the small browser-side theme script. Python dependency installation continues to run `python -m pip check` before application validation.
+
+The explicit CI baseline reduces runner and language-runtime drift. It does not replace the separate future work required to make the complete Python dependency graph and container base-image identity fully immutable.
+
 ## Container health
 
 The Dockerfile and Compose healthchecks use `/readyz/` instead of `/healthz/`. A running Gunicorn process is therefore not sufficient for the container to become healthy when Manager cannot query its own database.
