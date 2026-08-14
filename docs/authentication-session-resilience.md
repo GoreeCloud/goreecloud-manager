@@ -19,15 +19,15 @@ The current session settings are:
 - `SESSION_COOKIE_SECURE=True` whenever `DJANGO_DEBUG=false`.
 - `SESSION_SAVE_EVERY_REQUEST=False` so ordinary read-only Manager navigation does not create an SQLite session write on every request.
 
-## Session Lifetime
+## Session Expiration Window
 
-Manager defaults to an eight-hour server-side session lifetime.
+Manager defaults to an eight-hour server-side session expiration window.
 
-`DJANGO_SESSION_COOKIE_AGE_SECONDS` may configure the lifetime, but startup fails closed when the value is below 900 seconds or above 86400 seconds. The allowed range is therefore 15 minutes through 24 hours.
+`DJANGO_SESSION_COOKIE_AGE_SECONDS` may configure the window, but startup fails closed when the value is below 900 seconds or above 86400 seconds. The allowed range is therefore 15 minutes through 24 hours.
 
-`DJANGO_SESSION_EXPIRE_AT_BROWSER_CLOSE` defaults to `true`. Browser-close expiration is defense in depth rather than the sole lifetime control because some browsers may restore browser sessions. The bounded server-side session age remains the authoritative expiration boundary.
+Django calculates session expiration from the session's last modification. A legitimate operation that modifies session data can therefore establish a new expiration point. Manager deliberately keeps `SESSION_SAVE_EVERY_REQUEST=False`, so ordinary read-only navigation does not modify the session merely to extend its expiry and does not add an SQLite session write on every request.
 
-Manager does not enable `SESSION_SAVE_EVERY_REQUEST`. Consequently, ordinary reads do not turn the configured session age into an indefinitely sliding lifetime and do not add avoidable SQLite write contention.
+`DJANGO_SESSION_EXPIRE_AT_BROWSER_CLOSE` defaults to `true` and is parsed strictly: recognized true/false forms are accepted and unrecognized text fails closed during settings initialization. Browser-close expiration is an additional boundary rather than the sole lifetime control because some browsers may restore browser sessions. The server-side expiration window remains bounded even when the browser preserves its cookie.
 
 ## Session Fixation and Logout
 
@@ -89,14 +89,15 @@ Source validation for this increment must demonstrate:
 
 1. bounded session settings load with the documented defaults;
 2. unsafe session-age values fail closed;
-3. pre-authentication session keys rotate on successful login;
-4. logout requires POST and removes the active server-side session;
-5. changing a user's password invalidates an existing session;
-6. internal `next` destinations are preserved;
-7. external `next` destinations are rejected;
-8. the login response is not cacheable;
-9. failed-login logs exclude submitted credentials;
-10. successful login and logout logs expose no username or password.
+3. unrecognized browser-close boolean input fails closed;
+4. pre-authentication session keys rotate on successful login;
+5. logout requires POST and removes the active server-side session;
+6. changing a user's password invalidates an existing session;
+7. internal `next` destinations are preserved;
+8. external `next` destinations are rejected;
+9. the login response is not cacheable;
+10. failed-login logs exclude submitted credentials;
+11. successful login and logout logs expose no username or password.
 
 The permanent CI, runtime publication, backup/restore, upgrade/rollback, monitoring/alert, and production-readiness-evidence workflows remain the acceptance gates for the exact pull-request head.
 
