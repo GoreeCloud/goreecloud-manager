@@ -45,6 +45,31 @@ def env_non_negative_int(name: str, default: int = 0) -> int:
     return value
 
 
+def env_bounded_positive_int(
+    name: str,
+    default: int,
+    *,
+    minimum: int = 1,
+    maximum: int | None = None,
+) -> int:
+    """Read a positive integer constrained to an explicit safe operating range."""
+
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{name} must be an integer.") from exc
+
+    if value < minimum:
+        raise ImproperlyConfigured(f"{name} must be at least {minimum} seconds.")
+    if maximum is not None and value > maximum:
+        raise ImproperlyConfigured(f"{name} must be no greater than {maximum} seconds.")
+    return value
+
+
 def env_positive_float(
     name: str,
     default: float,
@@ -245,16 +270,42 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        "core.auth": {
+            "handlers": ["manager_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 
 # Production publication terminates HTTPS at Caddy. Trust only the conventional
 # X-Forwarded-Proto value supplied by that controlled reverse-proxy boundary.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Keep authentication sessions server-side and short enough for a private administrative
+# application. The browser-close setting is defense in depth; the bounded server-side age
+# remains authoritative even when a browser restores a previous browser session. Do not save
+# every request: that would turn ordinary read-only navigation into unnecessary SQLite writes.
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+SESSION_COOKIE_NAME = "goreecloud_manager_sessionid"
+SESSION_COOKIE_AGE = env_bounded_positive_int(
+    "DJANGO_SESSION_COOKIE_AGE_SECONDS",
+    8 * 60 * 60,
+    minimum=15 * 60,
+    maximum=24 * 60 * 60,
+)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = env_bool(
+    "DJANGO_SESSION_EXPIRE_AT_BROWSER_CLOSE",
+    default=True,
+)
+SESSION_SAVE_EVERY_REQUEST = False
 SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
+
+CSRF_COOKIE_NAME = "goreecloud_manager_csrftoken"
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
