@@ -2,7 +2,14 @@
 
 - Application authentication is required independently of integration reachability.
 - Production uses HTTPS termination through Caddy and the approved private-service publication model.
-- Session and CSRF cookies are secure when `DJANGO_DEBUG=false`.
+- Manager explicitly uses server-side database-backed authentication sessions with a bounded configurable expiration window; the default is eight hours and startup rejects values below fifteen minutes or above twenty-four hours.
+- Browser-close session expiry is enabled by default and its environment value is parsed strictly so misspelled security-sensitive input fails closed.
+- Manager does not save the session on every request, preventing ordinary read-only navigation from sliding the expiration window or adding avoidable SQLite session writes.
+- Successful login is regression-tested to rotate the pre-authentication session key; logout is POST-only and regression-tested to flush the server-side session; password changes are regression-tested to invalidate an existing authenticated session.
+- Manager uses application-specific session and CSRF cookie names; session cookies and the CSRF cookie are HttpOnly, and session and CSRF cookies are secure when `DJANGO_DEBUG=false`.
+- Login redirects preserve approved internal destinations while Django's safe redirect validation rejects external `next` destinations.
+- Authentication event logs contain the server-generated request correlation ID and, for successful login/logout, the internal user ID only. Failed-login submitted usernames, passwords, raw credentials, IP addresses, forwarded-for values, user-agent strings, query strings, and caller-supplied request IDs are not logged.
+- Complete login-abuse protection is not claimed by the source configuration. A process-local cache limiter is deliberately not used as a multi-worker control; a shared authoritative limiter or validated target-environment control remains required before brute-force or credential-stuffing protection can be claimed.
 - Reusable secrets are environment-specific and are excluded from source control.
 - Read-only API credentials are preferred and must be scoped to one integration wherever the upstream system supports that model.
 - The NetBird adapter is intentionally limited to `GET /api/peers` and contains no write-capable API method.
