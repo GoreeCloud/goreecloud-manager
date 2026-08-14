@@ -17,6 +17,10 @@ RUN mkdir -p /app/staticfiles /app/data && chown -R manager:manager /app
 
 USER manager
 
+# Static assets are immutable application artifacts. Build them into the image so a
+# production container does not require a writable application root at startup.
+RUN DJANGO_DEBUG=true python manage.py collectstatic --noinput
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
