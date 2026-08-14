@@ -43,7 +43,10 @@ python - <<'PY' > "$SECRET_DIR/admin-password"
 import secrets
 print(secrets.token_urlsafe(48))
 PY
-chmod 0400 "$SECRET_DIR/django-secret-key" "$SECRET_DIR/admin-password"
+# Docker bind-mounts these runtime-random files into a non-root container. Keep the
+# parent directory private (0700), make only the ephemeral mounted files readable,
+# and delete the entire directory during cleanup.
+chmod 0444 "$SECRET_DIR/django-secret-key" "$SECRET_DIR/admin-password"
 
 DJANGO_SECRET_VALUE="$(cat "$SECRET_DIR/django-secret-key")"
 ADMIN_PASSWORD_VALUE="$(cat "$SECRET_DIR/admin-password")"
