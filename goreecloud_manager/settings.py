@@ -24,6 +24,23 @@ def env_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def env_strict_bool(name: str, default: bool = False) -> bool:
+    """Read an explicit boolean and reject misspelled security-sensitive values."""
+
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
+        return default
+
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise ImproperlyConfigured(
+        f"{name} must be one of true, false, 1, 0, yes, no, on, or off."
+    )
+
+
 def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
 
@@ -283,9 +300,9 @@ LOGGING = {
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Keep authentication sessions server-side and short enough for a private administrative
-# application. The browser-close setting is defense in depth; the bounded server-side age
-# remains authoritative even when a browser restores a previous browser session. Do not save
-# every request: that would turn ordinary read-only navigation into unnecessary SQLite writes.
+# application. Browser-close expiry is defense in depth around the bounded server-side
+# expiration window. Do not save every request: that would turn ordinary read-only navigation
+# into unnecessary SQLite writes and would make the expiration window slide on every request.
 SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_NAME = "goreecloud_manager_sessionid"
 SESSION_COOKIE_AGE = env_bounded_positive_int(
@@ -294,7 +311,7 @@ SESSION_COOKIE_AGE = env_bounded_positive_int(
     minimum=15 * 60,
     maximum=24 * 60 * 60,
 )
-SESSION_EXPIRE_AT_BROWSER_CLOSE = env_bool(
+SESSION_EXPIRE_AT_BROWSER_CLOSE = env_strict_bool(
     "DJANGO_SESSION_EXPIRE_AT_BROWSER_CLOSE",
     default=True,
 )
