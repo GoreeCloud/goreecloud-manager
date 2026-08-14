@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from threading import Event
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
+
+from integrations.netbird import NetBirdSnapshot
 
 
 class IntegrationFaultIsolationTests(TestCase):
@@ -34,8 +37,12 @@ class IntegrationFaultIsolationTests(TestCase):
         )
         self.assertNotContains(response, "synthetic-secret-value-must-not-escape")
         self.assertTrue(mocked_snapshot.called)
+        request_id = response["X-Request-ID"]
+        self.assertRegex(request_id, r"^[0-9a-f]{32}$")
         log_output = "\n".join(captured.output)
         self.assertIn("RuntimeError", log_output)
+        self.assertIn(f"request_id={request_id}", log_output)
+        self.assertIn("integration=netbird", log_output)
         self.assertNotIn("synthetic-secret-value-must-not-escape", log_output)
 
     @patch(
@@ -80,3 +87,38 @@ class IntegrationFaultIsolationTests(TestCase):
             response.content.decode(),
         )
         self.assertTrue(mocked_snapshot.called)
+
+    @override_settings(MANAGER_INTEGRATION_BUDGET_SECONDS=0.05)
+    @patch("core.views.netbird_snapshot")
+    def test_blocked_adapter_does_not_hold_overview_open(self, mocked_snapshot):
+        started = Event()
+        release = Event()
+        finished = Event()
+
+        def blocked_snapshot():
+            started.set()
+            release.wait(timeout=1)
+            finished.set()
+            return NetBirdSnapshot(state="healthy", detail="Late synthetic result.")
+
+        mocked_snapshot.side_effect = blocked_snapshot
+
+        try:
+            with self.assertLogs("core.views", level="WARNING") as captured:
+                response = self.client.get(reverse("overview"))
+
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(started.is_set())
+            self.assertFalse(finished.is_set())
+            self.assertContains(
+                response,
+                "The NetBird integration did not finish within Manager's request budget.",
+            )
+            request_id = response["X-Request-ID"]
+            log_output = "\n".join(captured.output)
+            self.assertIn("integration_budget_exceeded", log_output)
+            self.assertIn(f"request_id={request_id}", log_output)
+            self.assertIn("integration=netbird", log_output)
+        finally:
+            release.set()
+            finished.wait(timeout=1)
