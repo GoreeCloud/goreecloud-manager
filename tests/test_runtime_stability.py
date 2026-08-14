@@ -130,14 +130,14 @@ class RuntimeConfigurationTests(SimpleTestCase):
         )
         self.assertNotIn("--workers 2 --access-logfile - --error-logfile -", compose)
 
-    def test_ci_runtime_matches_image_python_and_is_bounded(self):
+    def test_ci_runtime_matches_digest_pinned_image_python_and_is_bounded(self):
         workflow = (
             REPOSITORY_ROOT / ".github" / "workflows" / "ci.yml"
         ).read_text(encoding="utf-8")
         dockerfile = (REPOSITORY_ROOT / "Dockerfile").read_text(encoding="utf-8")
 
         image_python = re.search(
-            r"^FROM python:(\d+\.\d+\.\d+)-slim$",
+            r"^FROM python:(\d+\.\d+\.\d+)-slim@sha256:[0-9a-f]{64}$",
             dockerfile,
             re.MULTILINE,
         )

@@ -68,11 +68,11 @@ Normal CI uses an explicit Ubuntu 24.04 runner and a 15-minute job timeout inste
 
 The CI Python runtime must be a full major/minor/patch version and must exactly match the Python version declared by the application Docker image. At the time this contract was added, both are CPython 3.14.6. This prevents ordinary source validation from silently moving to a different Python patch release than the candidate image.
 
-Node.js remains required only for syntax validation of the small browser-side theme script. Python dependency installation continues to run `python -m pip check` before application validation.
+Node.js remains required only for syntax validation of the small browser-side theme script. Python dependencies are installed from the SHA-256 hash-locked `requirements.lock` with source distributions disabled, and CI continues to run `python -m pip check` before application validation.
 
 Regression coverage derives the image Python version from the Dockerfile and compares it with the CI `python-version` value rather than treating the current patch release as a permanent constant. A future intentional Python upgrade therefore must move the image and CI runtime together.
 
-The explicit CI baseline reduces runner and language-runtime drift. It does not make the complete software supply chain immutable; dependency-locking and immutable GitHub Actions/base-image identities remain separate production-readiness work.
+The explicit CI baseline reduces runner and language-runtime drift. Dependency hashes, immutable GitHub Action commits, and the digest-pinned application base image are governed by `docs/software-supply-chain.md`. GitHub-hosted runner images still evolve within the explicit Ubuntu 24.04 family and therefore are not treated as byte-for-byte immutable.
 
 ## Container health
 
