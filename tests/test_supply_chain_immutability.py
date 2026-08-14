@@ -34,7 +34,9 @@ class SupplyChainImmutabilityTests(SimpleTestCase):
                 index += 1
                 continue
 
-            package_match = re.fullmatch(r"([A-Za-z0-9_.-]+)==([^\s]+) \\", line)
+            self.assertTrue(line.endswith("\\"), f"locked requirement lacks continuation: {line}")
+            requirement = line[:-1].strip()
+            package_match = re.fullmatch(r"([A-Za-z0-9_.-]+)==([^\s]+)", requirement)
             self.assertIsNotNone(package_match, f"invalid locked requirement: {line}")
             self.assertLess(index + 1, len(lines), f"missing hash for {line}")
             hash_line = lines[index + 1].strip()
