@@ -65,7 +65,7 @@ class SessionSettingsTests(SimpleTestCase):
             ],
         )
 
-    def test_session_age_and_browser_close_behavior_can_be_tightened(self):
+    def test_session_age_and_browser_close_behavior_are_configurable(self):
         result = self._run_settings(
             {
                 "DJANGO_SESSION_COOKIE_AGE_SECONDS": "3600",
@@ -94,3 +94,11 @@ class SessionSettingsTests(SimpleTestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("must be an integer", result.stderr)
+
+    def test_browser_close_setting_rejects_unrecognized_boolean_text(self):
+        result = self._run_settings(
+            {"DJANGO_SESSION_EXPIRE_AT_BROWSER_CLOSE": "sometimes"}
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must be one of true, false", result.stderr)
