@@ -6,6 +6,7 @@ import logging
 from collections.abc import Callable
 from uuid import uuid4
 
+from django.conf import settings
 from django.db.utils import OperationalError
 from django.http import HttpRequest, HttpResponse
 
@@ -21,6 +22,9 @@ _SQLITE_LOCK_MARKERS = (
 
 def _is_sqlite_contention(error: OperationalError) -> bool:
     """Recognize transient SQLite lock failures without exposing their raw text."""
+
+    if settings.DATABASES["default"]["ENGINE"] != "django.db.backends.sqlite3":
+        return False
 
     message = str(error).casefold()
     return any(marker in message for marker in _SQLITE_LOCK_MARKERS)
