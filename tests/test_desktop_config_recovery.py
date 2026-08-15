@@ -66,6 +66,19 @@ class DesktopConfigRecoveryTests(TestCase):
             self.assertEqual(recovery.read_text(encoding="utf-8"), _VALID_CONFIG)
             self.assertEqual(stat.S_IMODE(primary.stat().st_mode), 0o600)
 
+    def test_empty_primary_is_restored_from_valid_recovery_copy(self):
+        with TemporaryDirectory() as temporary_directory:
+            primary = Path(temporary_directory) / "config.yaml"
+            primary.write_text(_VALID_CONFIG, encoding="utf-8")
+            recovery = protect_config_before_write(primary)
+            primary.write_text("", encoding="utf-8")
+
+            notice = prepare_config_recovery(primary)
+
+            self.assertIn("Recovered config.yaml", notice)
+            self.assertEqual(primary.read_text(encoding="utf-8"), _VALID_CONFIG)
+            self.assertEqual(recovery.read_text(encoding="utf-8"), _VALID_CONFIG)
+
     def test_invalid_primary_and_invalid_recovery_fail_closed(self):
         with TemporaryDirectory() as temporary_directory:
             primary = Path(temporary_directory) / "config.yaml"
