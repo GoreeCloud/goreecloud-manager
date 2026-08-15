@@ -9,6 +9,7 @@ from django.test import SimpleTestCase
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_ROOT = REPOSITORY_ROOT / ".github" / "workflows"
+EXACT_REVISION_EXPRESSION = "${{ github.event.pull_request.head.sha || github.sha }}"
 
 
 class SupplyChainImmutabilityTests(SimpleTestCase):
@@ -76,7 +77,7 @@ class SupplyChainImmutabilityTests(SimpleTestCase):
         self.assertIsNotNone(base_image)
         self.assertEqual(base_image.group(1), "3.14.6")
 
-    def test_all_external_github_actions_use_full_commit_shas(self):
+    def test_all_external_github_actions_use_full_commit_shas_and_exact_checkout(self):
         action_pattern = re.compile(r"uses:\s*([^\s@]+/[^\s@]+)@([^\s#]+)")
         found = []
 
@@ -85,6 +86,11 @@ class SupplyChainImmutabilityTests(SimpleTestCase):
             self.assertNotIn("runs-on: ubuntu-latest", workflow)
             self.assertIn("runs-on: ubuntu-24.04", workflow)
             self.assertRegex(workflow, r"timeout-minutes:\s*\d+")
+            self.assertIn(
+                f"ref: {EXACT_REVISION_EXPRESSION}",
+                workflow,
+                f"{workflow_path.name} must check out the exact PR head or main commit",
+            )
 
             for repository, reference in action_pattern.findall(workflow):
                 found.append((workflow_path.name, repository, reference))
@@ -95,3 +101,23 @@ class SupplyChainImmutabilityTests(SimpleTestCase):
                 )
 
         self.assertTrue(found, "expected at least one external GitHub Action reference")
+
+    def test_ci_checksum_pins_trivy_release_archive_and_uses_debian_os_policy(self):
+        ci = (WORKFLOW_ROOT / "ci.yml").read_text(encoding="utf-8")
+        self.assertIn('TRIVY_VERSION: "0.74.0"', ci)
+        self.assertIn(
+            'TRIVY_LINUX_AMD64_SHA256: '
+            '"2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a"',
+            ci,
+        )
+        self.assertIn("sha256sum --check", ci)
+        self.assertIn("--pkg-types os", ci)
+        self.assertNotIn("--vuln-type os", ci)
+        self.assertIn("--vuln-severity-source debian", ci)
+        self.assertIn("--disable-telemetry", ci)
+        self.assertIn("--skip-version-check", ci)
+        self.assertIn("--scanners vuln", ci)
+        self.assertIn("--exit-on-eol 2", ci)
+        self.assertIn("security/trivy-container-policy.json", ci)
+        self.assertIn("goreecloud-manager-image.cdx.json", ci)
+        self.assertIn("manager-container-os-vulnerability-summary.json", ci)

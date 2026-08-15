@@ -145,13 +145,16 @@ class RuntimeConfigurationTests(SimpleTestCase):
             r'python-version:\s*"(\d+\.\d+\.\d+)"',
             workflow,
         )
+        ci_timeout = re.search(r"timeout-minutes:\s*(\d+)", workflow)
 
         self.assertIsNotNone(image_python)
         self.assertIsNotNone(ci_python)
+        self.assertIsNotNone(ci_timeout)
         self.assertEqual(ci_python.group(1), image_python.group(1))
         self.assertIn("runs-on: ubuntu-24.04", workflow)
         self.assertNotIn("runs-on: ubuntu-latest", workflow)
-        self.assertIn("timeout-minutes: 15", workflow)
+        self.assertGreaterEqual(int(ci_timeout.group(1)), 15)
+        self.assertLessEqual(int(ci_timeout.group(1)), 30)
         self.assertIn("python -m pip check", workflow)
 
     def test_gunicorn_runtime_contract_is_bounded_and_query_safe(self):

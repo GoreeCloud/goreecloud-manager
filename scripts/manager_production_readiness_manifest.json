@@ -14,7 +14,7 @@
       "required_jobs": [
         "django"
       ],
-      "evidence_scope": "application checks, static assets, migrations, browser JavaScript, and Django test suite"
+      "evidence_scope": "application checks, static assets, browser JavaScript, Django test suite, exact-revision Python SBOM/OSV evidence, and exact-built-image container SBOM/operating-system vulnerability evidence"
     },
     {
       "workflow_path": ".github/workflows/runtime-publication-readiness.yml",
