@@ -94,6 +94,17 @@ def local_health() -> SystemHealth:
     )
 
 
+def _ssh_failure_detail(output: str) -> str:
+    normalized = output.casefold()
+    if "host key verification failed" in normalized or "no ed25519 host key is known" in normalized:
+        return (
+            "SSH host identity is not trusted. Verify the server host key from a terminal "
+            "before using GoreeCloud Manager."
+        )
+    lines = output.strip().splitlines()
+    return lines[-1] if lines else "SSH command failed"
+
+
 def remote_ssh_health(
     *,
     name: str,
@@ -157,7 +168,7 @@ printf 'cpu=%s\nmemory=%s\ndisk=%s\nuptime=%s\nhostname=%s\nos_name=%s\nkernel=%
         "-o",
         f"ConnectTimeout={timeout}",
         "-o",
-        "StrictHostKeyChecking=accept-new",
+        "StrictHostKeyChecking=yes",
         "-p",
         str(port),
     ]
@@ -180,9 +191,8 @@ printf 'cpu=%s\nmemory=%s\ndisk=%s\nuptime=%s\nhostname=%s\nos_name=%s\nkernel=%
         raise SystemHealthError(f"SSH connection to {host} timed out.") from exc
 
     if result.returncode != 0:
-        message = (result.stderr or result.stdout or "SSH command failed").strip().splitlines()
-        detail = message[-1] if message else "SSH command failed"
-        raise SystemHealthError(detail)
+        output = result.stderr or result.stdout or "SSH command failed"
+        raise SystemHealthError(_ssh_failure_detail(output))
 
     values: dict[str, str] = {}
     for line in result.stdout.splitlines():
@@ -245,7 +255,7 @@ def check_url(url: str, timeout: float = 4.0) -> ServiceHealth:
         url,
         method="GET",
         headers={
-            "User-Agent": "GoreeCloud-Manager/0.2.4",
+            "User-Agent": "GoreeCloud-Manager/0.2.5",
             "Accept": "text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.8",
         },
     )

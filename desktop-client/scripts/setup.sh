@@ -14,6 +14,7 @@ if [[ ! -x .venv/bin/python ]]; then
 fi
 
 . .venv/bin/activate
-python -m pip install --upgrade pip
+export PIP_DISABLE_PIP_VERSION_CHECK=1
 python -m pip install -r requirements.txt
+python -m pip check
 printf '\nSetup complete. Run: ./scripts/start.sh\n'

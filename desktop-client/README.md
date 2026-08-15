@@ -1,14 +1,16 @@
 # GoreeCloud Manager Linux Desktop Client
 
-This directory contains the Linux desktop client prototype for GoreeCloud Manager.
+This directory contains the Linux desktop client for GoreeCloud Manager.
 
 It is a companion to the repository's existing server-side Django GoreeCloud Manager application. The desktop client is kept in this repository so its source, history, packaging scripts, and recovery state remain under Git version control without replacing or overwriting the existing web application.
 
 ## Current version
 
-**v0.2.4 — read-only operations console**
+**v0.2.5 — read-only stability hardening**
 
 The client is built with Python and PySide6/Qt. It runs on a Linux workstation and can use the system OpenSSH client to collect read-only operational information from a GoreeCloud server.
+
+v0.2.5 keeps the existing v0.2.4 monitoring feature set and strengthens the runtime boundary with exact direct dependency pins, `pip check`, private atomic configuration writes, bounded parsing for malformed numeric and boolean configuration values, and fail-closed SSH host-key verification.
 
 ### Overview
 
@@ -44,7 +46,7 @@ Each configured service can have a name, description, browser URL, optional heal
 ./scripts/start.sh
 ```
 
-On first launch, `start.sh` creates `.venv` and installs the Python dependencies when needed.
+On first launch, `start.sh` creates `.venv` and installs the exact direct Python dependency versions recorded in `requirements.txt`. Setup also runs `python -m pip check` before reporting success.
 
 ## Permanent Linux installation / upgrade
 
@@ -70,6 +72,8 @@ User configuration is kept separately at:
 ~/.config/goreecloud-manager/config.yaml
 ```
 
+Manager writes the configuration through a same-directory atomic replacement and restricts the final file to mode `0600`. This file must not be committed to the repository.
+
 The installer reuses an existing compatible `.venv` when `requirements.txt` has not changed.
 
 ## SSH monitoring
@@ -84,10 +88,10 @@ ssh goreecloud-vps-01
 
 then `goreecloud-vps-01` can be used as the desktop client's Server address.
 
-The application invokes the system OpenSSH client with non-interactive behavior. It does not prompt for or persist an SSH password.
+The application invokes the system OpenSSH client with non-interactive behavior. It does not prompt for or persist an SSH password. GoreeCloud Manager also requires the target host key to have been trusted already; it does not automatically accept a previously unseen SSH host identity. Establish or verify that trust through the approved OpenSSH workflow before using the desktop client.
 
 ## Security boundary
 
-v0.2.4 is intentionally read-only. It does not start, stop, restart, delete, or modify Docker containers, NetBird configuration, systemd units, or other server workloads.
+v0.2.5 is intentionally read-only. It does not start, stop, restart, delete, or modify Docker containers, NetBird configuration, systemd units, or other server workloads.
 
 No private SSH key contents, passwords, API tokens, or populated user configuration belong in this repository.
