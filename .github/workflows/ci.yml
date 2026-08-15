@@ -78,19 +78,18 @@ jobs:
           "$install_dir/trivy" --version
           echo "TRIVY_BIN=$install_dir/trivy" >> "$GITHUB_ENV"
 
-      - name: Build exact Manager image and capture Buildx identity metadata
+      - name: Build exact Manager image and capture Buildx distribution identity
         id: security_image
         continue-on-error: true
         run: |
           metadata_file="$RUNNER_TEMP/manager-build-metadata.json"
           iid_file="$RUNNER_TEMP/manager-build-image-id.txt"
           BUILDX_METADATA_PROVENANCE=disabled docker buildx build \
-            --load \
             --pull=false \
             --metadata-file "$metadata_file" \
             --iidfile "$iid_file" \
             --build-arg MANAGER_SOURCE_REVISION="$MANAGER_SOURCE_REVISION" \
-            --tag "$MANAGER_SECURITY_IMAGE" \
+            --output "type=image,name=$MANAGER_SECURITY_IMAGE,push=false,oci-mediatypes=true" \
             .
           image_id="$(docker image inspect --format '{{.Id}}' "$MANAGER_SECURITY_IMAGE")"
           test -n "$image_id"
@@ -247,7 +246,7 @@ jobs:
             failed=1
           fi
           if [ "${{ steps.security_image.outcome }}" != "success" ]; then
-            echo "Exact Manager image build and Buildx identity capture did not pass."
+            echo "Exact Manager image build and Buildx distribution identity capture did not pass."
             failed=1
           fi
           if [ "${{ steps.oci_build_identity.outcome }}" != "success" ]; then
