@@ -73,6 +73,11 @@ def load_policy(path: Path) -> dict[str, Any]:
         raise ValueError("blocking_severities contains an invalid or duplicate value")
     if rule.get("require_os_package_result") is not True:
         raise ValueError("container vulnerability policy must require an OS package result")
+    for key in ("required_distro", "required_severity_source"):
+        value = rule.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"container vulnerability policy must define {key}")
+        rule[key] = value.strip().casefold()
     if not isinstance(policy.get("exceptions"), list):
         raise ValueError("container vulnerability exceptions must be a list")
     return policy
@@ -170,7 +175,7 @@ def parse_trivy_report(path: Path) -> tuple[dict[str, Any], list[dict[str, str]]
                 ),
                 "severity": severity,
                 "severity_source": (
-                    vulnerability.get("SeveritySource", "").strip()
+                    vulnerability.get("SeveritySource", "").strip().casefold()
                     if isinstance(vulnerability.get("SeveritySource", ""), str)
                     else ""
                 ),
@@ -195,6 +200,26 @@ def parse_trivy_report(path: Path) -> tuple[dict[str, Any], list[dict[str, str]]
     ), len(os_results)
 
 
+def validate_scan_authority(
+    findings: list[dict[str, str]], policy: dict[str, Any]
+) -> None:
+    required_distro = policy["policy"]["required_distro"]
+    required_source = policy["policy"]["required_severity_source"]
+    for finding in findings:
+        if finding["distro"] != required_distro:
+            raise ValueError(
+                f"unexpected operating-system vulnerability source: {finding['distro']}"
+            )
+        if (
+            finding["severity"] != "UNKNOWN"
+            and finding["severity_source"] != required_source
+        ):
+            raise ValueError(
+                "non-UNKNOWN vulnerability severity did not come from the required "
+                "distribution authority"
+            )
+
+
 def classify(
     findings: list[dict[str, str]],
     policy: dict[str, Any],
@@ -204,6 +229,7 @@ def classify(
     list[dict[str, str]],
     list[dict[str, str]],
 ]:
+    validate_scan_authority(findings, policy)
     exceptions = validated_exceptions(policy, today)
     blocking_severities = set(policy["policy"]["blocking_severities"])
     allowed: list[dict[str, str]] = []
@@ -328,13 +354,14 @@ def command_evaluate(args: argparse.Namespace) -> int:
         if blocking:
             print(
                 f"Container OS vulnerability evidence blocked by "
-                f"{len(blocking)} HIGH/CRITICAL finding(s).",
+                f"{len(blocking)} distribution-authoritative HIGH/CRITICAL finding(s).",
                 file=sys.stderr,
             )
             return 1
         print(
             f"Container OS vulnerability evidence passed with {len(findings)} "
-            f"total finding(s) and no non-excepted blocking findings."
+            f"total finding(s) and no non-excepted distribution-authoritative "
+            f"HIGH/CRITICAL findings."
         )
         return 0
     except Exception as exc:
