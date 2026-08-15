@@ -175,10 +175,20 @@ class PythonSupplyChainSecurityTests(TestCase):
         self.assertIn("id: osv_scan", workflow)
         self.assertIn("continue-on-error: true", workflow)
         self.assertIn("steps.osv_scan.outcome", workflow)
+        self.assertIn(
+            "MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}",
+            workflow,
+        )
+        self.assertIn('--source-revision "$MANAGER_SOURCE_REVISION"', workflow)
+        self.assertNotIn('--source-revision "$GITHUB_SHA"', workflow)
         self.assertIn("security-artifacts/goreecloud-manager-python.cdx.json", workflow)
         self.assertIn("security-artifacts/osv-python-vulnerabilities.json", workflow)
         self.assertIn(
             "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            workflow,
+        )
+        self.assertIn(
+            "manager-supply-chain-security-${{ env.MANAGER_SOURCE_REVISION }}",
             workflow,
         )
         self.assertIn("if: always()", workflow)
