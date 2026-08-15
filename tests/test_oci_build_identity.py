@@ -93,7 +93,7 @@ class OciBuildIdentityTests(TestCase):
                 buildx_image_id=IMAGE_ID,
             )
 
-    def test_distribution_digest_is_required(self):
+    def test_distribution_digest_and_descriptor_are_required(self):
         metadata = synthetic_build_metadata()
         metadata.pop("containerimage.digest")
         with self.assertRaisesRegex(
@@ -105,14 +105,16 @@ class OciBuildIdentityTests(TestCase):
                 buildx_image_id=IMAGE_ID,
             )
 
-    def test_descriptor_is_optional_but_validated_when_present(self):
-        parsed = identity.validate_build_metadata(
-            synthetic_build_metadata(include_descriptor=False),
-            expected_image_id=IMAGE_ID,
-            buildx_image_id=IMAGE_ID,
-        )
-        self.assertIsNone(parsed["descriptor"])
+        with self.assertRaisesRegex(
+            identity.IdentityContractError, "buildx-distribution-descriptor-missing"
+        ):
+            identity.validate_build_metadata(
+                synthetic_build_metadata(include_descriptor=False),
+                expected_image_id=IMAGE_ID,
+                buildx_image_id=IMAGE_ID,
+            )
 
+    def test_descriptor_digest_must_equal_distribution_digest(self):
         metadata = synthetic_build_metadata()
         metadata["containerimage.descriptor"]["digest"] = "sha256:" + ("d" * 64)
         with self.assertRaisesRegex(
@@ -152,7 +154,7 @@ class OciBuildIdentityTests(TestCase):
                 buildx_image_id=IMAGE_ID,
             )
 
-    def test_identity_binds_source_iid_loaded_image_and_distribution_digest(self):
+    def test_identity_binds_source_iid_loaded_image_and_distribution_descriptor(self):
         revision = "a" * 40
         image_reference = f"goreecloud-manager-security:{revision}"
         payload = identity.build_identity(
@@ -171,8 +173,12 @@ class OciBuildIdentityTests(TestCase):
             payload["image"]["build_output"]["distribution_digest"],
             DISTRIBUTION_DIGEST,
         )
+        self.assertEqual(
+            payload["image"]["build_output"]["descriptor"]["digest"],
+            DISTRIBUTION_DIGEST,
+        )
         self.assertTrue(payload["claims"]["buildx_image_id_matches_loaded_image"])
-        self.assertTrue(payload["claims"]["buildx_distribution_digest_recorded"])
+        self.assertTrue(payload["claims"]["buildx_distribution_descriptor_recorded"])
         self.assertFalse(payload["claims"]["registry_publication_performed"])
         self.assertFalse(payload["claims"]["deployment_performed"])
         self.assertFalse(payload["claims"]["production_approved"])
@@ -212,15 +218,20 @@ class OciBuildIdentityTests(TestCase):
             ):
                 identity.read_buildx_image_id(path)
 
-    def test_repository_contract_uses_buildx_iid_and_retains_sanitized_identity(self):
+    def test_repository_contract_uses_nonpublishing_image_exporter(self):
         workflow = (REPOSITORY_ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
 
         self.assertIn("docker buildx build", workflow)
-        self.assertIn("--load", workflow)
+        self.assertNotIn("--load", workflow)
         self.assertIn('--metadata-file "$metadata_file"', workflow)
         self.assertIn('--iidfile "$iid_file"', workflow)
+        self.assertIn(
+            '--output "type=image,name=$MANAGER_SECURITY_IMAGE,push=false,oci-mediatypes=true"',
+            workflow,
+        )
+        self.assertNotIn("push=true", workflow)
         self.assertIn("MANAGER_BUILDX_IMAGE_ID_FILE", workflow)
         self.assertIn("BUILDX_METADATA_PROVENANCE=disabled", workflow)
         self.assertIn("scripts/oci_build_identity.py generate", workflow)
