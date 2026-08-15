@@ -17,20 +17,14 @@ from django.utils import timezone
 from .models import LoginThrottleBucket
 
 MAX_FAILURES = 5
+WINDOW_SECONDS = 15 * 60
+LOCK_SECONDS = 15 * 60
 
 
 def _account_key(username: str) -> str:
     normalized = username.strip().casefold().encode("utf-8")
     secret = settings.SECRET_KEY.encode("utf-8")
     return hmac.new(secret, normalized, hashlib.sha256).hexdigest()
-
-
-def _window_seconds() -> int:
-    return settings.MANAGER_LOGIN_THROTTLE_WINDOW_SECONDS
-
-
-def _lock_seconds() -> int:
-    return settings.MANAGER_LOGIN_THROTTLE_LOCK_SECONDS
 
 
 def is_login_locked(username: str) -> bool:
@@ -48,7 +42,7 @@ def register_login_failure(username: str) -> None:
         return
 
     now = timezone.now()
-    window_start = now - timedelta(seconds=_window_seconds())
+    window_start = now - timedelta(seconds=WINDOW_SECONDS)
     key = _account_key(username)
 
     with transaction.atomic():
@@ -71,7 +65,7 @@ def register_login_failure(username: str) -> None:
         else:
             bucket.failures += 1
             if bucket.failures >= MAX_FAILURES:
-                bucket.locked_until = now + timedelta(seconds=_lock_seconds())
+                bucket.locked_until = now + timedelta(seconds=LOCK_SECONDS)
 
         bucket.save(update_fields=("failures", "window_started_at", "locked_until", "updated_at"))
 
