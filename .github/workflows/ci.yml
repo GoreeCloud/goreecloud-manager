@@ -93,6 +93,8 @@ jobs:
         run: |
           raw_sbom="security-artifacts/goreecloud-manager-image.unstamped.cdx.json"
           "$TRIVY_BIN" image \
+            --disable-telemetry \
+            --skip-version-check \
             --format cyclonedx \
             --output "$raw_sbom" \
             --timeout 5m \
@@ -111,8 +113,11 @@ jobs:
         continue-on-error: true
         run: |
           "$TRIVY_BIN" image \
+            --disable-telemetry \
+            --skip-version-check \
             --scanners vuln \
-            --vuln-type os \
+            --pkg-types os \
+            --vuln-severity-source debian \
             --format json \
             --output security-artifacts/trivy-container-os-vulnerabilities.json \
             --timeout 5m \
