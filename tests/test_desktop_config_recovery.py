@@ -1,5 +1,7 @@
+import importlib
 import stat
 import sys
+import types
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
@@ -7,15 +9,23 @@ from unittest import TestCase
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 DESKTOP_ROOT = REPOSITORY_ROOT / "desktop-client"
-if str(DESKTOP_ROOT) not in sys.path:
-    sys.path.insert(0, str(DESKTOP_ROOT))
+DESKTOP_PACKAGE_ROOT = DESKTOP_ROOT / "goreecloud_manager"
+_TEST_PACKAGE_NAME = "goreecloud_manager_desktop_tests"
 
-from goreecloud_manager.recovery import (  # noqa: E402
-    ConfigRecoveryError,
-    prepare_config_recovery,
-    protect_config_before_write,
-    recovery_config_path,
-)
+# The repository also contains the Django project package named
+# ``goreecloud_manager``. Django imports that package before discovering these
+# tests, so importing the desktop client by its production package name would
+# collide with the already-loaded project package. Mount the desktop package
+# under a test-only alias while preserving normal relative imports inside it.
+_test_package = types.ModuleType(_TEST_PACKAGE_NAME)
+_test_package.__path__ = [str(DESKTOP_PACKAGE_ROOT)]
+sys.modules[_TEST_PACKAGE_NAME] = _test_package
+_recovery = importlib.import_module(f"{_TEST_PACKAGE_NAME}.recovery")
+
+ConfigRecoveryError = _recovery.ConfigRecoveryError
+prepare_config_recovery = _recovery.prepare_config_recovery
+protect_config_before_write = _recovery.protect_config_before_write
+recovery_config_path = _recovery.recovery_config_path
 
 
 _VALID_CONFIG = """\
