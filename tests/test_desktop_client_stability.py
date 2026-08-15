@@ -83,6 +83,17 @@ class DesktopClientStabilityContractTests(TestCase):
         self.assertNotIn('from .ui import run', package_entry)
         self.assertNotIn('from goreecloud_manager.ui import run', source_entry)
 
+    def test_config_recovery_is_integrated_with_startup_and_settings_writes(self):
+        application = (PACKAGE_ROOT / "application.py").read_text(encoding="utf-8")
+        recovery = (PACKAGE_ROOT / "recovery.py").read_text(encoding="utf-8")
+        self.assertIn('prepare_config_recovery()', application)
+        self.assertGreaterEqual(application.count('protect_config_before_write()'), 3)
+        self.assertIn('"Configuration recovered"', application)
+        self.assertIn('f"{primary.name}.recovery"', recovery)
+        self.assertIn('_write_text_atomically(recovery, text)', recovery)
+        self.assertIn('_write_text_atomically(primary, recovery_text)', recovery)
+        self.assertIn('the YAML root must be a mapping', recovery)
+
     def test_setup_checks_installed_dependency_graph(self):
         source = (DESKTOP_ROOT / "scripts" / "setup.sh").read_text(encoding="utf-8")
         self.assertIn("python -m pip install -r requirements.txt", source)
@@ -121,6 +132,6 @@ class DesktopClientStabilityContractTests(TestCase):
         for command in prohibited_commands:
             self.assertNotIn(command, source)
 
-    def test_stabilization_version_is_0_2_6(self):
+    def test_stabilization_version_is_0_2_7(self):
         source = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
-        self.assertIn('__version__ = "0.2.6"', source)
+        self.assertIn('__version__ = "0.2.7"', source)
