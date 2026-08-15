@@ -1,31 +1,30 @@
 #!/usr/bin/env python3
 """Generate and verify GoreeCloud Manager OCI build-identity evidence.
 
-The evidence binds the exact image ID emitted by Buildx to the exact image loaded
-into Docker and to a real OCI/Docker image-distribution descriptor emitted by the
-same non-publishing `type=image` build. It does not publish an image, create a
-registry release, deploy Manager, or satisfy target-environment production-
-readiness evidence.
+The exact Buildx build emits both a locally loaded Docker image and an OCI image
+layout tarball. This validator hashes the real OCI manifest blob and requires its
+config digest to equal the loaded Docker image ID. It does not publish an image,
+create a registry release, deploy Manager, or satisfy target-environment
+production-readiness evidence.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
+import tarfile
 from pathlib import Path
 from typing import Any
 
 import release_provenance as provenance
 
 SHA256_DIGEST = re.compile(r"^sha256:[0-9a-fA-F]{64}$")
-SUPPORTED_DESCRIPTOR_MEDIA_TYPES = {
-    "application/vnd.oci.image.manifest.v1+json": "image-manifest",
-    "application/vnd.oci.image.index.v1+json": "image-index",
-    "application/vnd.docker.distribution.manifest.v2+json": "image-manifest",
-    "application/vnd.docker.distribution.manifest.list.v2+json": "image-index",
-}
+OCI_MANIFEST_MEDIA_TYPE = "application/vnd.oci.image.manifest.v1+json"
+OCI_INDEX_MEDIA_TYPE = "application/vnd.oci.image.index.v1+json"
+OCI_LAYOUT_VERSION = "1.0.0"
 
 
 class IdentityContractError(ValueError):
@@ -43,95 +42,141 @@ def require_sha256_digest(value: str, *, code: str) -> str:
     return digest
 
 
-def read_json_object(path: Path, *, code: str) -> dict[str, Any]:
+def sha256_bytes(payload: bytes) -> str:
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
+def parse_json_bytes(payload: bytes, *, code: str) -> dict[str, Any]:
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        decoded = json.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise IdentityContractError(code) from exc
-    if not isinstance(payload, dict):
+    if not isinstance(decoded, dict):
         raise IdentityContractError(code)
-    return payload
+    return decoded
 
 
-def read_buildx_image_id(path: Path) -> str:
+def read_tar_member(archive: tarfile.TarFile, name: str, *, code: str) -> bytes:
     try:
-        value = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise IdentityContractError("buildx-image-id-unreadable") from exc
-    return require_sha256_digest(value, code="buildx-image-id-invalid")
+        member = archive.getmember(name)
+    except KeyError as exc:
+        raise IdentityContractError(code) from exc
+    if not member.isfile() or member.size <= 0:
+        raise IdentityContractError(code)
+    handle = archive.extractfile(member)
+    if handle is None:
+        raise IdentityContractError(code)
+    return handle.read()
 
 
-def validate_build_metadata(
-    payload: dict[str, Any], *, expected_image_id: str, buildx_image_id: str
-) -> dict[str, Any]:
+def validate_oci_archive(path: Path, *, expected_image_id: str) -> dict[str, Any]:
     try:
         loaded_image_id = provenance.validate_image_id(expected_image_id)
     except ValueError as exc:
         raise IdentityContractError("loaded-image-id-invalid") from exc
 
-    emitted_image_id = require_sha256_digest(
-        buildx_image_id,
-        code="buildx-image-id-invalid",
-    )
-    if emitted_image_id != loaded_image_id:
-        raise IdentityContractError("buildx-loaded-image-id-mismatch")
+    try:
+        archive = tarfile.open(path, mode="r:*")
+    except (OSError, tarfile.TarError) as exc:
+        raise IdentityContractError("oci-archive-unreadable") from exc
 
-    raw_config_digest = payload.get("containerimage.config.digest")
-    config_digest: str | None = None
-    if raw_config_digest is not None:
-        config_digest = require_sha256_digest(
-            str(raw_config_digest),
-            code="buildx-config-digest-invalid",
+    with archive:
+        layout = parse_json_bytes(
+            read_tar_member(archive, "oci-layout", code="oci-layout-missing"),
+            code="oci-layout-invalid",
         )
-        if config_digest != emitted_image_id:
-            raise IdentityContractError("buildx-config-image-id-mismatch")
+        if layout.get("imageLayoutVersion") != OCI_LAYOUT_VERSION:
+            raise IdentityContractError("oci-layout-version-invalid")
 
-    distribution_digest = require_sha256_digest(
-        str(payload.get("containerimage.digest", "")),
-        code="buildx-distribution-digest-invalid",
-    )
+        index_bytes = read_tar_member(archive, "index.json", code="oci-index-missing")
+        index = parse_json_bytes(index_bytes, code="oci-index-invalid")
+        if index.get("schemaVersion") != 2:
+            raise IdentityContractError("oci-index-schema-invalid")
+        if index.get("mediaType") not in (None, OCI_INDEX_MEDIA_TYPE):
+            raise IdentityContractError("oci-index-media-type-invalid")
 
-    descriptor = payload.get("containerimage.descriptor")
-    if not isinstance(descriptor, dict):
-        raise IdentityContractError("buildx-distribution-descriptor-missing")
+        manifests = index.get("manifests")
+        if not isinstance(manifests, list) or len(manifests) != 1:
+            raise IdentityContractError("oci-index-manifest-count-invalid")
+        descriptor = manifests[0]
+        if not isinstance(descriptor, dict):
+            raise IdentityContractError("oci-manifest-descriptor-invalid")
+        if descriptor.get("mediaType") != OCI_MANIFEST_MEDIA_TYPE:
+            raise IdentityContractError("oci-manifest-media-type-invalid")
 
-    descriptor_digest = require_sha256_digest(
-        str(descriptor.get("digest", "")),
-        code="buildx-descriptor-digest-invalid",
-    )
-    if descriptor_digest != distribution_digest:
-        raise IdentityContractError("buildx-descriptor-digest-mismatch")
+        manifest_digest = require_sha256_digest(
+            str(descriptor.get("digest", "")),
+            code="oci-manifest-digest-invalid",
+        )
+        manifest_size = descriptor.get("size")
+        if not isinstance(manifest_size, int) or isinstance(manifest_size, bool) or manifest_size <= 0:
+            raise IdentityContractError("oci-manifest-size-invalid")
 
-    media_type = str(descriptor.get("mediaType", ""))
-    descriptor_kind = SUPPORTED_DESCRIPTOR_MEDIA_TYPES.get(media_type)
-    if descriptor_kind is None:
-        raise IdentityContractError("buildx-descriptor-media-type-unsupported")
+        manifest_hex = manifest_digest.removeprefix("sha256:")
+        manifest_bytes = read_tar_member(
+            archive,
+            f"blobs/sha256/{manifest_hex}",
+            code="oci-manifest-blob-missing",
+        )
+        if len(manifest_bytes) != manifest_size:
+            raise IdentityContractError("oci-manifest-size-mismatch")
+        if sha256_bytes(manifest_bytes) != manifest_digest:
+            raise IdentityContractError("oci-manifest-hash-mismatch")
 
-    size = descriptor.get("size")
-    if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
-        raise IdentityContractError("buildx-descriptor-size-invalid")
+        manifest = parse_json_bytes(manifest_bytes, code="oci-manifest-invalid")
+        if manifest.get("schemaVersion") != 2:
+            raise IdentityContractError("oci-manifest-schema-invalid")
+        if manifest.get("mediaType") not in (None, OCI_MANIFEST_MEDIA_TYPE):
+            raise IdentityContractError("oci-manifest-content-media-type-invalid")
 
-    return {
-        "buildx_image_id": emitted_image_id,
-        "config_digest": config_digest,
-        "distribution_digest": distribution_digest,
-        "descriptor": {
-            "digest": descriptor_digest,
-            "kind": descriptor_kind,
-            "media_type": media_type,
-            "size_bytes": size,
-        },
-    }
+        config = manifest.get("config")
+        if not isinstance(config, dict):
+            raise IdentityContractError("oci-config-descriptor-invalid")
+        config_digest = require_sha256_digest(
+            str(config.get("digest", "")),
+            code="oci-config-digest-invalid",
+        )
+        if config_digest != loaded_image_id:
+            raise IdentityContractError("oci-config-loaded-image-mismatch")
+        config_size = config.get("size")
+        if not isinstance(config_size, int) or isinstance(config_size, bool) or config_size <= 0:
+            raise IdentityContractError("oci-config-size-invalid")
+
+        layers = manifest.get("layers")
+        if not isinstance(layers, list) or not layers:
+            raise IdentityContractError("oci-layer-list-invalid")
+        for layer in layers:
+            if not isinstance(layer, dict):
+                raise IdentityContractError("oci-layer-descriptor-invalid")
+            require_sha256_digest(
+                str(layer.get("digest", "")),
+                code="oci-layer-digest-invalid",
+            )
+            layer_size = layer.get("size")
+            if not isinstance(layer_size, int) or isinstance(layer_size, bool) or layer_size <= 0:
+                raise IdentityContractError("oci-layer-size-invalid")
+            if not str(layer.get("mediaType", "")).startswith("application/vnd.oci.image.layer."):
+                raise IdentityContractError("oci-layer-media-type-invalid")
+
+        return {
+            "index_sha256": sha256_bytes(index_bytes),
+            "manifest_digest": manifest_digest,
+            "manifest_media_type": OCI_MANIFEST_MEDIA_TYPE,
+            "manifest_size_bytes": manifest_size,
+            "manifest_bytes": manifest_bytes,
+            "config_digest": config_digest,
+            "config_size_bytes": config_size,
+            "layer_count": len(layers),
+        }
 
 
 def build_identity(
     *,
     inspection: dict[str, Any],
-    build_metadata: dict[str, Any],
-    buildx_image_id: str,
+    oci_archive: Path,
     source_revision: str,
     image_reference: str,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], bytes]:
     try:
         revision = provenance.validate_source_revision(source_revision)
     except ValueError as exc:
@@ -145,12 +190,9 @@ def build_identity(
     except ValueError as exc:
         raise IdentityContractError("loaded-image-contract-invalid") from exc
 
-    build_output = validate_build_metadata(
-        build_metadata,
-        expected_image_id=image["id"],
-        buildx_image_id=buildx_image_id,
-    )
-    return {
+    archive_identity = validate_oci_archive(oci_archive, expected_image_id=image["id"])
+    manifest_bytes = archive_identity.pop("manifest_bytes")
+    payload = {
         "schema_version": 1,
         "project": provenance.PROJECT_NAME,
         "evidence_type": "exact-oci-build-identity",
@@ -163,11 +205,11 @@ def build_identity(
             "id": image["id"],
             "repo_digests": image["repo_digests"],
             "oci_labels": image["oci_labels"],
-            "build_output": build_output,
+            "oci_layout": archive_identity,
         },
         "claims": {
-            "buildx_image_id_matches_loaded_image": True,
-            "buildx_distribution_descriptor_recorded": True,
+            "oci_manifest_config_matches_loaded_image": True,
+            "oci_manifest_blob_hash_verified": True,
             "registry_distribution_digest_observed": bool(image["repo_digests"]),
             "registry_publication_performed": False,
             "deployment_performed": False,
@@ -175,58 +217,56 @@ def build_identity(
             "production_approved": False,
         },
     }
+    return payload, manifest_bytes
 
 
-def verify_record(
-    payload: dict[str, Any],
-    *,
-    inspection: dict[str, Any],
-    build_metadata: dict[str, Any],
-    buildx_image_id: str,
-    source_revision: str,
-    image_reference: str,
-) -> None:
-    expected = build_identity(
-        inspection=inspection,
-        build_metadata=build_metadata,
-        buildx_image_id=buildx_image_id,
-        source_revision=source_revision,
-        image_reference=image_reference,
-    )
-    if payload != expected:
-        raise IdentityContractError("identity-record-mismatch")
+def verify_manifest_file(path: Path, *, expected_digest: str) -> None:
+    try:
+        payload = path.read_bytes()
+    except OSError as exc:
+        raise IdentityContractError("retained-oci-manifest-unreadable") from exc
+    if sha256_bytes(payload) != expected_digest:
+        raise IdentityContractError("retained-oci-manifest-hash-mismatch")
 
 
 def command_generate(args: argparse.Namespace) -> int:
-    payload = build_identity(
+    payload, manifest_bytes = build_identity(
         inspection=provenance.inspect_image(args.image_reference),
-        build_metadata=read_json_object(
-            Path(args.build_metadata),
-            code="buildx-metadata-invalid",
-        ),
-        buildx_image_id=read_buildx_image_id(Path(args.buildx_image_id_file)),
+        oci_archive=Path(args.oci_archive),
         source_revision=args.source_revision,
         image_reference=args.image_reference,
     )
-    provenance.write_json(Path(args.output), payload)
+    output = Path(args.output)
+    manifest_output = Path(args.manifest_output)
+    provenance.write_json(output, payload)
+    manifest_output.parent.mkdir(parents=True, exist_ok=True)
+    manifest_output.write_bytes(manifest_bytes)
+    verify_manifest_file(
+        manifest_output,
+        expected_digest=payload["image"]["oci_layout"]["manifest_digest"],
+    )
     return 0
 
 
 def command_verify(args: argparse.Namespace) -> int:
-    payload = read_json_object(
-        Path(args.input),
-        code="identity-record-invalid",
-    )
-    verify_record(
-        payload,
+    try:
+        payload = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise IdentityContractError("identity-record-invalid") from exc
+    if not isinstance(payload, dict):
+        raise IdentityContractError("identity-record-invalid")
+
+    expected, _manifest_bytes = build_identity(
         inspection=provenance.inspect_image(args.image_reference),
-        build_metadata=read_json_object(
-            Path(args.build_metadata),
-            code="buildx-metadata-invalid",
-        ),
-        buildx_image_id=read_buildx_image_id(Path(args.buildx_image_id_file)),
+        oci_archive=Path(args.oci_archive),
         source_revision=args.source_revision,
         image_reference=args.image_reference,
+    )
+    if payload != expected:
+        raise IdentityContractError("identity-record-mismatch")
+    verify_manifest_file(
+        Path(args.manifest_input),
+        expected_digest=expected["image"]["oci_layout"]["manifest_digest"],
     )
     return 0
 
@@ -234,8 +274,7 @@ def command_verify(args: argparse.Namespace) -> int:
 def add_common_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--image-reference", required=True)
     parser.add_argument("--source-revision", required=True)
-    parser.add_argument("--build-metadata", required=True)
-    parser.add_argument("--buildx-image-id-file", required=True)
+    parser.add_argument("--oci-archive", required=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -245,11 +284,13 @@ def build_parser() -> argparse.ArgumentParser:
     generate = subparsers.add_parser("generate", help="generate OCI build identity JSON")
     add_common_arguments(generate)
     generate.add_argument("--output", required=True)
+    generate.add_argument("--manifest-output", required=True)
     generate.set_defaults(handler=command_generate)
 
     verify = subparsers.add_parser("verify", help="verify OCI build identity JSON")
     add_common_arguments(verify)
     verify.add_argument("--input", required=True)
+    verify.add_argument("--manifest-input", required=True)
     verify.set_defaults(handler=command_verify)
     return parser
 
