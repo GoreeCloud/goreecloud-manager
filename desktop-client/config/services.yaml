@@ -1,0 +1,24 @@
+meta:
+  schema_version: 3
+
+app:
+  title: GoreeCloud Manager
+  environment: Home / Family Cloud
+
+monitoring:
+  # local = monitor this Linux computer
+  # ssh   = collect read-only metrics from the GoreeCloud server
+  mode: local
+  auto_refresh_seconds: 60
+  ssh_timeout_seconds: 6
+
+server:
+  name: goreecloud-vps-01
+  host: ""
+  port: 22
+  user: ""
+  identity_file: ""
+
+# Services are intentionally empty. Add only services that actually exist in
+# your GoreeCloud environment from Settings > Services.
+services: []
