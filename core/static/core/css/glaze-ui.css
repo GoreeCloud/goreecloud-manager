@@ -102,6 +102,15 @@ a:focus-visible {
   }
 }
 
+@media (prefers-contrast: more) and (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --border: rgba(36, 58, 77, .42);
+    --border-strong: rgba(24, 45, 64, .62);
+    --text-muted: #455d70;
+    --focus: 0 0 0 4px rgba(23, 103, 168, .34);
+  }
+}
+
 /* Windows High Contrast and other forced-color environments remain fully operable. */
 @media (forced-colors: active) {
   :root {
