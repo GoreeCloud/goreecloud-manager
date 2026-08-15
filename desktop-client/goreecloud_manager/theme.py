@@ -122,12 +122,18 @@ def resolve_appearance(preference: str, app: QGuiApplication | None = None) -> s
     return "light"
 
 
-def _tokens(preference: str, app: QGuiApplication | None = None) -> ThemeTokens:
+def theme_tokens(preference: str, app: QGuiApplication | None = None) -> ThemeTokens:
     return DARK_TOKENS if resolve_appearance(preference, app) == "dark" else LIGHT_TOKENS
 
 
+def semantic_color(preference: str, role: str, app: QGuiApplication | None = None) -> str:
+    tokens = theme_tokens(preference, app)
+    allowed = {"primary", "success", "warning", "danger", "muted", "text"}
+    return getattr(tokens, role if role in allowed else "text")
+
+
 def stylesheet(preference: str, app: QGuiApplication | None = None) -> str:
-    t = _tokens(preference, app)
+    t = theme_tokens(preference, app)
     return f"""
 QMainWindow, QDialog, QWidget#root, QWidget#scrollBody, QWidget#scrollViewport,
 QWidget#settingsBody, QWidget#settingsViewport {{
