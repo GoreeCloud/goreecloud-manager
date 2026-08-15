@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "blocking_severities": [
+      "HIGH",
+      "CRITICAL"
+    ],
+    "require_os_package_result": true
+  },
+  "exceptions": []
+}
