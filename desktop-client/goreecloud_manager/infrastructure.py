@@ -88,13 +88,24 @@ class InfrastructureError(RuntimeError):
     pass
 
 
+def _ssh_failure_detail(output: str) -> str:
+    normalized = output.casefold()
+    if "host key verification failed" in normalized or "no ed25519 host key is known" in normalized:
+        return (
+            "SSH host identity is not trusted. Verify the server host key from a terminal "
+            "before using GoreeCloud Manager."
+        )
+    lines = output.strip().splitlines()
+    return lines[-1] if lines else "Infrastructure discovery failed"
+
+
 def _ssh_command(config: AppConfig) -> list[str]:
     target = f"{config.server.user}@{config.server.host}" if config.server.user else config.server.host
     command = [
         "ssh",
         "-o", "BatchMode=yes",
         "-o", f"ConnectTimeout={config.monitoring.ssh_timeout_seconds}",
-        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", "StrictHostKeyChecking=yes",
         "-p", str(config.server.port),
     ]
     if config.server.identity_file:
@@ -127,8 +138,8 @@ def _run_script(config: AppConfig, script: str) -> str:
         raise InfrastructureError("Infrastructure discovery timed out.") from exc
 
     if result.returncode != 0:
-        message = (result.stderr or result.stdout or "Infrastructure discovery failed").strip().splitlines()
-        raise InfrastructureError(message[-1] if message else "Infrastructure discovery failed")
+        output = result.stderr or result.stdout or "Infrastructure discovery failed"
+        raise InfrastructureError(_ssh_failure_detail(output))
     return result.stdout
 
 
