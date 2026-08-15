@@ -6,6 +6,10 @@ from django.urls import include, path
 
 from core.forms import ThrottledAuthenticationForm
 
+# The Django admin is part of the same private administrative authority boundary. Reuse
+# the identical shared throttle so /admin/login/ cannot bypass the Manager login control.
+admin.site.login_form = ThrottledAuthenticationForm
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path(
