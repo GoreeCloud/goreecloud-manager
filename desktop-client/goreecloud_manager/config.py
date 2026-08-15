@@ -51,14 +51,17 @@ def user_config_path() -> Path:
     override = os.environ.get("GOREECLOUD_MANAGER_CONFIG", "").strip()
     if override:
         return Path(override).expanduser()
-    base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    base = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config")))
     return base / "goreecloud-manager" / "config.yaml"
 
 
 CURRENT_SCHEMA_VERSION = 3
+_CONFIG_FILE_MODE = 0o600
+_MAX_AUTO_REFRESH_SECONDS = 3600
+_MAX_SSH_TIMEOUT_SECONDS = 60
 
-# v0.1.0-v0.1.3 shipped a fixed catalogue of services.  v0.1.4 makes
-# services user-managed.  These signatures are used only to remove untouched
+# v0.1.0-v0.1.3 shipped a fixed catalogue of services. v0.1.4 makes
+# services user-managed. These signatures are used only to remove untouched
 # legacy defaults during migration; if a user changed an entry, it is kept.
 _LEGACY_DEFAULT_SERVICES: dict[str, dict[str, Any]] = {
     "Nextcloud": {
@@ -114,6 +117,57 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
+def _parse_bool(value: Any, *, default: bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in {0, 1}:
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().casefold()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return default
+
+
+def _bounded_int(value: Any, *, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
+
+
+def _write_text_atomically(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    temporary.unlink(missing_ok=True)
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+
+    descriptor = os.open(temporary, flags, _CONFIG_FILE_MODE)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        os.chmod(path, _CONFIG_FILE_MODE)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
+def _write_yaml_atomically(path: Path, data: dict[str, Any]) -> None:
+    _write_text_atomically(
+        path,
+        yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+    )
+
+
 def _is_untouched_legacy_service(item: dict[str, Any]) -> bool:
     name = str(item.get("name", "") or "")
     signature = _LEGACY_DEFAULT_SERVICES.get(name)
@@ -123,7 +177,7 @@ def _is_untouched_legacy_service(item: dict[str, Any]) -> bool:
         str(item.get("description", "") or "") == signature["description"]
         and str(item.get("url", "") or "") == signature["url"]
         and str(item.get("health_url", "") or "") in signature["health_urls"]
-        and bool(item.get("enabled", True)) is True
+        and _parse_bool(item.get("enabled", True), default=True) is True
     )
 
 
@@ -136,12 +190,13 @@ def migrate_user_config(path: Path) -> bool:
         version = 1
 
     if version >= CURRENT_SCHEMA_VERSION:
+        os.chmod(path, _CONFIG_FILE_MODE)
         return False
 
     changed = False
 
     # v3: remove only the untouched service catalogue that older versions
-    # injected.  Any edited/custom service is preserved exactly as-is.
+    # injected. Any edited/custom service is preserved exactly as-is.
     if version < 3:
         old_services = data.get("services", []) or []
         if isinstance(old_services, list):
@@ -158,26 +213,24 @@ def migrate_user_config(path: Path) -> bool:
     changed = True
 
     if changed:
-        temporary = path.with_suffix(path.suffix + ".tmp")
-        temporary.write_text(
-            yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
-            encoding="utf-8",
-        )
-        temporary.replace(path)
+        _write_yaml_atomically(path, data)
     return changed
 
 
 def ensure_user_config() -> Path:
     path = user_config_path()
     if not path.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(bundled_config_path(), path)
+        _write_text_atomically(
+            path,
+            bundled_config_path().read_text(encoding="utf-8"),
+        )
     migrate_user_config(path)
+    os.chmod(path, _CONFIG_FILE_MODE)
     return path
 
 
 def _parse_config(path: Path) -> AppConfig:
-    data: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    data = _load_yaml(path)
     app_data = data.get("app", {}) or {}
     server_data = data.get("server", {}) or {}
     monitoring_data = data.get("monitoring", {}) or {}
@@ -192,7 +245,7 @@ def _parse_config(path: Path) -> AppConfig:
                 description=str(item.get("description", "") or ""),
                 url=str(item.get("url", "") or ""),
                 health_url=str(item.get("health_url", "") or ""),
-                enabled=bool(item.get("enabled", True)),
+                enabled=_parse_bool(item.get("enabled", True), default=True),
             )
         )
 
@@ -206,14 +259,24 @@ def _parse_config(path: Path) -> AppConfig:
         server=ServerConfig(
             name=str(server_data.get("name", "goreecloud-vps-01") or "goreecloud-vps-01"),
             host=str(server_data.get("host", "") or ""),
-            port=max(1, min(65535, int(server_data.get("port", 22) or 22))),
+            port=_bounded_int(server_data.get("port", 22), default=22, minimum=1, maximum=65535),
             user=str(server_data.get("user", "") or ""),
             identity_file=str(server_data.get("identity_file", "") or ""),
         ),
         monitoring=MonitoringConfig(
             mode=mode,
-            auto_refresh_seconds=max(0, int(monitoring_data.get("auto_refresh_seconds", 60) or 0)),
-            ssh_timeout_seconds=max(1, int(monitoring_data.get("ssh_timeout_seconds", 6) or 6)),
+            auto_refresh_seconds=_bounded_int(
+                monitoring_data.get("auto_refresh_seconds", 60),
+                default=60,
+                minimum=0,
+                maximum=_MAX_AUTO_REFRESH_SECONDS,
+            ),
+            ssh_timeout_seconds=_bounded_int(
+                monitoring_data.get("ssh_timeout_seconds", 6),
+                default=6,
+                minimum=1,
+                maximum=_MAX_SSH_TIMEOUT_SECONDS,
+            ),
         ),
         services=services,
     )
@@ -226,7 +289,6 @@ def load_config(path: Path | None = None) -> AppConfig:
 
 def save_config(config: AppConfig, path: Path | None = None) -> Path:
     path = path or ensure_user_config()
-    path.parent.mkdir(parents=True, exist_ok=True)
 
     payload = {
         "meta": {"schema_version": CURRENT_SCHEMA_VERSION},
@@ -239,10 +301,5 @@ def save_config(config: AppConfig, path: Path | None = None) -> Path:
         "services": [asdict(service) for service in config.services],
     }
 
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
-        encoding="utf-8",
-    )
-    temporary.replace(path)
+    _write_yaml_atomically(path, payload)
     return path
