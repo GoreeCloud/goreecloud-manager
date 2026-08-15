@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local runtime configuration and state
+config.yaml
+*.log
+
+# Editor / OS files
+.idea/
+.vscode/
+.DS_Store
