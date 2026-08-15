@@ -23,7 +23,7 @@ def _validated_config_text(path: Path) -> str:
     except yaml.YAMLError as exc:
         raise ConfigRecoveryError(f"Invalid YAML in {path.name}: {exc}") from exc
 
-    if data is not None and not isinstance(data, dict):
+    if not isinstance(data, dict):
         raise ConfigRecoveryError(
             f"Invalid configuration structure in {path.name}: the YAML root must be a mapping."
         )
