@@ -5,18 +5,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="referrer" content="same-origin">
+  <meta name="description" content="Private GoreeCloud administrative visibility console.">
   <title>{% block title %}GoreeCloud Manager{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'core/img/manager-mark.svg' %}">
+  <script src="{% static 'core/js/theme.js' %}"></script>
   <link rel="stylesheet" href="{% static 'core/css/app.css' %}">
-  <script defer src="{% static 'core/js/theme.js' %}"></script>
 </head>
-<body>
+<body data-glaze-ui="manager">
   <a class="skip-link" href="#main-content">Skip to main content</a>
-  <header class="site-header">
+  <header class="site-header" data-glaze-surface="glass">
     <div class="site-header-inner">
       <div class="header-cluster">
         <a class="brand" href="{% url 'overview' %}" aria-label="GoreeCloud Manager overview">
-          <span class="brand-mark">GoreeCloud</span>
-          <span class="brand-product">Manager</span>
+          <img class="brand-symbol" src="{% static 'core/img/manager-mark.svg' %}" alt="" width="28" height="28" aria-hidden="true">
+          <span class="brand-lockup">
+            <span class="brand-mark">GoreeCloud</span>
+            <span class="brand-product">Manager</span>
+          </span>
         </a>
         {% if user.is_authenticated %}
           <nav class="primary-nav" aria-label="Primary">
@@ -39,7 +46,7 @@
       </div>
     </div>
   </header>
-  <main class="container" id="main-content">
+  <main class="container" id="main-content" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
 </body>
