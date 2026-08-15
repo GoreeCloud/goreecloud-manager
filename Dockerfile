@@ -1,6 +1,17 @@
 # GoreeCloud Manager application image.
 FROM python:3.14.6-slim@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6
 
+# A full Git SHA is supplied by accepted CI/release builds. The local default keeps
+# ordinary developer builds usable while making their non-release provenance explicit.
+ARG MANAGER_SOURCE_REVISION=local
+
+LABEL org.opencontainers.image.title="GoreeCloud Manager" \
+      org.opencontainers.image.description="Private GoreeCloud administrative visibility and control-plane foundation." \
+      org.opencontainers.image.source="https://github.com/GoreeCloud/goreecloud-manager" \
+      org.opencontainers.image.revision="${MANAGER_SOURCE_REVISION}" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="GoreeCloud"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
