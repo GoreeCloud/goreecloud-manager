@@ -6,11 +6,21 @@ It is a companion to the repository's existing server-side Django GoreeCloud Man
 
 ## Current version
 
-**v0.2.5 — read-only stability hardening**
+**v0.2.6 — Glaze UI appearance and stability hardening**
 
 The client is built with Python and PySide6/Qt. It runs on a Linux workstation and can use the system OpenSSH client to collect read-only operational information from a GoreeCloud server.
 
-v0.2.5 keeps the existing v0.2.4 monitoring feature set and strengthens the runtime boundary with exact direct dependency pins, `pip check`, private atomic configuration writes, bounded parsing for malformed numeric and boolean configuration values, fail-closed SSH host-key verification, and staged installation with rollback-safe cutover.
+v0.2.6 keeps the existing read-only monitoring feature set and adds a semantic Glaze UI theme layer with System, Light, and Dark appearance modes. It also retains exact direct dependency pins, `pip check`, private atomic configuration writes, bounded parsing for malformed configuration values, fail-closed SSH host-key verification, and staged installation with rollback-safe cutover.
+
+### Glaze UI appearance
+
+GoreeCloud Manager now uses semantic Glaze UI theme tokens rather than treating dark colors as the only supported desktop presentation. The supported appearance modes are available from **View > Appearance**:
+
+- **System** follows the current Linux desktop color scheme and updates while Manager is running when the operating-system preference changes.
+- **Light** keeps the Glaze hierarchy, restrained surfaces, clear controls, semantic status colors, and readable contrast on a light canvas.
+- **Dark** preserves the established GoreeCloud Manager dark presentation through the same semantic token system.
+
+The selected preference is stored in the private user configuration as `app.appearance`. Existing configurations migrate to `system`. Appearance changes do not alter monitoring, service definitions, SSH behavior, infrastructure state, or Manager's read-only authority.
 
 ### Overview
 
@@ -94,6 +104,6 @@ The application invokes the system OpenSSH client with non-interactive behavior.
 
 ## Security boundary
 
-v0.2.5 is intentionally read-only. It does not start, stop, restart, delete, or modify Docker containers, NetBird configuration, systemd units, or other server workloads.
+v0.2.6 is intentionally read-only. It does not start, stop, restart, delete, or modify Docker containers, NetBird configuration, systemd units, or other server workloads.
 
 No private SSH key contents, passwords, API tokens, or populated user configuration belong in this repository.

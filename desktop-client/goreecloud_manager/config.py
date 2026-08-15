@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import shutil
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -38,6 +37,7 @@ class MonitoringConfig:
 class AppConfig:
     title: str = "GoreeCloud Manager"
     environment: str = "Home / Family Cloud"
+    appearance: str = "system"
     server: ServerConfig = field(default_factory=ServerConfig)
     monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
     services: list[ServiceConfig] = field(default_factory=list)
@@ -55,10 +55,11 @@ def user_config_path() -> Path:
     return base / "goreecloud-manager" / "config.yaml"
 
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 _CONFIG_FILE_MODE = 0o600
 _MAX_AUTO_REFRESH_SECONDS = 3600
 _MAX_SSH_TIMEOUT_SECONDS = 60
+_APPEARANCE_VALUES = {"system", "light", "dark"}
 
 # v0.1.0-v0.1.3 shipped a fixed catalogue of services. v0.1.4 makes
 # services user-managed. These signatures are used only to remove untouched
@@ -117,6 +118,10 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
+def _mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
 def _parse_bool(value: Any, *, default: bool) -> bool:
     if isinstance(value, bool):
         return value
@@ -137,6 +142,11 @@ def _bounded_int(value: Any, *, default: int, minimum: int, maximum: int) -> int
     except (TypeError, ValueError):
         parsed = default
     return max(minimum, min(maximum, parsed))
+
+
+def _parse_appearance(value: Any) -> str:
+    normalized = str(value or "system").strip().casefold()
+    return normalized if normalized in _APPEARANCE_VALUES else "system"
 
 
 def _write_text_atomically(path: Path, content: str) -> None:
@@ -183,7 +193,7 @@ def _is_untouched_legacy_service(item: dict[str, Any]) -> bool:
 
 def migrate_user_config(path: Path) -> bool:
     data = _load_yaml(path)
-    meta = data.get("meta", {}) or {}
+    meta = _mapping(data.get("meta"))
     try:
         version = int(meta.get("schema_version", 1) or 1)
     except (TypeError, ValueError):
@@ -209,6 +219,16 @@ def migrate_user_config(path: Path) -> bool:
                 data["services"] = new_services
                 changed = True
 
+    # v4: persist the Glaze UI appearance preference. Existing installations
+    # follow the operating-system appearance by default.
+    if version < 4:
+        app_data = _mapping(data.get("app"))
+        data["app"] = {
+            **app_data,
+            "appearance": _parse_appearance(app_data.get("appearance", "system")),
+        }
+        changed = True
+
     data["meta"] = {**meta, "schema_version": CURRENT_SCHEMA_VERSION}
     changed = True
 
@@ -231,12 +251,15 @@ def ensure_user_config() -> Path:
 
 def _parse_config(path: Path) -> AppConfig:
     data = _load_yaml(path)
-    app_data = data.get("app", {}) or {}
-    server_data = data.get("server", {}) or {}
-    monitoring_data = data.get("monitoring", {}) or {}
+    app_data = _mapping(data.get("app"))
+    server_data = _mapping(data.get("server"))
+    monitoring_data = _mapping(data.get("monitoring"))
 
     services: list[ServiceConfig] = []
-    for item in data.get("services", []) or []:
+    service_data = data.get("services", []) or []
+    if not isinstance(service_data, list):
+        service_data = []
+    for item in service_data:
         if not isinstance(item, dict) or not str(item.get("name", "") or "").strip():
             continue
         services.append(
@@ -256,6 +279,7 @@ def _parse_config(path: Path) -> AppConfig:
     return AppConfig(
         title=str(app_data.get("title", "GoreeCloud Manager") or "GoreeCloud Manager"),
         environment=str(app_data.get("environment", "Home / Family Cloud") or "Home / Family Cloud"),
+        appearance=_parse_appearance(app_data.get("appearance", "system")),
         server=ServerConfig(
             name=str(server_data.get("name", "goreecloud-vps-01") or "goreecloud-vps-01"),
             host=str(server_data.get("host", "") or ""),
@@ -295,6 +319,7 @@ def save_config(config: AppConfig, path: Path | None = None) -> Path:
         "app": {
             "title": config.title,
             "environment": config.environment,
+            "appearance": _parse_appearance(config.appearance),
         },
         "monitoring": asdict(config.monitoring),
         "server": asdict(config.server),

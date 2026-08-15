@@ -1,3 +1,3 @@
-from .ui import run
+from .application import run
 
 raise SystemExit(run())
