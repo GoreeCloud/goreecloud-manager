@@ -6,6 +6,7 @@ from PySide6.QtGui import QAction, QActionGroup, QColor
 from PySide6.QtWidgets import QApplication, QDialog, QMessageBox
 
 from .config import AppConfig, load_config, save_config
+from .recovery import prepare_config_recovery, protect_config_before_write
 from .theme import (
     APPEARANCE_VALUES,
     apply_theme,
@@ -124,6 +125,7 @@ class ManagerWindow(MainWindow):
 
         self.config.appearance = appearance
         try:
+            protect_config_before_write()
             save_config(self.config)
         except Exception as exc:
             self.config.appearance = previous
@@ -148,6 +150,7 @@ class ManagerWindow(MainWindow):
 
         dialog.result_config.appearance = self.config.appearance
         try:
+            protect_config_before_write()
             save_config(dialog.result_config)
         except Exception as exc:
             QMessageBox.critical(self, "Could not save settings", str(exc))
@@ -171,8 +174,11 @@ def run() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("GoreeCloud Manager")
 
+    recovery_notice = ""
     try:
+        recovery_notice = prepare_config_recovery()
         config = load_config()
+        protect_config_before_write()
     except Exception as exc:
         apply_theme(app, "system")
         QMessageBox.critical(None, "GoreeCloud Manager", f"Could not load configuration:\n\n{exc}")
@@ -184,4 +190,6 @@ def run() -> int:
         lambda _scheme: window.refresh_system_appearance()
     )
     window.show()
+    if recovery_notice:
+        QMessageBox.warning(window, "Configuration recovered", recovery_notice)
     return app.exec()
