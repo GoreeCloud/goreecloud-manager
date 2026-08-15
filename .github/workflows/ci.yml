@@ -82,7 +82,11 @@ jobs:
         id: security_image
         continue-on-error: true
         run: |
-          docker build --pull=false --tag "$MANAGER_SECURITY_IMAGE" .
+          docker build \
+            --pull=false \
+            --build-arg MANAGER_SOURCE_REVISION="$MANAGER_SOURCE_REVISION" \
+            --tag "$MANAGER_SECURITY_IMAGE" \
+            .
           image_id="$(docker image inspect --format '{{.Id}}' "$MANAGER_SECURITY_IMAGE")"
           test -n "$image_id"
           echo "MANAGER_SECURITY_IMAGE_ID=$image_id" >> "$GITHUB_ENV"
@@ -136,6 +140,27 @@ jobs:
             --image-reference "$MANAGER_SECURITY_IMAGE" \
             --image-id "$MANAGER_SECURITY_IMAGE_ID" \
             --scanner-version "$TRIVY_VERSION"
+
+      - name: Generate and verify exact release provenance evidence
+        id: release_provenance
+        continue-on-error: true
+        run: |
+          python scripts/release_provenance.py generate \
+            --image-reference "$MANAGER_SECURITY_IMAGE" \
+            --source-revision "$MANAGER_SOURCE_REVISION" \
+            --output security-artifacts/goreecloud-manager-release-provenance.json \
+            --material Dockerfile \
+            --material requirements.txt \
+            --material requirements.lock \
+            --evidence security-artifacts/goreecloud-manager-python.cdx.json \
+            --evidence security-artifacts/osv-python-vulnerabilities.json \
+            --evidence security-artifacts/goreecloud-manager-image.cdx.json \
+            --evidence security-artifacts/trivy-container-os-vulnerabilities.json \
+            --evidence security-artifacts/manager-container-os-vulnerability-summary.json
+          python scripts/release_provenance.py verify \
+            --image-reference "$MANAGER_SECURITY_IMAGE" \
+            --source-revision "$MANAGER_SOURCE_REVISION" \
+            --input security-artifacts/goreecloud-manager-release-provenance.json
 
       - name: Install hash-locked dependencies
         run: |
@@ -208,6 +233,10 @@ jobs:
           fi
           if [ "${{ steps.trivy_policy.outcome }}" != "success" ]; then
             echo "Container operating-system vulnerability policy did not pass."
+            failed=1
+          fi
+          if [ "${{ steps.release_provenance.outcome }}" != "success" ]; then
+            echo "Exact source/image release-provenance evidence did not pass."
             failed=1
           fi
           exit "$failed"
