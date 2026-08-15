@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Generate and verify GoreeCloud Manager OCI build-identity evidence.
 
-The evidence binds the exact loaded Docker image/config digest to the immutable
-OCI/Docker distribution descriptor digest emitted by the same
-`docker buildx build --load` operation. The top-level descriptor may be an image
-manifest or an image index/manifest list. This evidence does not publish an image,
-create a registry release, deploy Manager, or satisfy target-environment
-production-readiness evidence.
+The evidence binds the exact image ID emitted by Buildx to the exact image loaded
+into Docker and to the immutable OCI/Docker distribution digest emitted by the
+same `docker buildx build --load` operation. It does not publish an image, create
+a registry release, deploy Manager, or satisfy target-environment production-
+readiness evidence.
 """
 
 from __future__ import annotations
@@ -29,83 +28,102 @@ SUPPORTED_DESCRIPTOR_MEDIA_TYPES = {
 }
 
 
-def validate_sha256_digest(value: str, *, label: str) -> str:
+class IdentityContractError(ValueError):
+    """Fail-closed identity error carrying only a safe static reason code."""
+
+    def __init__(self, code: str):
+        super().__init__(code)
+        self.code = code
+
+
+def require_sha256_digest(value: str, *, code: str) -> str:
     digest = value.strip().lower()
     if not SHA256_DIGEST.fullmatch(digest):
-        raise ValueError(f"{label} must be a sha256:<64-hex> digest")
+        raise IdentityContractError(code)
     return digest
 
 
-def read_json_object(path: Path, *, label: str) -> dict[str, Any]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
+def read_json_object(path: Path, *, code: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise IdentityContractError(code) from exc
     if not isinstance(payload, dict):
-        raise ValueError(f"{label} must be a JSON object")
+        raise IdentityContractError(code)
     return payload
 
 
+def read_buildx_image_id(path: Path) -> str:
+    try:
+        value = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise IdentityContractError("buildx-image-id-unreadable") from exc
+    return require_sha256_digest(value, code="buildx-image-id-invalid")
+
+
 def validate_build_metadata(
-    payload: dict[str, Any], *, expected_image_id: str
+    payload: dict[str, Any], *, expected_image_id: str, buildx_image_id: str
 ) -> dict[str, Any]:
-    image_id = provenance.validate_image_id(expected_image_id)
-    config_digest = validate_sha256_digest(
-        str(payload.get("containerimage.config.digest", "")),
-        label="Buildx config digest",
-    )
-    if config_digest != image_id:
-        raise ValueError("Buildx config digest does not match the loaded Docker image ID")
+    try:
+        loaded_image_id = provenance.validate_image_id(expected_image_id)
+    except ValueError as exc:
+        raise IdentityContractError("loaded-image-id-invalid") from exc
 
-    distribution_digest = validate_sha256_digest(
+    emitted_image_id = require_sha256_digest(
+        buildx_image_id,
+        code="buildx-image-id-invalid",
+    )
+    if emitted_image_id != loaded_image_id:
+        raise IdentityContractError("buildx-loaded-image-id-mismatch")
+
+    raw_config_digest = payload.get("containerimage.config.digest")
+    config_digest: str | None = None
+    if raw_config_digest is not None:
+        config_digest = require_sha256_digest(
+            str(raw_config_digest),
+            code="buildx-config-digest-invalid",
+        )
+        if config_digest != emitted_image_id:
+            raise IdentityContractError("buildx-config-image-id-mismatch")
+
+    distribution_digest = require_sha256_digest(
         str(payload.get("containerimage.digest", "")),
-        label="Buildx distribution digest",
+        code="buildx-distribution-digest-invalid",
     )
+
+    descriptor_record: dict[str, Any] | None = None
     descriptor = payload.get("containerimage.descriptor")
-    if not isinstance(descriptor, dict):
-        raise ValueError("Buildx metadata is missing the distribution descriptor")
-
-    descriptor_digest = validate_sha256_digest(
-        str(descriptor.get("digest", "")),
-        label="Buildx descriptor digest",
-    )
-    if descriptor_digest != distribution_digest:
-        raise ValueError(
-            "Buildx descriptor digest does not match the emitted distribution digest"
+    if descriptor is not None:
+        if not isinstance(descriptor, dict):
+            raise IdentityContractError("buildx-descriptor-invalid")
+        descriptor_digest = require_sha256_digest(
+            str(descriptor.get("digest", "")),
+            code="buildx-descriptor-digest-invalid",
         )
+        if descriptor_digest != distribution_digest:
+            raise IdentityContractError("buildx-descriptor-digest-mismatch")
 
-    media_type = str(descriptor.get("mediaType", ""))
-    descriptor_kind = SUPPORTED_DESCRIPTOR_MEDIA_TYPES.get(media_type)
-    if descriptor_kind is None:
-        raise ValueError(
-            "Buildx descriptor media type is not an accepted image manifest or image index"
-        )
+        media_type = str(descriptor.get("mediaType", ""))
+        descriptor_kind = SUPPORTED_DESCRIPTOR_MEDIA_TYPES.get(media_type)
+        if descriptor_kind is None:
+            raise IdentityContractError("buildx-descriptor-media-type-unsupported")
 
-    size = descriptor.get("size")
-    if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
-        raise ValueError("Buildx descriptor size must be a positive integer")
+        size = descriptor.get("size")
+        if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
+            raise IdentityContractError("buildx-descriptor-size-invalid")
 
-    annotations = descriptor.get("annotations")
-    if annotations is not None:
-        if not isinstance(annotations, dict):
-            raise ValueError("Buildx descriptor annotations are malformed")
-        annotated_config = annotations.get("config.digest")
-        if annotated_config is not None:
-            annotated_digest = validate_sha256_digest(
-                str(annotated_config),
-                label="Buildx annotated config digest",
-            )
-            if annotated_digest != config_digest:
-                raise ValueError(
-                    "Buildx annotated config digest does not match the config digest"
-                )
-
-    return {
-        "config_digest": config_digest,
-        "distribution_digest": distribution_digest,
-        "descriptor": {
+        descriptor_record = {
             "digest": descriptor_digest,
             "kind": descriptor_kind,
             "media_type": media_type,
             "size_bytes": size,
-        },
+        }
+
+    return {
+        "buildx_image_id": emitted_image_id,
+        "config_digest": config_digest,
+        "distribution_digest": distribution_digest,
+        "descriptor": descriptor_record,
     }
 
 
@@ -113,18 +131,27 @@ def build_identity(
     *,
     inspection: dict[str, Any],
     build_metadata: dict[str, Any],
+    buildx_image_id: str,
     source_revision: str,
     image_reference: str,
 ) -> dict[str, Any]:
-    revision = provenance.validate_source_revision(source_revision)
-    image = provenance.validate_image_contract(
-        inspection,
-        source_revision=revision,
-        image_reference=image_reference,
-    )
+    try:
+        revision = provenance.validate_source_revision(source_revision)
+    except ValueError as exc:
+        raise IdentityContractError("source-revision-invalid") from exc
+    try:
+        image = provenance.validate_image_contract(
+            inspection,
+            source_revision=revision,
+            image_reference=image_reference,
+        )
+    except ValueError as exc:
+        raise IdentityContractError("loaded-image-contract-invalid") from exc
+
     build_output = validate_build_metadata(
         build_metadata,
         expected_image_id=image["id"],
+        buildx_image_id=buildx_image_id,
     )
     return {
         "schema_version": 1,
@@ -142,7 +169,7 @@ def build_identity(
             "build_output": build_output,
         },
         "claims": {
-            "loaded_image_matches_buildx_config_digest": True,
+            "buildx_image_id_matches_loaded_image": True,
             "buildx_distribution_digest_recorded": True,
             "registry_distribution_digest_observed": bool(image["repo_digests"]),
             "registry_publication_performed": False,
@@ -158,17 +185,19 @@ def verify_record(
     *,
     inspection: dict[str, Any],
     build_metadata: dict[str, Any],
+    buildx_image_id: str,
     source_revision: str,
     image_reference: str,
 ) -> None:
     expected = build_identity(
         inspection=inspection,
         build_metadata=build_metadata,
+        buildx_image_id=buildx_image_id,
         source_revision=source_revision,
         image_reference=image_reference,
     )
     if payload != expected:
-        raise ValueError("OCI build-identity evidence no longer matches the exact build")
+        raise IdentityContractError("identity-record-mismatch")
 
 
 def command_generate(args: argparse.Namespace) -> int:
@@ -176,8 +205,9 @@ def command_generate(args: argparse.Namespace) -> int:
         inspection=provenance.inspect_image(args.image_reference),
         build_metadata=read_json_object(
             Path(args.build_metadata),
-            label="Buildx metadata",
+            code="buildx-metadata-invalid",
         ),
+        buildx_image_id=read_buildx_image_id(Path(args.buildx_image_id_file)),
         source_revision=args.source_revision,
         image_reference=args.image_reference,
     )
@@ -188,19 +218,27 @@ def command_generate(args: argparse.Namespace) -> int:
 def command_verify(args: argparse.Namespace) -> int:
     payload = read_json_object(
         Path(args.input),
-        label="OCI build-identity input",
+        code="identity-record-invalid",
     )
     verify_record(
         payload,
         inspection=provenance.inspect_image(args.image_reference),
         build_metadata=read_json_object(
             Path(args.build_metadata),
-            label="Buildx metadata",
+            code="buildx-metadata-invalid",
         ),
+        buildx_image_id=read_buildx_image_id(Path(args.buildx_image_id_file)),
         source_revision=args.source_revision,
         image_reference=args.image_reference,
     )
     return 0
+
+
+def add_common_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--image-reference", required=True)
+    parser.add_argument("--source-revision", required=True)
+    parser.add_argument("--build-metadata", required=True)
+    parser.add_argument("--buildx-image-id-file", required=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -208,16 +246,12 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     generate = subparsers.add_parser("generate", help="generate OCI build identity JSON")
-    generate.add_argument("--image-reference", required=True)
-    generate.add_argument("--source-revision", required=True)
-    generate.add_argument("--build-metadata", required=True)
+    add_common_arguments(generate)
     generate.add_argument("--output", required=True)
     generate.set_defaults(handler=command_generate)
 
     verify = subparsers.add_parser("verify", help="verify OCI build identity JSON")
-    verify.add_argument("--image-reference", required=True)
-    verify.add_argument("--source-revision", required=True)
-    verify.add_argument("--build-metadata", required=True)
+    add_common_arguments(verify)
     verify.add_argument("--input", required=True)
     verify.set_defaults(handler=command_verify)
     return parser
@@ -227,8 +261,11 @@ def main() -> int:
     args = build_parser().parse_args()
     try:
         return int(args.handler(args))
+    except IdentityContractError as exc:
+        print(f"OCI build identity error: {exc.code}")
+        return 2
     except (OSError, subprocess.CalledProcessError, json.JSONDecodeError, ValueError) as exc:
-        print(f"OCI build identity error: {type(exc).__name__}")
+        print(f"OCI build identity error: unexpected-{type(exc).__name__}")
         return 2
 
 
