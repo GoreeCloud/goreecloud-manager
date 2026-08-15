@@ -1,9 +1,11 @@
 meta:
-  schema_version: 3
+  schema_version: 4
 
 app:
   title: GoreeCloud Manager
   environment: Home / Family Cloud
+  # system follows the desktop environment; light and dark are explicit overrides.
+  appearance: system
 
 monitoring:
   # local = monitor this Linux computer
