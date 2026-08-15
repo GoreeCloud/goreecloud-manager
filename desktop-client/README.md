@@ -6,15 +6,15 @@ It is a companion to the repository's existing server-side Django GoreeCloud Man
 
 ## Current version
 
-**v0.2.6 — Glaze UI appearance and stability hardening**
+**v0.2.7 — configuration recovery and stability hardening**
 
 The client is built with Python and PySide6/Qt. It runs on a Linux workstation and can use the system OpenSSH client to collect read-only operational information from a GoreeCloud server.
 
-v0.2.6 keeps the existing read-only monitoring feature set and adds a semantic Glaze UI theme layer with System, Light, and Dark appearance modes. It also retains exact direct dependency pins, `pip check`, private atomic configuration writes, bounded parsing for malformed configuration values, fail-closed SSH host-key verification, and staged installation with rollback-safe cutover.
+v0.2.7 keeps the existing read-only monitoring feature set and semantic Glaze UI System, Light, and Dark appearance modes. It adds a last-known-good user-configuration recovery layer while retaining exact direct dependency pins, `pip check`, private atomic configuration writes, bounded parsing for malformed configuration values, fail-closed SSH host-key verification, and staged installation with rollback-safe cutover.
 
 ### Glaze UI appearance
 
-GoreeCloud Manager now uses semantic Glaze UI theme tokens rather than treating dark colors as the only supported desktop presentation. The supported appearance modes are available from **View > Appearance**:
+GoreeCloud Manager uses semantic Glaze UI theme tokens rather than treating dark colors as the only supported desktop presentation. The supported appearance modes are available from **View > Appearance**:
 
 - **System** follows the current Linux desktop color scheme and updates while Manager is running when the operating-system preference changes.
 - **Light** keeps the Glaze hierarchy, restrained surfaces, clear controls, semantic status colors, and readable contrast on a light canvas.
@@ -84,6 +84,14 @@ User configuration is kept separately at:
 
 Manager writes the configuration through a same-directory atomic replacement and restricts the final file to mode `0600`. This file must not be committed to the repository.
 
+Before Manager replaces an existing valid configuration, it preserves the current file as:
+
+```text
+~/.config/goreecloud-manager/config.yaml.recovery
+```
+
+The recovery copy is also mode `0600`. At startup, Manager validates the YAML root before using the active configuration. If the active file is syntactically unreadable or is no longer a YAML mapping and the recovery copy validates, Manager restores the active file atomically from that copy and displays a **Configuration recovered** warning. If both copies are unreadable, Manager fails closed and does not overwrite either file. This recovery layer protects configuration availability; it is not a substitute for the broader GoreeCloud backup and recovery system.
+
 The installer prepares a complete staged replacement beside the current installation before changing the active path. It reuses the existing `.venv` only when `requirements.txt` is unchanged, runs `pip check`, compiles the desktop Python package, and then performs the cutover. The previous installation remains available as a rollback copy until the new application directory and desktop entry are both installed successfully. If cutover or desktop-entry installation fails, the installer restores the previous application directory automatically.
 
 The separately stored user configuration is not replaced by application upgrades.
@@ -104,6 +112,6 @@ The application invokes the system OpenSSH client with non-interactive behavior.
 
 ## Security boundary
 
-v0.2.6 is intentionally read-only. It does not start, stop, restart, delete, or modify Docker containers, NetBird configuration, systemd units, or other server workloads.
+v0.2.7 is intentionally read-only. It does not start, stop, restart, delete, or modify Docker containers, NetBird configuration, systemd units, or other server workloads.
 
 No private SSH key contents, passwords, API tokens, or populated user configuration belong in this repository.
