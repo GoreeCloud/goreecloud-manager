@@ -10,7 +10,7 @@ It is a companion to the repository's existing server-side Django GoreeCloud Man
 
 The client is built with Python and PySide6/Qt. It runs on a Linux workstation and can use the system OpenSSH client to collect read-only operational information from a GoreeCloud server.
 
-v0.2.5 keeps the existing v0.2.4 monitoring feature set and strengthens the runtime boundary with exact direct dependency pins, `pip check`, private atomic configuration writes, bounded parsing for malformed numeric and boolean configuration values, and fail-closed SSH host-key verification.
+v0.2.5 keeps the existing v0.2.4 monitoring feature set and strengthens the runtime boundary with exact direct dependency pins, `pip check`, private atomic configuration writes, bounded parsing for malformed numeric and boolean configuration values, fail-closed SSH host-key verification, and staged installation with rollback-safe cutover.
 
 ### Overview
 
@@ -74,7 +74,9 @@ User configuration is kept separately at:
 
 Manager writes the configuration through a same-directory atomic replacement and restricts the final file to mode `0600`. This file must not be committed to the repository.
 
-The installer reuses an existing compatible `.venv` when `requirements.txt` has not changed.
+The installer prepares a complete staged replacement beside the current installation before changing the active path. It reuses the existing `.venv` only when `requirements.txt` is unchanged, runs `pip check`, compiles the desktop Python package, and then performs the cutover. The previous installation remains available as a rollback copy until the new application directory and desktop entry are both installed successfully. If cutover or desktop-entry installation fails, the installer restores the previous application directory automatically.
+
+The separately stored user configuration is not replaced by application upgrades.
 
 ## SSH monitoring
 
