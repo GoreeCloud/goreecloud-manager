@@ -1,0 +1,171 @@
+/*
+ * GoreeCloud Manager — Glaze UI conformance layer
+ *
+ * app.css owns Manager-specific layout and component presentation. This file
+ * owns cross-cutting Glaze UI identity, accessibility, interaction, and browser
+ * capability fallbacks so those requirements remain easy to audit.
+ */
+
+.brand-symbol {
+  flex: 0 0 auto;
+  border-radius: 9px;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, .16);
+}
+
+.brand-lockup {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .45rem;
+}
+
+/* Glaze controls use practical 44px minimum targets on every viewport. */
+.nav-link,
+.theme-toggle,
+.link-button,
+button {
+  min-block-size: 2.75rem;
+}
+
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  color: var(--text);
+  background: var(--accent-surface);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .brand,
+  .nav-link,
+  .theme-toggle,
+  .link-button,
+  button,
+  input {
+    transition:
+      background-color 140ms ease,
+      border-color 140ms ease,
+      color 140ms ease,
+      box-shadow 140ms ease,
+      transform 140ms ease;
+  }
+
+  .theme-toggle:hover,
+  .link-button:hover,
+  .auth-card button[type="submit"]:hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* Preserve hierarchy when glass effects are unavailable instead of reducing readability. */
+@supports not (backdrop-filter: blur(1px)) {
+  .site-header,
+  .hero,
+  .card,
+  .metric-card,
+  .detail-card,
+  .protection-card,
+  .auth-card {
+    background: var(--surface-strong);
+  }
+}
+
+/* Respect explicit requests for stronger visual separation. */
+@media (prefers-contrast: more) {
+  :root {
+    --border: rgba(188, 211, 230, .56);
+    --border-strong: rgba(211, 228, 241, .78);
+    --text-muted: #b8c8d6;
+    --focus: 0 0 0 4px rgba(141, 199, 255, .56);
+  }
+
+  :root[data-theme="light"] {
+    --border: rgba(36, 58, 77, .42);
+    --border-strong: rgba(24, 45, 64, .62);
+    --text-muted: #455d70;
+    --focus: 0 0 0 4px rgba(23, 103, 168, .34);
+  }
+
+  .status,
+  .hero,
+  .card,
+  .metric-card,
+  .detail-card,
+  .protection-card,
+  .auth-card,
+  .theme-toggle,
+  .link-button,
+  .auth-card input {
+    border-width: 2px;
+  }
+}
+
+/* Windows High Contrast and other forced-color environments remain fully operable. */
+@media (forced-colors: active) {
+  :root {
+    forced-color-adjust: auto;
+  }
+
+  body {
+    background: Canvas;
+  }
+
+  .site-header,
+  .hero,
+  .card,
+  .metric-card,
+  .detail-card,
+  .protection-card,
+  .auth-card,
+  .theme-toggle,
+  .link-button,
+  .nav-link,
+  .status,
+  .release,
+  .auth-card input {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .nav-link[aria-current="page"],
+  .status-configured,
+  .status-healthy,
+  .status-degraded,
+  .status-misconfigured,
+  .status-unavailable,
+  .item-good,
+  .item-warning,
+  .check-up,
+  .check-down,
+  .attempt-success,
+  .attempt-failed {
+    color: CanvasText;
+  }
+
+  .brand-symbol {
+    box-shadow: none;
+  }
+
+  .brand:focus-visible,
+  .nav-link:focus-visible,
+  .theme-toggle:focus-visible,
+  .link-button:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  a:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 3px;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .brand-lockup {
+    gap: .3rem;
+  }
+}
