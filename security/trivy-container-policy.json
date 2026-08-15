@@ -5,7 +5,9 @@
       "HIGH",
       "CRITICAL"
     ],
-    "require_os_package_result": true
+    "require_os_package_result": true,
+    "required_distro": "debian",
+    "required_severity_source": "debian"
   },
   "exceptions": []
 }
