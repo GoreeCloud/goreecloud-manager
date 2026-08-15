@@ -45,6 +45,44 @@ class DesktopClientStabilityContractTests(TestCase):
         self.assertIn("def _bounded_int", source)
         self.assertIn("def _parse_bool", source)
 
+    def test_glaze_appearance_is_persisted_and_bounded(self):
+        source = (PACKAGE_ROOT / "config.py").read_text(encoding="utf-8")
+        bundled = (DESKTOP_ROOT / "config" / "services.yaml").read_text(encoding="utf-8")
+        self.assertIn('appearance: str = "system"', source)
+        self.assertIn('CURRENT_SCHEMA_VERSION = 4', source)
+        self.assertIn('_APPEARANCE_VALUES = {"system", "light", "dark"}', source)
+        self.assertIn('def _parse_appearance', source)
+        self.assertIn('"appearance": _parse_appearance(config.appearance)', source)
+        self.assertIn('schema_version: 4', bundled)
+        self.assertIn('appearance: system', bundled)
+
+    def test_glaze_theme_has_semantic_light_dark_and_system_modes(self):
+        source = (PACKAGE_ROOT / "theme.py").read_text(encoding="utf-8")
+        self.assertIn('APPEARANCE_VALUES = ("system", "light", "dark")', source)
+        self.assertIn('class ThemeTokens', source)
+        self.assertIn('DARK_TOKENS = ThemeTokens(', source)
+        self.assertIn('LIGHT_TOKENS = ThemeTokens(', source)
+        self.assertIn('styleHints().colorScheme()', source)
+        self.assertIn('Qt.ColorScheme.Dark', source)
+        self.assertIn('def semantic_color', source)
+        self.assertIn('def apply_theme', source)
+
+    def test_theme_aware_application_shell_is_the_supported_entrypoint(self):
+        application = (PACKAGE_ROOT / "application.py").read_text(encoding="utf-8")
+        package_entry = (PACKAGE_ROOT / "__main__.py").read_text(encoding="utf-8")
+        source_entry = (DESKTOP_ROOT / "run.py").read_text(encoding="utf-8")
+        self.assertIn('class ManagerWindow(MainWindow)', application)
+        self.assertIn('view_menu = self.menuBar().addMenu("View")', application)
+        self.assertIn('appearance_menu = view_menu.addMenu("Appearance")', application)
+        self.assertIn('save_config(self.config)', application)
+        self.assertIn('dialog.result_config.appearance = self.config.appearance', application)
+        self.assertIn('colorSchemeChanged.connect', application)
+        self.assertIn('semantic_color(', application)
+        self.assertIn('from .application import run', package_entry)
+        self.assertIn('from goreecloud_manager.application import run', source_entry)
+        self.assertNotIn('from .ui import run', package_entry)
+        self.assertNotIn('from goreecloud_manager.ui import run', source_entry)
+
     def test_setup_checks_installed_dependency_graph(self):
         source = (DESKTOP_ROOT / "scripts" / "setup.sh").read_text(encoding="utf-8")
         self.assertIn("python -m pip install -r requirements.txt", source)
@@ -83,6 +121,6 @@ class DesktopClientStabilityContractTests(TestCase):
         for command in prohibited_commands:
             self.assertNotIn(command, source)
 
-    def test_stabilization_version_is_0_2_5(self):
+    def test_stabilization_version_is_0_2_6(self):
         source = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
-        self.assertIn('__version__ = "0.2.5"', source)
+        self.assertIn('__version__ = "0.2.6"', source)
