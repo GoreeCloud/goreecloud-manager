@@ -2,9 +2,9 @@
 """Generate and verify GoreeCloud Manager OCI build-identity evidence.
 
 The evidence binds the exact image ID emitted by Buildx to the exact image loaded
-into Docker and to the immutable OCI/Docker distribution digest emitted by the
-same `docker buildx build --load` operation. It does not publish an image, create
-a registry release, deploy Manager, or satisfy target-environment production-
+into Docker and to a real OCI/Docker image-distribution descriptor emitted by the
+same non-publishing `type=image` build. It does not publish an image, create a
+registry release, deploy Manager, or satisfy target-environment production-
 readiness evidence.
 """
 
@@ -91,39 +91,36 @@ def validate_build_metadata(
         code="buildx-distribution-digest-invalid",
     )
 
-    descriptor_record: dict[str, Any] | None = None
     descriptor = payload.get("containerimage.descriptor")
-    if descriptor is not None:
-        if not isinstance(descriptor, dict):
-            raise IdentityContractError("buildx-descriptor-invalid")
-        descriptor_digest = require_sha256_digest(
-            str(descriptor.get("digest", "")),
-            code="buildx-descriptor-digest-invalid",
-        )
-        if descriptor_digest != distribution_digest:
-            raise IdentityContractError("buildx-descriptor-digest-mismatch")
+    if not isinstance(descriptor, dict):
+        raise IdentityContractError("buildx-distribution-descriptor-missing")
 
-        media_type = str(descriptor.get("mediaType", ""))
-        descriptor_kind = SUPPORTED_DESCRIPTOR_MEDIA_TYPES.get(media_type)
-        if descriptor_kind is None:
-            raise IdentityContractError("buildx-descriptor-media-type-unsupported")
+    descriptor_digest = require_sha256_digest(
+        str(descriptor.get("digest", "")),
+        code="buildx-descriptor-digest-invalid",
+    )
+    if descriptor_digest != distribution_digest:
+        raise IdentityContractError("buildx-descriptor-digest-mismatch")
 
-        size = descriptor.get("size")
-        if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
-            raise IdentityContractError("buildx-descriptor-size-invalid")
+    media_type = str(descriptor.get("mediaType", ""))
+    descriptor_kind = SUPPORTED_DESCRIPTOR_MEDIA_TYPES.get(media_type)
+    if descriptor_kind is None:
+        raise IdentityContractError("buildx-descriptor-media-type-unsupported")
 
-        descriptor_record = {
-            "digest": descriptor_digest,
-            "kind": descriptor_kind,
-            "media_type": media_type,
-            "size_bytes": size,
-        }
+    size = descriptor.get("size")
+    if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
+        raise IdentityContractError("buildx-descriptor-size-invalid")
 
     return {
         "buildx_image_id": emitted_image_id,
         "config_digest": config_digest,
         "distribution_digest": distribution_digest,
-        "descriptor": descriptor_record,
+        "descriptor": {
+            "digest": descriptor_digest,
+            "kind": descriptor_kind,
+            "media_type": media_type,
+            "size_bytes": size,
+        },
     }
 
 
@@ -170,7 +167,7 @@ def build_identity(
         },
         "claims": {
             "buildx_image_id_matches_loaded_image": True,
-            "buildx_distribution_digest_recorded": True,
+            "buildx_distribution_descriptor_recorded": True,
             "registry_distribution_digest_observed": bool(image["repo_digests"]),
             "registry_publication_performed": False,
             "deployment_performed": False,
