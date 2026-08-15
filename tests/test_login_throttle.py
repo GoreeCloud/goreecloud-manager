@@ -70,17 +70,35 @@ class SharedLoginThrottleTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(LoginThrottleBucket.objects.exists())
 
-    def test_admin_login_uses_same_throttle_form(self):
+    def test_admin_login_uses_same_throttle_and_retains_staff_boundary(self):
+        user_model = get_user_model()
+        staff_username = "manager-staff"
+        staff_password = "staff-correct-horse-battery-staple-2026"
+        user_model.objects.create_user(
+            username=staff_username,
+            password=staff_password,
+            is_staff=True,
+        )
+
+        # A valid non-staff account must not become authenticated through the admin login.
+        nonstaff = self.client.post(
+            reverse("admin:login"),
+            {"username": self.username, "password": self.password, "next": "/admin/"},
+        )
+        self.assertEqual(nonstaff.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        LoginThrottleBucket.objects.all().delete()
+
         for _ in range(MAX_FAILURES):
             response = self.client.post(
                 reverse("admin:login"),
-                {"username": self.username, "password": "wrong-password", "next": "/admin/"},
+                {"username": staff_username, "password": "wrong-password", "next": "/admin/"},
             )
             self.assertEqual(response.status_code, 200)
 
         response = self.client.post(
             reverse("admin:login"),
-            {"username": self.username, "password": self.password, "next": "/admin/"},
+            {"username": staff_username, "password": staff_password, "next": "/admin/"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("_auth_user_id", self.client.session)
