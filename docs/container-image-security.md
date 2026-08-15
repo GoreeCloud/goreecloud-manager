@@ -51,6 +51,8 @@ If download, checksum verification, extraction, or execution fails, CI fails clo
 
 The selected scanner version and checksum are maintenance inputs. They must be deliberately reviewed and updated together rather than automatically following a moving release.
 
+Trivy telemetry and version checks are disabled for these evidence runs. The vulnerability database remains intentionally current because the purpose of the gate is to evaluate the accepted image against current known operating-system security information.
+
 ## Exact image build
 
 CI builds the Manager Dockerfile from the exact checked-out source revision and assigns a disposable local tag containing that source SHA.
@@ -90,7 +92,8 @@ CI runs Trivy against the built image with the vulnerability scanner restricted 
 
 ```text
 --scanners vuln
---vuln-type os
+--pkg-types os
+--vuln-severity-source debian
 ```
 
 The complete JSON result is preserved as:
@@ -103,7 +106,23 @@ Manager does not use `--ignore-unfixed`. Unfixed findings remain visible in evid
 
 CI also uses Trivy's end-of-life enforcement. If the detected operating-system release is end-of-life, the scan step fails and the final evidence gate rejects the candidate.
 
-Trivy uses vendor-aware vulnerability and severity information. For Debian packages this allows the evidence to reflect the distribution's security assessment and backported fixes instead of assuming that an upstream package version alone determines vulnerability status.
+### Distribution-authoritative severity
+
+The current Manager image is Debian-based. The acceptance gate therefore requires Debian to be the severity authority for Debian operating-system packages.
+
+This is deliberate. Trivy can fall back to severity values from NVD or another vendor when the target distribution has not assigned a severity. That fallback is useful for broad visibility, but it can make a Debian package appear `HIGH` or `CRITICAL` even when Debian has assigned no corresponding severity or has explicitly classified the issue as minor/no-DSA.
+
+The first disposable candidate for this control demonstrated that difference: the default Trivy severity selection produced 23 `HIGH`/`CRITICAL` findings, but none of those blocking severities came from Debian. The candidate was rejected rather than waived. The evidence contract was then corrected to request Debian severity explicitly.
+
+With `--vuln-severity-source debian`:
+
+- a Debian-assigned severity is retained with `SeveritySource=debian`;
+- if Debian has not assigned a severity, Trivy reports the finding as `UNKNOWN` rather than substituting another vendor or NVD severity;
+- the finding itself remains in the report, including affected/fixed state and package identity;
+- the Manager evaluator rejects any non-`UNKNOWN` finding whose severity source is not Debian;
+- the evaluator also rejects an unexpected non-Debian OS result.
+
+This choice does not redefine an `UNKNOWN` issue as safe. It means the automated blocking threshold is based on the security authority responsible for the installed Debian package while unscored issues remain visible for review and future reclassification.
 
 ## Acceptance policy
 
@@ -111,12 +130,14 @@ Trivy uses vendor-aware vulnerability and severity information. For Debian packa
 
 The current default is:
 
-- `HIGH` findings block;
-- `CRITICAL` findings block;
+- the expected OS distribution is `debian`;
+- the required severity authority is `debian`;
+- Debian-assessed `HIGH` findings block;
+- Debian-assessed `CRITICAL` findings block;
 - `UNKNOWN`, `LOW`, and `MEDIUM` findings remain visible but do not automatically block;
 - at least one Trivy `os-pkgs` result is required so a misconfigured or incomplete scan cannot be mistaken for zero findings.
 
-A `HIGH` or `CRITICAL` finding blocks whether or not the distribution currently publishes a fixed version. An unavailable patch is not treated as evidence that the risk is acceptable. If a severe finding cannot yet be remediated, acceptance requires an explicit, reviewable exception.
+A Debian-assessed `HIGH` or `CRITICAL` finding blocks whether or not Debian currently publishes a fixed version. An unavailable patch is not treated as evidence that the risk is acceptable. If such a finding cannot yet be remediated, acceptance requires an explicit, reviewable exception.
 
 ## Exceptions
 
@@ -202,6 +223,14 @@ For a base-image update:
 5. review new findings rather than weakening the policy simply to make CI green;
 6. run runtime, restore, rollback, monitoring, and manifest gates against that same exact source revision.
 
+For an `UNKNOWN` Debian finding:
+
+1. retain it in the raw and sanitized evidence;
+2. inspect Debian Security Tracker status and notes when it is material to acceptance;
+3. do not invent a Debian severity from a different distribution or NVD;
+4. allow future CI runs to pick up a later Debian severity or fixed-version classification automatically;
+5. escalate to a source-controlled exception only if Debian later classifies the issue as blocking and a temporary, explicit risk acceptance is justified.
+
 ## Scope and limitations
 
 This evidence covers:
@@ -209,12 +238,14 @@ This evidence covers:
 - the source-controlled Manager Dockerfile;
 - the exact disposable image built by CI;
 - packages detected in that image by Trivy;
-- Trivy's vulnerability database and vendor advisory interpretation at scan time.
+- current Trivy vulnerability-database knowledge;
+- Debian-authoritative severity selection for the Debian image.
 
 It does not prove that:
 
 - an undisclosed vulnerability does not exist;
 - a vulnerability database is complete;
+- an `UNKNOWN` finding is harmless;
 - a production host is patched;
 - a production Docker daemon is configured safely;
 - the image deployed in production matches this disposable CI image;
