@@ -102,7 +102,7 @@ class SupplyChainImmutabilityTests(SimpleTestCase):
 
         self.assertTrue(found, "expected at least one external GitHub Action reference")
 
-    def test_ci_checksum_pins_trivy_release_archive_and_uses_os_only_scan(self):
+    def test_ci_checksum_pins_trivy_release_archive_and_uses_debian_os_policy(self):
         ci = (WORKFLOW_ROOT / "ci.yml").read_text(encoding="utf-8")
         self.assertIn('TRIVY_VERSION: "0.74.0"', ci)
         self.assertIn(
@@ -111,7 +111,11 @@ class SupplyChainImmutabilityTests(SimpleTestCase):
             ci,
         )
         self.assertIn("sha256sum --check", ci)
-        self.assertIn("--vuln-type os", ci)
+        self.assertIn("--pkg-types os", ci)
+        self.assertNotIn("--vuln-type os", ci)
+        self.assertIn("--vuln-severity-source debian", ci)
+        self.assertIn("--disable-telemetry", ci)
+        self.assertIn("--skip-version-check", ci)
         self.assertIn("--scanners vuln", ci)
         self.assertIn("--exit-on-eol 2", ci)
         self.assertIn("security/trivy-container-policy.json", ci)
