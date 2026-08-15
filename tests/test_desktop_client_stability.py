@@ -51,6 +51,24 @@ class DesktopClientStabilityContractTests(TestCase):
         self.assertIn("python -m pip check", source)
         self.assertNotIn("pip install --upgrade pip", source)
 
+    def test_installer_stages_and_validates_before_replacing_current_install(self):
+        source = (DESKTOP_ROOT / "scripts" / "install.sh").read_text(encoding="utf-8")
+        self.assertIn('.goreecloud-manager.stage.', source)
+        self.assertIn('.goreecloud-manager.rollback.', source)
+        self.assertIn('"$STAGE/.venv/bin/python" -m pip check', source)
+        self.assertIn('"$STAGE/.venv/bin/python" -m compileall -q "$STAGE/goreecloud_manager"', source)
+        self.assertLess(source.index('tar --exclude='), source.index('mv "$TARGET" "$BACKUP"'))
+        self.assertLess(source.index('-m compileall -q'), source.index('mv "$TARGET" "$BACKUP"'))
+        self.assertLess(source.index('mv "$TARGET" "$BACKUP"'), source.index('mv "$STAGE" "$TARGET"'))
+
+    def test_installer_restores_previous_install_when_cutover_fails(self):
+        source = (DESKTOP_ROOT / "scripts" / "install.sh").read_text(encoding="utf-8")
+        self.assertIn('if [[ -d "$BACKUP" && ! -e "$TARGET" ]]; then', source)
+        self.assertIn('mv "$BACKUP" "$TARGET" || true', source)
+        self.assertIn('if ! "$TARGET/scripts/install-desktop-entry.sh"; then', source)
+        self.assertIn('mv "$BACKUP" "$TARGET"', source)
+        self.assertIn('the previous installation was restored', source)
+
     def test_desktop_client_remains_read_only(self):
         source = (PACKAGE_ROOT / "infrastructure.py").read_text(encoding="utf-8").casefold()
         prohibited_commands = (
