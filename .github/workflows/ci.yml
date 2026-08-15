@@ -78,18 +78,38 @@ jobs:
           "$install_dir/trivy" --version
           echo "TRIVY_BIN=$install_dir/trivy" >> "$GITHUB_ENV"
 
-      - name: Build exact Manager image for security evidence
+      - name: Build exact Manager image and capture Buildx identity metadata
         id: security_image
         continue-on-error: true
         run: |
-          docker build \
+          metadata_file="$RUNNER_TEMP/manager-build-metadata.json"
+          BUILDX_METADATA_PROVENANCE=disabled docker buildx build \
+            --load \
             --pull=false \
+            --metadata-file "$metadata_file" \
             --build-arg MANAGER_SOURCE_REVISION="$MANAGER_SOURCE_REVISION" \
             --tag "$MANAGER_SECURITY_IMAGE" \
             .
           image_id="$(docker image inspect --format '{{.Id}}' "$MANAGER_SECURITY_IMAGE")"
           test -n "$image_id"
+          test -s "$metadata_file"
           echo "MANAGER_SECURITY_IMAGE_ID=$image_id" >> "$GITHUB_ENV"
+          echo "MANAGER_BUILD_METADATA=$metadata_file" >> "$GITHUB_ENV"
+
+      - name: Generate and verify exact OCI build identity
+        id: oci_build_identity
+        continue-on-error: true
+        run: |
+          python scripts/oci_build_identity.py generate \
+            --image-reference "$MANAGER_SECURITY_IMAGE" \
+            --source-revision "$MANAGER_SOURCE_REVISION" \
+            --build-metadata "$MANAGER_BUILD_METADATA" \
+            --output security-artifacts/goreecloud-manager-oci-build-identity.json
+          python scripts/oci_build_identity.py verify \
+            --image-reference "$MANAGER_SECURITY_IMAGE" \
+            --source-revision "$MANAGER_SOURCE_REVISION" \
+            --build-metadata "$MANAGER_BUILD_METADATA" \
+            --input security-artifacts/goreecloud-manager-oci-build-identity.json
 
       - name: Generate container image CycloneDX SBOM
         id: container_sbom
@@ -152,6 +172,7 @@ jobs:
             --material Dockerfile \
             --material requirements.txt \
             --material requirements.lock \
+            --evidence security-artifacts/goreecloud-manager-oci-build-identity.json \
             --evidence security-artifacts/goreecloud-manager-python.cdx.json \
             --evidence security-artifacts/osv-python-vulnerabilities.json \
             --evidence security-artifacts/goreecloud-manager-image.cdx.json \
@@ -220,7 +241,11 @@ jobs:
             failed=1
           fi
           if [ "${{ steps.security_image.outcome }}" != "success" ]; then
-            echo "Exact Manager security image build did not pass."
+            echo "Exact Manager image build and Buildx metadata capture did not pass."
+            failed=1
+          fi
+          if [ "${{ steps.oci_build_identity.outcome }}" != "success" ]; then
+            echo "Exact loaded-image and OCI-manifest identity evidence did not pass."
             failed=1
           fi
           if [ "${{ steps.container_sbom.outcome }}" != "success" ]; then
