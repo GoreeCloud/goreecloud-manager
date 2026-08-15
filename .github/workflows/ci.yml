@@ -12,6 +12,8 @@ jobs:
   django:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -34,7 +36,7 @@ jobs:
           python scripts/python_supply_chain_security.py sbom \
             --lock requirements.lock \
             --output security-artifacts/goreecloud-manager-python.cdx.json \
-            --source-revision "$GITHUB_SHA"
+            --source-revision "$MANAGER_SOURCE_REVISION"
 
       - name: Scan locked Python dependencies with OSV
         id: osv_scan
@@ -44,7 +46,7 @@ jobs:
             --lock requirements.lock \
             --policy security/osv-policy.json \
             --output security-artifacts/osv-python-vulnerabilities.json \
-            --source-revision "$GITHUB_SHA" \
+            --source-revision "$MANAGER_SOURCE_REVISION" \
             --timeout-seconds 10 \
             --attempts 2
 
@@ -88,7 +90,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: manager-supply-chain-security-${{ github.sha }}
+          name: manager-supply-chain-security-${{ env.MANAGER_SOURCE_REVISION }}
           path: security-artifacts/
           if-no-files-found: error
           retention-days: 30
