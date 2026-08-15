@@ -22,12 +22,15 @@ identity = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = identity
 spec.loader.exec_module(identity)
 
+IMAGE_ID = "sha256:" + ("b" * 64)
+DISTRIBUTION_DIGEST = "sha256:" + ("c" * 64)
+
 
 def synthetic_inspection(revision: str, image_reference: str) -> dict:
     labels = dict(identity.provenance.OCI_LABELS)
     labels["org.opencontainers.image.revision"] = revision
     return {
-        "Id": "sha256:" + ("b" * 64),
+        "Id": IMAGE_ID,
         "RepoTags": [image_reference],
         "RepoDigests": [],
         "Config": {"Labels": labels},
@@ -36,44 +39,89 @@ def synthetic_inspection(revision: str, image_reference: str) -> dict:
 
 def synthetic_build_metadata(
     *,
-    image_id: str = "sha256:" + ("b" * 64),
-    distribution_digest: str = "sha256:" + ("c" * 64),
+    config_digest: str | None = IMAGE_ID,
+    distribution_digest: str = DISTRIBUTION_DIGEST,
     media_type: str = "application/vnd.oci.image.manifest.v1+json",
+    include_descriptor: bool = True,
 ) -> dict:
-    return {
-        "containerimage.config.digest": image_id,
-        "containerimage.digest": distribution_digest,
-        "containerimage.descriptor": {
-            "annotations": {"config.digest": image_id},
+    payload = {"containerimage.digest": distribution_digest}
+    if config_digest is not None:
+        payload["containerimage.config.digest"] = config_digest
+    if include_descriptor:
+        payload["containerimage.descriptor"] = {
             "digest": distribution_digest,
             "mediaType": media_type,
             "size": 1234,
-        },
-    }
+        }
+    return payload
 
 
 class OciBuildIdentityTests(TestCase):
-    def test_build_metadata_requires_loaded_image_config_digest_match(self):
+    def test_buildx_iid_must_match_loaded_image(self):
         parsed = identity.validate_build_metadata(
             synthetic_build_metadata(),
-            expected_image_id="sha256:" + ("b" * 64),
+            expected_image_id=IMAGE_ID,
+            buildx_image_id=IMAGE_ID,
         )
-        self.assertEqual(parsed["config_digest"], "sha256:" + ("b" * 64))
-        self.assertEqual(parsed["distribution_digest"], "sha256:" + ("c" * 64))
+        self.assertEqual(parsed["buildx_image_id"], IMAGE_ID)
+        self.assertEqual(parsed["config_digest"], IMAGE_ID)
+        self.assertEqual(parsed["distribution_digest"], DISTRIBUTION_DIGEST)
 
-        with self.assertRaisesRegex(ValueError, "loaded Docker image ID"):
+        with self.assertRaisesRegex(
+            identity.IdentityContractError, "buildx-loaded-image-id-mismatch"
+        ):
             identity.validate_build_metadata(
-                synthetic_build_metadata(image_id="sha256:" + ("d" * 64)),
-                expected_image_id="sha256:" + ("b" * 64),
+                synthetic_build_metadata(config_digest=None),
+                expected_image_id=IMAGE_ID,
+                buildx_image_id="sha256:" + ("d" * 64),
             )
 
-    def test_build_metadata_requires_descriptor_digest_match(self):
+    def test_config_digest_is_optional_but_must_match_when_present(self):
+        parsed = identity.validate_build_metadata(
+            synthetic_build_metadata(config_digest=None),
+            expected_image_id=IMAGE_ID,
+            buildx_image_id=IMAGE_ID,
+        )
+        self.assertIsNone(parsed["config_digest"])
+
+        with self.assertRaisesRegex(
+            identity.IdentityContractError, "buildx-config-image-id-mismatch"
+        ):
+            identity.validate_build_metadata(
+                synthetic_build_metadata(config_digest="sha256:" + ("d" * 64)),
+                expected_image_id=IMAGE_ID,
+                buildx_image_id=IMAGE_ID,
+            )
+
+    def test_distribution_digest_is_required(self):
         metadata = synthetic_build_metadata()
-        metadata["containerimage.descriptor"]["digest"] = "sha256:" + ("d" * 64)
-        with self.assertRaisesRegex(ValueError, "descriptor digest"):
+        metadata.pop("containerimage.digest")
+        with self.assertRaisesRegex(
+            identity.IdentityContractError, "buildx-distribution-digest-invalid"
+        ):
             identity.validate_build_metadata(
                 metadata,
-                expected_image_id="sha256:" + ("b" * 64),
+                expected_image_id=IMAGE_ID,
+                buildx_image_id=IMAGE_ID,
+            )
+
+    def test_descriptor_is_optional_but_validated_when_present(self):
+        parsed = identity.validate_build_metadata(
+            synthetic_build_metadata(include_descriptor=False),
+            expected_image_id=IMAGE_ID,
+            buildx_image_id=IMAGE_ID,
+        )
+        self.assertIsNone(parsed["descriptor"])
+
+        metadata = synthetic_build_metadata()
+        metadata["containerimage.descriptor"]["digest"] = "sha256:" + ("d" * 64)
+        with self.assertRaisesRegex(
+            identity.IdentityContractError, "buildx-descriptor-digest-mismatch"
+        ):
+            identity.validate_build_metadata(
+                metadata,
+                expected_image_id=IMAGE_ID,
+                buildx_image_id=IMAGE_ID,
             )
 
     def test_build_metadata_accepts_manifest_and_index_descriptors(self):
@@ -86,7 +134,8 @@ class OciBuildIdentityTests(TestCase):
             with self.subTest(media_type=media_type):
                 parsed = identity.validate_build_metadata(
                     synthetic_build_metadata(media_type=media_type),
-                    expected_image_id="sha256:" + ("b" * 64),
+                    expected_image_id=IMAGE_ID,
+                    buildx_image_id=IMAGE_ID,
                 )
                 self.assertEqual(parsed["descriptor"]["kind"], expected_kind)
 
@@ -94,30 +143,35 @@ class OciBuildIdentityTests(TestCase):
         metadata = synthetic_build_metadata(
             media_type="application/vnd.oci.image.layer.v1.tar+gzip"
         )
-        with self.assertRaisesRegex(ValueError, "image manifest or image index"):
+        with self.assertRaisesRegex(
+            identity.IdentityContractError, "buildx-descriptor-media-type-unsupported"
+        ):
             identity.validate_build_metadata(
                 metadata,
-                expected_image_id="sha256:" + ("b" * 64),
+                expected_image_id=IMAGE_ID,
+                buildx_image_id=IMAGE_ID,
             )
 
-    def test_identity_binds_source_image_and_distribution_digest_without_publication(self):
+    def test_identity_binds_source_iid_loaded_image_and_distribution_digest(self):
         revision = "a" * 40
         image_reference = f"goreecloud-manager-security:{revision}"
         payload = identity.build_identity(
             inspection=synthetic_inspection(revision, image_reference),
             build_metadata=synthetic_build_metadata(),
+            buildx_image_id=IMAGE_ID,
             source_revision=revision,
             image_reference=image_reference,
         )
 
         self.assertEqual(payload["schema_version"], 1)
         self.assertEqual(payload["source"]["revision"], revision)
-        self.assertEqual(payload["image"]["id"], "sha256:" + ("b" * 64))
+        self.assertEqual(payload["image"]["id"], IMAGE_ID)
+        self.assertEqual(payload["image"]["build_output"]["buildx_image_id"], IMAGE_ID)
         self.assertEqual(
             payload["image"]["build_output"]["distribution_digest"],
-            "sha256:" + ("c" * 64),
+            DISTRIBUTION_DIGEST,
         )
-        self.assertTrue(payload["claims"]["loaded_image_matches_buildx_config_digest"])
+        self.assertTrue(payload["claims"]["buildx_image_id_matches_loaded_image"])
         self.assertTrue(payload["claims"]["buildx_distribution_digest_recorded"])
         self.assertFalse(payload["claims"]["registry_publication_performed"])
         self.assertFalse(payload["claims"]["deployment_performed"])
@@ -129,21 +183,36 @@ class OciBuildIdentityTests(TestCase):
         payload = identity.build_identity(
             inspection=synthetic_inspection(revision, image_reference),
             build_metadata=synthetic_build_metadata(),
+            buildx_image_id=IMAGE_ID,
             source_revision=revision,
             image_reference=image_reference,
         )
-        with self.assertRaisesRegex(ValueError, "exact build"):
+        with self.assertRaisesRegex(
+            identity.IdentityContractError, "identity-record-mismatch"
+        ):
             identity.verify_record(
                 payload,
                 inspection=synthetic_inspection(revision, image_reference),
                 build_metadata=synthetic_build_metadata(
                     distribution_digest="sha256:" + ("d" * 64)
                 ),
+                buildx_image_id=IMAGE_ID,
                 source_revision=revision,
                 image_reference=image_reference,
             )
 
-    def test_repository_contract_uses_buildx_and_retains_sanitized_identity(self):
+    def test_buildx_image_id_file_requires_sha256_identity(self):
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "iid.txt"
+            path.write_text(IMAGE_ID + "\n", encoding="utf-8")
+            self.assertEqual(identity.read_buildx_image_id(path), IMAGE_ID)
+            path.write_text("not-a-digest\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                identity.IdentityContractError, "buildx-image-id-invalid"
+            ):
+                identity.read_buildx_image_id(path)
+
+    def test_repository_contract_uses_buildx_iid_and_retains_sanitized_identity(self):
         workflow = (REPOSITORY_ROOT / ".github/workflows/ci.yml").read_text(
             encoding="utf-8"
         )
@@ -151,19 +220,20 @@ class OciBuildIdentityTests(TestCase):
         self.assertIn("docker buildx build", workflow)
         self.assertIn("--load", workflow)
         self.assertIn('--metadata-file "$metadata_file"', workflow)
+        self.assertIn('--iidfile "$iid_file"', workflow)
+        self.assertIn("MANAGER_BUILDX_IMAGE_ID_FILE", workflow)
         self.assertIn("BUILDX_METADATA_PROVENANCE=disabled", workflow)
         self.assertIn("scripts/oci_build_identity.py generate", workflow)
         self.assertIn("scripts/oci_build_identity.py verify", workflow)
+        self.assertIn("--buildx-image-id-file", workflow)
         self.assertIn("goreecloud-manager-oci-build-identity.json", workflow)
         self.assertIn(
             "--evidence security-artifacts/goreecloud-manager-oci-build-identity.json",
             workflow,
         )
         self.assertIn("steps.oci_build_identity.outcome", workflow)
-        self.assertNotIn(
-            "path: $RUNNER_TEMP/manager-build-metadata.json",
-            workflow,
-        )
+        self.assertNotIn("path: $RUNNER_TEMP/manager-build-metadata.json", workflow)
+        self.assertNotIn("path: $RUNNER_TEMP/manager-build-image-id.txt", workflow)
 
     def test_json_output_is_stable_and_machine_readable(self):
         revision = "a" * 40
@@ -171,6 +241,7 @@ class OciBuildIdentityTests(TestCase):
         payload = identity.build_identity(
             inspection=synthetic_inspection(revision, image_reference),
             build_metadata=synthetic_build_metadata(),
+            buildx_image_id=IMAGE_ID,
             source_revision=revision,
             image_reference=image_reference,
         )
@@ -182,5 +253,5 @@ class OciBuildIdentityTests(TestCase):
         self.assertEqual(decoded["evidence_type"], "exact-oci-build-identity")
         self.assertEqual(
             decoded["image"]["build_output"]["distribution_digest"],
-            "sha256:" + ("c" * 64),
+            DISTRIBUTION_DIGEST,
         )
