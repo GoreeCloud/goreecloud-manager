@@ -44,6 +44,7 @@ def vulnerability(
     *,
     fixed_version: str = "",
     status: str = "affected",
+    severity_source: str = "debian",
 ) -> dict[str, str]:
     return {
         "VulnerabilityID": vulnerability_id,
@@ -52,7 +53,20 @@ def vulnerability(
         "FixedVersion": fixed_version,
         "Status": status,
         "Severity": severity,
-        "SeveritySource": "debian",
+        "SeveritySource": severity_source,
+    }
+
+
+def policy(*, exceptions: list[dict[str, str]] | None = None) -> dict:
+    return {
+        "schema_version": 1,
+        "policy": {
+            "blocking_severities": ["HIGH", "CRITICAL"],
+            "require_os_package_result": True,
+            "required_distro": "debian",
+            "required_severity_source": "debian",
+        },
+        "exceptions": exceptions or [],
     }
 
 
@@ -111,16 +125,8 @@ class ContainerSupplyChainSecurityTests(TestCase):
             )
             _raw, findings, count = security.parse_trivy_report(report_path)
 
-        policy = {
-            "schema_version": 1,
-            "policy": {
-                "blocking_severities": ["HIGH", "CRITICAL"],
-                "require_os_package_result": True,
-            },
-            "exceptions": [],
-        }
         allowed, blocking, informational = security.classify(
-            findings, policy, dt.date(2026, 8, 15)
+            findings, policy(), dt.date(2026, 8, 15)
         )
         self.assertEqual(count, 1)
         self.assertEqual(allowed, [])
@@ -133,6 +139,38 @@ class ContainerSupplyChainSecurityTests(TestCase):
             ["CVE-2026-0003"],
         )
 
+    def test_non_debian_fallback_severity_is_rejected(self):
+        finding = {
+            "vulnerability_id": "CVE-2026-0004",
+            "package": "perl-base",
+            "installed_version": "1.0",
+            "fixed_version": "",
+            "status": "affected",
+            "severity": "CRITICAL",
+            "severity_source": "nvd",
+            "distro": "debian",
+        }
+        with self.assertRaisesRegex(ValueError, "distribution authority"):
+            security.classify([finding], policy(), dt.date(2026, 8, 15))
+
+    def test_unknown_unrated_debian_finding_remains_visible_and_nonblocking(self):
+        finding = {
+            "vulnerability_id": "CVE-2026-0005",
+            "package": "perl-base",
+            "installed_version": "1.0",
+            "fixed_version": "",
+            "status": "affected",
+            "severity": "UNKNOWN",
+            "severity_source": "",
+            "distro": "debian",
+        }
+        allowed, blocking, informational = security.classify(
+            [finding], policy(), dt.date(2026, 8, 15)
+        )
+        self.assertEqual(allowed, [])
+        self.assertEqual(blocking, [])
+        self.assertEqual(informational, [finding])
+
     def test_exact_unexpired_exception_allows_only_matching_package_and_id(self):
         finding = {
             "vulnerability_id": "CVE-2026-0001",
@@ -144,54 +182,44 @@ class ContainerSupplyChainSecurityTests(TestCase):
             "severity_source": "debian",
             "distro": "debian",
         }
-        policy = {
-            "schema_version": 1,
-            "policy": {
-                "blocking_severities": ["HIGH", "CRITICAL"],
-                "require_os_package_result": True,
-            },
-            "exceptions": [
+        current_policy = policy(
+            exceptions=[
                 {
                     "vulnerability_id": "CVE-2026-0001",
                     "package": "OpenSSL",
                     "expires_on": "2026-08-20",
                     "reason": "Synthetic regression-only exception.",
                 }
-            ],
-        }
+            ]
+        )
         allowed, blocking, informational = security.classify(
-            [finding], policy, dt.date(2026, 8, 15)
+            [finding], current_policy, dt.date(2026, 8, 15)
         )
         self.assertEqual(blocking, [])
         self.assertEqual(informational, [])
         self.assertEqual(allowed[0]["exception_expires_on"], "2026-08-20")
 
-        policy["exceptions"][0]["package"] = "glibc"
+        current_policy["exceptions"][0]["package"] = "glibc"
         allowed, blocking, informational = security.classify(
-            [finding], policy, dt.date(2026, 8, 15)
+            [finding], current_policy, dt.date(2026, 8, 15)
         )
         self.assertEqual(allowed, [])
         self.assertEqual(blocking, [finding])
         self.assertEqual(informational, [])
 
     def test_expired_exception_fails_closed(self):
-        policy = {
-            "schema_version": 1,
-            "policy": {
-                "blocking_severities": ["HIGH", "CRITICAL"],
-                "require_os_package_result": True,
-            },
-            "exceptions": [
+        current_policy = policy(
+            exceptions=[
                 {
                     "vulnerability_id": "CVE-2026-0001",
                     "package": "openssl",
                     "expires_on": "2026-08-14",
                     "reason": "Expired synthetic exception.",
                 }
-            ],
-        }
+            ]
+        )
         with self.assertRaisesRegex(ValueError, "Expired container vulnerability exception"):
-            security.classify([], policy, dt.date(2026, 8, 15))
+            security.classify([], current_policy, dt.date(2026, 8, 15))
 
     def test_report_without_os_package_result_fails_closed(self):
         with TemporaryDirectory() as temp_dir:
@@ -260,20 +288,8 @@ class ContainerSupplyChainSecurityTests(TestCase):
             temp = Path(temp_dir)
             raw = temp / "raw.json"
             raw.write_text('{"secret detail":', encoding="utf-8")
-            policy = temp / "policy.json"
-            policy.write_text(
-                json.dumps(
-                    {
-                        "schema_version": 1,
-                        "policy": {
-                            "blocking_severities": ["HIGH", "CRITICAL"],
-                            "require_os_package_result": True,
-                        },
-                        "exceptions": [],
-                    }
-                ),
-                encoding="utf-8",
-            )
+            policy_path = temp / "policy.json"
+            policy_path.write_text(json.dumps(policy()), encoding="utf-8")
             dockerfile = temp / "Dockerfile"
             dockerfile.write_text(
                 "FROM python:3.14.6-slim@sha256:" + ("a" * 64) + "\n",
@@ -283,7 +299,7 @@ class ContainerSupplyChainSecurityTests(TestCase):
             exit_code = security.command_evaluate(
                 SimpleNamespace(
                     input=str(raw),
-                    policy=str(policy),
+                    policy=str(policy_path),
                     output=str(output),
                     dockerfile=str(dockerfile),
                     source_revision="a" * 40,
