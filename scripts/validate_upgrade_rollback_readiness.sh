@@ -128,8 +128,12 @@ run_app() {
 
 snapshot_state() {
   local image="$1"
+  # Django 5.2 reports the number of automatically imported shell objects before command
+  # output. That count legitimately changes when a candidate adds a model, so retain only
+  # the final structured JSON line when comparing application state across revisions.
   run_app "$image" python manage.py shell -c \
-    "import json; from django.contrib.auth import get_user_model; from django.contrib.auth.models import Group; User=get_user_model(); u=User.objects.get(username='synthetic-admin'); print(json.dumps({'username':u.username,'first_name':u.first_name,'last_name':u.last_name,'email':u.email,'is_staff':u.is_staff,'is_superuser':u.is_superuser,'groups':sorted(u.groups.values_list('name',flat=True)),'candidate_only_exists':User.objects.filter(username='candidate-only').exists(),'reviewer_group_count':Group.objects.filter(name='Synthetic Upgrade Reviewers').count()}, sort_keys=True))"
+    "import json; from django.contrib.auth import get_user_model; from django.contrib.auth.models import Group; User=get_user_model(); u=User.objects.get(username='synthetic-admin'); print(json.dumps({'username':u.username,'first_name':u.first_name,'last_name':u.last_name,'email':u.email,'is_staff':u.is_staff,'is_superuser':u.is_superuser,'groups':sorted(u.groups.values_list('name',flat=True)),'candidate_only_exists':User.objects.filter(username='candidate-only').exists(),'reviewer_group_count':Group.objects.filter(name='Synthetic Upgrade Reviewers').count()}, sort_keys=True))" \
+    | tail -n 1
 }
 
 wait_live_health() {
