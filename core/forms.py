@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth.forms import AuthenticationForm
 from django.core.exceptions import ValidationError
 
 from .auth_throttle import clear_login_failures, is_login_locked, register_login_failure
 
 
-class ThrottledAuthenticationForm(AuthenticationForm):
-    """Apply shared account-keyed throttling without changing login error disclosure."""
+class SharedLoginThrottleMixin:
+    """Apply shared account-keyed throttling without changing base-form authorization rules."""
 
     def clean(self):
         username = self.cleaned_data.get("username") or ""
@@ -31,3 +32,11 @@ class ThrottledAuthenticationForm(AuthenticationForm):
 
         clear_login_failures(username)
         return cleaned_data
+
+
+class ThrottledAuthenticationForm(SharedLoginThrottleMixin, AuthenticationForm):
+    """Manager login form with the shared database-backed throttle."""
+
+
+class ThrottledAdminAuthenticationForm(SharedLoginThrottleMixin, AdminAuthenticationForm):
+    """Django admin login form retaining the normal active/staff authorization boundary."""
