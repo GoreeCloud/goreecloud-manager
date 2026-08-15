@@ -83,18 +83,22 @@ jobs:
         continue-on-error: true
         run: |
           metadata_file="$RUNNER_TEMP/manager-build-metadata.json"
+          iid_file="$RUNNER_TEMP/manager-build-image-id.txt"
           BUILDX_METADATA_PROVENANCE=disabled docker buildx build \
             --load \
             --pull=false \
             --metadata-file "$metadata_file" \
+            --iidfile "$iid_file" \
             --build-arg MANAGER_SOURCE_REVISION="$MANAGER_SOURCE_REVISION" \
             --tag "$MANAGER_SECURITY_IMAGE" \
             .
           image_id="$(docker image inspect --format '{{.Id}}' "$MANAGER_SECURITY_IMAGE")"
           test -n "$image_id"
           test -s "$metadata_file"
+          test -s "$iid_file"
           echo "MANAGER_SECURITY_IMAGE_ID=$image_id" >> "$GITHUB_ENV"
           echo "MANAGER_BUILD_METADATA=$metadata_file" >> "$GITHUB_ENV"
+          echo "MANAGER_BUILDX_IMAGE_ID_FILE=$iid_file" >> "$GITHUB_ENV"
 
       - name: Generate and verify exact OCI build identity
         id: oci_build_identity
@@ -104,11 +108,13 @@ jobs:
             --image-reference "$MANAGER_SECURITY_IMAGE" \
             --source-revision "$MANAGER_SOURCE_REVISION" \
             --build-metadata "$MANAGER_BUILD_METADATA" \
+            --buildx-image-id-file "$MANAGER_BUILDX_IMAGE_ID_FILE" \
             --output security-artifacts/goreecloud-manager-oci-build-identity.json
           python scripts/oci_build_identity.py verify \
             --image-reference "$MANAGER_SECURITY_IMAGE" \
             --source-revision "$MANAGER_SOURCE_REVISION" \
             --build-metadata "$MANAGER_BUILD_METADATA" \
+            --buildx-image-id-file "$MANAGER_BUILDX_IMAGE_ID_FILE" \
             --input security-artifacts/goreecloud-manager-oci-build-identity.json
 
       - name: Generate container image CycloneDX SBOM
@@ -241,11 +247,11 @@ jobs:
             failed=1
           fi
           if [ "${{ steps.security_image.outcome }}" != "success" ]; then
-            echo "Exact Manager image build and Buildx metadata capture did not pass."
+            echo "Exact Manager image build and Buildx identity capture did not pass."
             failed=1
           fi
           if [ "${{ steps.oci_build_identity.outcome }}" != "success" ]; then
-            echo "Exact loaded-image and OCI-manifest identity evidence did not pass."
+            echo "Exact Buildx/loaded-image distribution identity evidence did not pass."
             failed=1
           fi
           if [ "${{ steps.container_sbom.outcome }}" != "success" ]; then
