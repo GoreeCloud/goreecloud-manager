@@ -15,6 +15,7 @@ jobs:
     env:
       MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
       MANAGER_SECURITY_IMAGE: goreecloud-manager-security:${{ github.event.pull_request.head.sha || github.sha }}
+      BUILDKIT_IMAGE: "moby/buildkit:buildx-stable-1@sha256:2f5adac4ecd194d9f8c10b7b5d7bceb5186853db1b26e5abd3a657af0b7e26ec"
       TRIVY_VERSION: "0.74.0"
       TRIVY_LINUX_AMD64_SHA256: "2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a"
     steps:
@@ -78,18 +79,59 @@ jobs:
           "$install_dir/trivy" --version
           echo "TRIVY_BIN=$install_dir/trivy" >> "$GITHUB_ENV"
 
-      - name: Build exact Manager image for security evidence
+      - name: Build exact Manager image and OCI layout together
         id: security_image
         continue-on-error: true
         run: |
-          docker build \
+          builder_name="manager-security-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          oci_archive="$RUNNER_TEMP/goreecloud-manager-${MANAGER_SOURCE_REVISION}.oci.tar"
+          cleanup() {
+            docker buildx rm --force "$builder_name" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker buildx create \
+            --name "$builder_name" \
+            --driver docker-container \
+            --driver-opt "image=$BUILDKIT_IMAGE" \
+            --use
+          docker buildx inspect --bootstrap "$builder_name"
+
+          docker buildx build \
+            --builder "$builder_name" \
             --pull=false \
+            --provenance=false \
             --build-arg MANAGER_SOURCE_REVISION="$MANAGER_SOURCE_REVISION" \
             --tag "$MANAGER_SECURITY_IMAGE" \
+            --output "type=oci,dest=$oci_archive,oci-mediatypes=true" \
+            --load \
             .
+
           image_id="$(docker image inspect --format '{{.Id}}' "$MANAGER_SECURITY_IMAGE")"
           test -n "$image_id"
+          test -s "$oci_archive"
           echo "MANAGER_SECURITY_IMAGE_ID=$image_id" >> "$GITHUB_ENV"
+          echo "MANAGER_OCI_ARCHIVE=$oci_archive" >> "$GITHUB_ENV"
+
+      - name: Generate and verify exact OCI build identity
+        id: oci_build_identity
+        continue-on-error: true
+        run: |
+          python scripts/oci_build_identity.py generate \
+            --image-reference "$MANAGER_SECURITY_IMAGE" \
+            --source-revision "$MANAGER_SOURCE_REVISION" \
+            --oci-archive "$MANAGER_OCI_ARCHIVE" \
+            --builder-image "$BUILDKIT_IMAGE" \
+            --output security-artifacts/goreecloud-manager-oci-build-identity.json \
+            --manifest-output security-artifacts/goreecloud-manager-oci-manifest.json
+          python scripts/oci_build_identity.py verify \
+            --image-reference "$MANAGER_SECURITY_IMAGE" \
+            --source-revision "$MANAGER_SOURCE_REVISION" \
+            --oci-archive "$MANAGER_OCI_ARCHIVE" \
+            --builder-image "$BUILDKIT_IMAGE" \
+            --input security-artifacts/goreecloud-manager-oci-build-identity.json \
+            --manifest-input security-artifacts/goreecloud-manager-oci-manifest.json
+          rm -f "$MANAGER_OCI_ARCHIVE"
 
       - name: Generate container image CycloneDX SBOM
         id: container_sbom
@@ -152,6 +194,8 @@ jobs:
             --material Dockerfile \
             --material requirements.txt \
             --material requirements.lock \
+            --evidence security-artifacts/goreecloud-manager-oci-build-identity.json \
+            --evidence security-artifacts/goreecloud-manager-oci-manifest.json \
             --evidence security-artifacts/goreecloud-manager-python.cdx.json \
             --evidence security-artifacts/osv-python-vulnerabilities.json \
             --evidence security-artifacts/goreecloud-manager-image.cdx.json \
@@ -220,7 +264,11 @@ jobs:
             failed=1
           fi
           if [ "${{ steps.security_image.outcome }}" != "success" ]; then
-            echo "Exact Manager security image build did not pass."
+            echo "Exact Manager image and OCI-layout build did not pass."
+            failed=1
+          fi
+          if [ "${{ steps.oci_build_identity.outcome }}" != "success" ]; then
+            echo "Exact loaded-image and OCI-layout identity evidence did not pass."
             failed=1
           fi
           if [ "${{ steps.container_sbom.outcome }}" != "success" ]; then
