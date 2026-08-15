@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Generate and verify GoreeCloud Manager OCI build-identity evidence.
 
-The evidence binds the exact loaded Docker image/config digest to the OCI image
-manifest digest emitted by the same `docker buildx build --load` operation. It
-does not publish an image, create a registry release, deploy Manager, or satisfy
-target-environment production-readiness evidence.
+The evidence binds the exact loaded Docker image/config digest to the immutable
+OCI/Docker distribution descriptor digest emitted by the same
+`docker buildx build --load` operation. The top-level descriptor may be an image
+manifest or an image index/manifest list. This evidence does not publish an image,
+create a registry release, deploy Manager, or satisfy target-environment
+production-readiness evidence.
 """
 
 from __future__ import annotations
@@ -19,9 +21,11 @@ from typing import Any
 import release_provenance as provenance
 
 SHA256_DIGEST = re.compile(r"^sha256:[0-9a-fA-F]{64}$")
-SUPPORTED_MANIFEST_MEDIA_TYPES = {
-    "application/vnd.oci.image.manifest.v1+json",
-    "application/vnd.docker.distribution.manifest.v2+json",
+SUPPORTED_DESCRIPTOR_MEDIA_TYPES = {
+    "application/vnd.oci.image.manifest.v1+json": "image-manifest",
+    "application/vnd.oci.image.index.v1+json": "image-index",
+    "application/vnd.docker.distribution.manifest.v2+json": "image-manifest",
+    "application/vnd.docker.distribution.manifest.list.v2+json": "image-index",
 }
 
 
@@ -50,24 +54,29 @@ def validate_build_metadata(
     if config_digest != image_id:
         raise ValueError("Buildx config digest does not match the loaded Docker image ID")
 
-    manifest_digest = validate_sha256_digest(
+    distribution_digest = validate_sha256_digest(
         str(payload.get("containerimage.digest", "")),
-        label="Buildx manifest digest",
+        label="Buildx distribution digest",
     )
     descriptor = payload.get("containerimage.descriptor")
     if not isinstance(descriptor, dict):
-        raise ValueError("Buildx metadata is missing the image descriptor")
+        raise ValueError("Buildx metadata is missing the distribution descriptor")
 
     descriptor_digest = validate_sha256_digest(
         str(descriptor.get("digest", "")),
         label="Buildx descriptor digest",
     )
-    if descriptor_digest != manifest_digest:
-        raise ValueError("Buildx descriptor digest does not match the manifest digest")
+    if descriptor_digest != distribution_digest:
+        raise ValueError(
+            "Buildx descriptor digest does not match the emitted distribution digest"
+        )
 
     media_type = str(descriptor.get("mediaType", ""))
-    if media_type not in SUPPORTED_MANIFEST_MEDIA_TYPES:
-        raise ValueError("Buildx descriptor media type is not an accepted image manifest type")
+    descriptor_kind = SUPPORTED_DESCRIPTOR_MEDIA_TYPES.get(media_type)
+    if descriptor_kind is None:
+        raise ValueError(
+            "Buildx descriptor media type is not an accepted image manifest or image index"
+        )
 
     size = descriptor.get("size")
     if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
@@ -90,9 +99,10 @@ def validate_build_metadata(
 
     return {
         "config_digest": config_digest,
-        "manifest_digest": manifest_digest,
+        "distribution_digest": distribution_digest,
         "descriptor": {
             "digest": descriptor_digest,
+            "kind": descriptor_kind,
             "media_type": media_type,
             "size_bytes": size,
         },
@@ -133,7 +143,7 @@ def build_identity(
         },
         "claims": {
             "loaded_image_matches_buildx_config_digest": True,
-            "oci_manifest_digest_recorded": True,
+            "buildx_distribution_digest_recorded": True,
             "registry_distribution_digest_observed": bool(image["repo_digests"]),
             "registry_publication_performed": False,
             "deployment_performed": False,
