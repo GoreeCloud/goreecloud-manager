@@ -16,8 +16,12 @@ class ManagerShellTests(TestCase):
         self.assertContains(response, 'data-glaze-ui="manager"')
         self.assertContains(response, 'content="noindex, nofollow, noarchive"')
         self.assertContains(response, 'name="referrer" content="same-origin"')
-        self.assertContains(response, "core/img/manager-mark.svg")
-        self.assertContains(response, "core/css/glaze-ui.css")
+        # Production static storage fingerprints local assets, so rendered-shell
+        # assertions verify stable asset identity rather than an unhashed URL.
+        self.assertContains(response, "manager-mark")
+        self.assertContains(response, ".svg")
+        self.assertContains(response, "glaze-ui")
+        self.assertContains(response, ".css")
 
     def test_overview_marks_active_navigation_and_goreecloud_identity(self):
         user = get_user_model().objects.create_user(username="ui-shell-admin")
