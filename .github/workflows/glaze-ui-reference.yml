@@ -1,0 +1,23 @@
+name: Glaze UI Reference
+
+on:
+  pull_request:
+    paths:
+      - 'glaze-ui/**'
+      - '.github/workflows/glaze-ui-reference.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'glaze-ui/**'
+      - '.github/workflows/glaze-ui-reference.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Glaze UI package
+        run: python3 glaze-ui/scripts/validate_glaze_ui.py
