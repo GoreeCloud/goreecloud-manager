@@ -266,7 +266,10 @@ print('Rolled-back runtime security assertions passed.')
 PY
 
 for sensitive_value in "$DJANGO_SECRET_VALUE" "$ADMIN_PASSWORD_VALUE"; do
-  if grep -Fq "$sensitive_value" "$WORK_DIR/candidate.log" "$WORK_DIR/rollback.log" "$WORK_DIR/rollback-inspect.json"; then
+  # Generated URL-safe secrets may begin with '-', so terminate grep option parsing before
+  # supplying the runtime-random value. Without `--`, grep can reject the pattern and the
+  # shell `if` would incorrectly treat that error as "not found", weakening this assertion.
+  if grep -Fq -- "$sensitive_value" "$WORK_DIR/candidate.log" "$WORK_DIR/rollback.log" "$WORK_DIR/rollback-inspect.json"; then
     fail "synthetic secret value leaked into upgrade/rollback logs or inspection output"
   fi
 done
