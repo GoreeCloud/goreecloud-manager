@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Glaze UI 1.0 Reference</title>
+  <link rel="stylesheet" href="../css/glaze.css">
+  <link rel="stylesheet" href="../css/glaze.accessibility.css">
+  <style>
+    *{box-sizing:border-box} html,body{margin:0;min-height:100%} body{min-height:100vh}
+    .shell{width:min(1180px,100%);margin:auto;padding:40px 24px 72px}.hero{padding:38px;display:grid;gap:16px}.hero h1{font-size:clamp(38px,7vw,72px);line-height:.95;letter-spacing:-.06em;margin:0}.hero p{max-width:760px;color:var(--glaze-muted);font-size:18px;line-height:1.6;margin:0}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--glaze-accent)}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:20px;margin-top:20px}.card{grid-column:span 4;padding:24px}.wide{grid-column:span 8}.card h2{margin:0 0 10px}.card p{color:var(--glaze-muted);line-height:1.55}.actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}.samples{display:grid;gap:12px}.status-row{display:flex;gap:16px;flex-wrap:wrap}.swatch{height:82px;border-radius:var(--glaze-radius-lg);display:flex;align-items:end;padding:12px;font-weight:700}.accent{background:linear-gradient(135deg,var(--glaze-accent),var(--glaze-accent-2));color:white}.muted{background:var(--glaze-surface-muted)}
+    @media(max-width:800px){.shell{padding:22px 14px 56px}.hero{padding:26px}.card,.wide{grid-column:1/-1}}
+  </style>
+</head>
+<body class="glaze-canvas">
+  <main class="shell" id="main">
+    <section class="hero glaze-surface glaze-card">
+      <span class="eyebrow">GoreeCloud Design System</span>
+      <h1>Glaze UI 1.0</h1>
+      <p>Layered, soft, fluid, accessible, privacy-conscious, and distinctly GoreeCloud. The system standardizes behavior without sanding away the visual delight that makes Glaze UI recognizable.</p>
+      <div class="actions">
+        <button class="glaze-button" data-variant="primary">Primary action</button>
+        <button class="glaze-button">Secondary action</button>
+        <button class="glaze-icon-button" aria-label="Example icon action">✦</button>
+      </div>
+    </section>
+
+    <section class="grid" aria-label="Glaze UI reference surfaces">
+      <article class="card glaze-surface-solid glaze-card"><h2>Solid</h2><p>High-readability fallback and content surface. Glass is never required everywhere.</p></article>
+      <article class="card glaze-surface-raised glaze-card"><h2>Raised</h2><p>Soft depth separates important regions without heavy borders or visual noise.</p></article>
+      <article class="card glaze-surface glaze-card"><h2>Glaze</h2><p>Selective translucency, saturation, and blur create the signature layered finish.</p></article>
+
+      <article class="card wide glaze-surface glaze-card">
+        <span class="eyebrow">Controls</span><h2>Polished interaction states</h2>
+        <div class="samples"><label for="search">Search</label><input class="glaze-input" id="search" placeholder="Search GoreeCloud"></div>
+        <div class="actions"><button class="glaze-button" data-variant="primary">Continue</button><button class="glaze-button">Save for later</button><button class="glaze-button" disabled>Disabled</button></div>
+      </article>
+      <article class="card glaze-surface-raised glaze-card"><span class="eyebrow">Semantic feedback</span><h2>Status</h2><div class="status-row"><strong class="glaze-status" data-state="success">Healthy</strong><strong class="glaze-status" data-state="warning">Attention</strong><strong class="glaze-status" data-state="error">Error</strong></div></article>
+
+      <article class="card glaze-surface-solid glaze-card"><h2>Canvas</h2><div class="swatch muted">Quiet surface</div></article>
+      <article class="card glaze-surface-solid glaze-card"><h2>Signature</h2><div class="swatch accent">GoreeCloud gradient</div></article>
+      <article class="card glaze-overlay glaze-card"><h2>Overlay</h2><p>Dialogs and sheets receive stronger separation while retaining a solid fallback.</p></article>
+    </section>
+  </main>
+</body>
+</html>
