@@ -6,7 +6,7 @@
     "approval_reference": null,
     "approved_at": null
   },
-  "declared_effective_check_count": 6,
+  "declared_effective_check_count": 7,
   "source_evidence_gates": [
     {
       "workflow_path": ".github/workflows/ci.yml",
@@ -47,6 +47,14 @@
         "monitoring-alert-readiness"
       ],
       "evidence_scope": "private external health monitoring, fixed monitor source, least-privilege alert ACLs, outage and recovery transitions, and alert-data minimization"
+    },
+    {
+      "workflow_path": ".github/workflows/glaze-ui-reference.yml",
+      "workflow_name": "Glaze UI Reference",
+      "required_jobs": [
+        "validate"
+      ],
+      "evidence_scope": "Glaze UI 1.0 reference-package structure, token/version consistency, accessibility and resilience contracts, and dependency-free visual-reference validation"
     },
     {
       "workflow_path": ".github/workflows/production-readiness-evidence-manifest.yml",
