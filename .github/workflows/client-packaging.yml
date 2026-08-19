@@ -1,6 +1,14 @@
 name: Client packaging
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-client/**'
+      - 'desktop-client/**'
+      - 'packaging/**'
+      - '.github/workflows/client-packaging.yml'
+      - 'scripts/manager_production_readiness_manifest.json'
   pull_request:
     paths:
       - 'android-client/**'
