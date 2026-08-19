@@ -31,6 +31,9 @@ class GlazeUiContractTests(SimpleTestCase):
         base = self._read(BASE_TEMPLATE)
 
         self.assertIn('data-glaze-ui="manager"', base)
+        self.assertIn('data-glaze-version="1.1.0"', base)
+        self.assertIn('data-glaze-surface="glaze"', base)
+        self.assertIn('viewport-fit=cover', base)
         self.assertIn('content="noindex, nofollow, noarchive"', base)
         self.assertIn('name="referrer" content="same-origin"', base)
         self.assertIn("core/img/manager-mark.svg", base)
@@ -38,6 +41,31 @@ class GlazeUiContractTests(SimpleTestCase):
         self.assertIn("core/css/glaze-ui.css", base)
         self.assertIn('href="#main-content"', base)
         self.assertIn('id="main-content" tabindex="-1"', base)
+
+    def test_glaze_11_semantics_are_explicit_and_product_mapped(self):
+        css = self._read(GLAZE_CSS)
+
+        for contract in (
+            '--glaze-contract-version: "1.1.0"',
+            "--glaze-canvas: var(--bg)",
+            "--glaze-surface: var(--surface)",
+            "--glaze-surface-strong: var(--surface-strong)",
+            "--glaze-accent: var(--accent)",
+            "--glaze-info: var(--accent)",
+            "--glaze-success: var(--good)",
+            "--glaze-warning: var(--warning)",
+            "--glaze-danger: var(--danger)",
+            "--glaze-target-min: 2.75rem",
+            "--glaze-state-hover: .08",
+            "--glaze-state-pressed: .12",
+            "--glaze-state-focus: .14",
+            "--glaze-state-selected: .12",
+            "--glaze-gutter: 1rem",
+        ):
+            with self.subTest(contract=contract):
+                self.assertIn(contract, css)
+
+        self.assertIn("min-block-size: var(--glaze-target-min)", css)
 
     def test_explicit_appearance_is_applied_before_stylesheets(self):
         base = self._read(BASE_TEMPLATE)
@@ -66,11 +94,12 @@ class GlazeUiContractTests(SimpleTestCase):
             "prefers-contrast: more",
             "forced-colors: active",
             "@supports not (backdrop-filter: blur(1px))",
+            "transition-duration: .01ms",
+            "backdrop-filter: none",
         ):
             with self.subTest(contract=contract):
                 self.assertIn(contract, css)
 
-        self.assertIn("min-block-size: 2.75rem", css)
         self.assertIn("a:focus-visible", css)
 
     def test_user_interface_has_no_remote_browser_dependencies(self):
