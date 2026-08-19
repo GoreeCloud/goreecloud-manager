@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GoreeCloud Manager</string>
+    <string name="wardveil_error">Wardveil Security blocked an unsafe or unavailable connection.</string>
+    <string name="retry">Retry</string>
+</resources>
