@@ -34,6 +34,8 @@ class CoreViewTests(TestCase):
         response = self.client.get(reverse("overview"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "GoreeCloud Manager")
+        self.assertContains(response, "Wardveil Security")
+        self.assertContains(response, "wardveil-security-icon.")
         self.assertContains(response, "NetBird")
         self.assertContains(response, "Healthchecks")
         self.assertContains(response, "Kopia")

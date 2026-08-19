@@ -34,6 +34,12 @@
         {% endif %}
       </div>
       <div class="header-actions">
+        {% if user.is_authenticated %}
+          <span class="nav-link" aria-label="Security presentation identity: Wardveil Security by GoreeCloud" title="Wardveil Security by GoreeCloud">
+            <img src="{% static 'core/img/wardveil-security-icon.svg' %}" alt="" width="20" height="20" aria-hidden="true">
+            <span>Wardveil Security</span>
+          </span>
+        {% endif %}
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Change appearance">
           <span class="theme-icon" aria-hidden="true">◐</span>
           <span class="theme-label" data-theme-label>System</span>
