@@ -1,10 +1,32 @@
 /*
- * GoreeCloud Manager — Glaze UI conformance layer
+ * GoreeCloud Manager — Glaze UI 1.1.0 conformance layer
  *
  * app.css owns Manager-specific layout and component presentation. This file
  * owns cross-cutting Glaze UI identity, accessibility, interaction, and browser
  * capability fallbacks so those requirements remain easy to audit.
  */
+
+:root {
+  --glaze-contract-version: "1.1.0";
+  --glaze-canvas: var(--bg);
+  --glaze-surface: var(--surface);
+  --glaze-surface-strong: var(--surface-strong);
+  --glaze-surface-muted: var(--surface-soft);
+  --glaze-text: var(--text);
+  --glaze-muted: var(--text-muted);
+  --glaze-line: var(--border);
+  --glaze-accent: var(--accent);
+  --glaze-info: var(--accent);
+  --glaze-success: var(--good);
+  --glaze-warning: var(--warning);
+  --glaze-danger: var(--danger);
+  --glaze-target-min: 2.75rem;
+  --glaze-state-hover: .08;
+  --glaze-state-pressed: .12;
+  --glaze-state-focus: .14;
+  --glaze-state-selected: .12;
+  --glaze-gutter: 1rem;
+}
 
 .brand-symbol {
   flex: 0 0 auto;
@@ -23,7 +45,7 @@
 .theme-toggle,
 .link-button,
 button {
-  min-block-size: 2.75rem;
+  min-block-size: var(--glaze-target-min);
 }
 
 a:focus-visible {
@@ -59,6 +81,21 @@ a:focus-visible {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+
+  .theme-toggle:hover,
+  .link-button:hover,
+  .auth-card button[type="submit"]:hover {
+    transform: none;
+  }
+}
+
 /* Preserve hierarchy when glass effects are unavailable instead of reducing readability. */
 @supports not (backdrop-filter: blur(1px)) {
   .site-header,
@@ -69,6 +106,20 @@ a:focus-visible {
   .protection-card,
   .auth-card {
     background: var(--surface-strong);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .site-header,
+  .hero,
+  .card,
+  .metric-card,
+  .detail-card,
+  .protection-card,
+  .auth-card {
+    background: var(--surface-strong);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
@@ -171,6 +222,18 @@ a:focus-visible {
     outline-offset: 3px;
     box-shadow: none;
   }
+}
+
+@media (min-width: 600px) and (max-width: 1023px) {
+  :root { --glaze-gutter: 1.5rem; }
+}
+
+@media (min-width: 1024px) and (max-width: 1439px) {
+  :root { --glaze-gutter: 2rem; }
+}
+
+@media (min-width: 1440px) {
+  :root { --glaze-gutter: 2.5rem; }
 }
 
 @media (max-width: 680px) {
