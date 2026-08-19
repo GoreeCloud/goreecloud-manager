@@ -8,9 +8,16 @@ BUILD_ROOT="${ROOT}/build/deb"
 APP_ROOT="${BUILD_ROOT}/opt/goreecloud-manager"
 BIN_ROOT="${BUILD_ROOT}/usr/bin"
 DESKTOP_ROOT="${BUILD_ROOT}/usr/share/applications"
+ICON_ROOT="${BUILD_ROOT}/usr/share/icons/hicolor/scalable/apps"
 
 rm -rf "${BUILD_ROOT}"
-mkdir -p "${APP_ROOT}" "${BIN_ROOT}" "${DESKTOP_ROOT}" "${BUILD_ROOT}/DEBIAN" "${ROOT}/dist"
+mkdir -p "${APP_ROOT}" "${BIN_ROOT}" "${DESKTOP_ROOT}" "${ICON_ROOT}" "${BUILD_ROOT}/DEBIAN" "${ROOT}/dist"
+
+SOURCE_VERSION="$(python3 -c 'from pathlib import Path; ns={}; exec(Path("desktop-client/goreecloud_manager/__init__.py").read_text(), ns); print(ns["__version__"])')"
+if [[ "${SOURCE_VERSION}" != "${VERSION}" ]]; then
+  echo "Package version ${VERSION} does not match desktop client ${SOURCE_VERSION}." >&2
+  exit 1
+fi
 
 python3 -m PyInstaller \
   --noconfirm \
@@ -23,6 +30,7 @@ python3 -m PyInstaller \
   "${ROOT}/desktop-client/run.py"
 
 cp -a "${ROOT}/build/pyinstaller-dist/goreecloud-manager/." "${APP_ROOT}/"
+install -m 0644 "${ROOT}/desktop-client/assets/goreecloud-manager.svg" "${ICON_ROOT}/goreecloud-manager.svg"
 
 cat > "${BIN_ROOT}/goreecloud-manager" <<'EOF'
 #!/usr/bin/env bash
@@ -37,6 +45,7 @@ Type=Application
 Name=GoreeCloud Manager
 Comment=Read-only GoreeCloud administration and operations console
 Exec=/usr/bin/goreecloud-manager
+Icon=goreecloud-manager
 Terminal=false
 Categories=System;Monitor;
 StartupNotify=true
