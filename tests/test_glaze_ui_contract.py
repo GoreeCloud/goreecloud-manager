@@ -21,7 +21,7 @@ PRIMARY_TEMPLATES = (
 
 
 class GlazeUiContractTests(SimpleTestCase):
-    """Keep identity, privacy, and accessibility requirements reviewable in source."""
+    """Keep identity, privacy, accessibility, and Glaze 1.2 semantics reviewable."""
 
     @staticmethod
     def _read(path: Path) -> str:
@@ -31,7 +31,7 @@ class GlazeUiContractTests(SimpleTestCase):
         base = self._read(BASE_TEMPLATE)
 
         self.assertIn('data-glaze-ui="manager"', base)
-        self.assertIn('data-glaze-version="1.1.0"', base)
+        self.assertIn('data-glaze-version="1.2.0"', base)
         self.assertIn('data-glaze-surface="glaze"', base)
         self.assertIn('viewport-fit=cover', base)
         self.assertIn('content="noindex, nofollow, noarchive"', base)
@@ -42,11 +42,11 @@ class GlazeUiContractTests(SimpleTestCase):
         self.assertIn('href="#main-content"', base)
         self.assertIn('id="main-content" tabindex="-1"', base)
 
-    def test_glaze_11_semantics_are_explicit_and_product_mapped(self):
+    def test_glaze_12_semantics_are_explicit_and_product_mapped(self):
         css = self._read(GLAZE_CSS)
 
         for contract in (
-            '--glaze-contract-version: "1.1.0"',
+            '--glaze-contract-version: "1.2.0"',
             "--glaze-canvas: var(--bg)",
             "--glaze-surface: var(--surface)",
             "--glaze-surface-strong: var(--surface-strong)",
@@ -55,6 +55,12 @@ class GlazeUiContractTests(SimpleTestCase):
             "--glaze-success: var(--good)",
             "--glaze-warning: var(--warning)",
             "--glaze-danger: var(--danger)",
+            "--glaze-focus-ring: var(--accent)",
+            "--glaze-selection: var(--accent-surface)",
+            "--glaze-placeholder-opacity: .72",
+            "--glaze-control-field-gap: .5rem",
+            "--glaze-control-group-gap: 1rem",
+            "--glaze-control-message-gap: .375rem",
             "--glaze-target-min: 2.75rem",
             "--glaze-state-hover: .08",
             "--glaze-state-pressed: .12",
@@ -66,6 +72,23 @@ class GlazeUiContractTests(SimpleTestCase):
                 self.assertIn(contract, css)
 
         self.assertIn("min-block-size: var(--glaze-target-min)", css)
+        self.assertIn("outline: 3px solid var(--glaze-focus-ring)", css)
+        self.assertIn("background: var(--glaze-selection)", css)
+        self.assertIn("opacity: var(--glaze-placeholder-opacity)", css)
+        self.assertIn("gap: var(--glaze-control-field-gap)", css)
+        self.assertIn("gap: var(--glaze-control-group-gap)", css)
+
+    def test_manager_preserves_native_form_controls_under_glaze_12(self):
+        css = self._read(GLAZE_CSS)
+        login = self._read(REPOSITORY_ROOT / "core/templates/core/login.html")
+
+        self.assertIn("input:not([type=\"hidden\"])", css)
+        self.assertIn("select", css)
+        self.assertIn("textarea", css)
+        self.assertIn("Username {{ form.username }}", login)
+        self.assertIn("Password {{ form.password }}", login)
+        self.assertIn('role="alert"', login)
+        self.assertNotIn("role=\"switch\"", login)
 
     def test_explicit_appearance_is_applied_before_stylesheets(self):
         base = self._read(BASE_TEMPLATE)
@@ -96,11 +119,20 @@ class GlazeUiContractTests(SimpleTestCase):
             "@supports not (backdrop-filter: blur(1px))",
             "transition-duration: .01ms",
             "backdrop-filter: none",
+            "outline: 2px solid Highlight",
         ):
             with self.subTest(contract=contract):
                 self.assertIn(contract, css)
 
-        self.assertIn("a:focus-visible", css)
+        for control in (
+            "button:focus-visible",
+            "input:focus-visible",
+            "select:focus-visible",
+            "textarea:focus-visible",
+            "a:focus-visible",
+        ):
+            with self.subTest(control=control):
+                self.assertIn(control, css)
 
     def test_user_interface_has_no_remote_browser_dependencies(self):
         sources = [
