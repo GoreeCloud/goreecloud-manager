@@ -1,14 +1,14 @@
 /*
- * GoreeCloud Manager — Glaze UI 1.2.0 conformance layer
+ * GoreeCloud Manager — Glaze UI 1.3.0 conformance layer
  *
  * app.css owns Manager-specific layout and component presentation. This file
- * owns cross-cutting Glaze UI identity, accessibility, interaction, form
- * semantics, and browser capability fallbacks so those requirements remain
- * easy to audit.
+ * owns cross-cutting Glaze UI identity, accessibility, interaction, form,
+ * expressive hierarchy, and browser capability fallbacks so those requirements
+ * remain easy to audit.
  */
 
 :root {
-  --glaze-contract-version: "1.2.0";
+  --glaze-contract-version: "1.3.0";
   --glaze-canvas: var(--bg);
   --glaze-surface: var(--surface);
   --glaze-surface-strong: var(--surface-strong);
@@ -33,6 +33,22 @@
   --glaze-state-focus: .14;
   --glaze-state-selected: .12;
   --glaze-gutter: 1rem;
+
+  /* 1.3 expressive hierarchy. */
+  --glaze-shape-compact: .625rem;
+  --glaze-shape-standard: 1rem;
+  --glaze-shape-expressive: 1.375rem;
+  --glaze-shape-hero: 2rem;
+  --glaze-shape-pressed: .75rem;
+  --glaze-glass-functional-blur: 18px;
+  --glaze-glass-functional-saturation: 130%;
+  --glaze-motion-effects-fast: 140ms;
+  --glaze-motion-effects-standard: 180ms;
+  --glaze-motion-spatial-fast: 180ms;
+  --glaze-motion-spatial-standard: 260ms;
+  --glaze-motion-spatial-emphasized: 360ms;
+  --glaze-easing-effects: ease;
+  --glaze-easing-spatial: cubic-bezier(.2, .8, .2, 1);
 }
 
 .brand-symbol {
@@ -47,6 +63,36 @@
   gap: .45rem;
 }
 
+/* Functional Glass is reserved for navigation and interactive chrome. */
+.site-header[data-glaze-material="functional-glass"] {
+  backdrop-filter: blur(var(--glaze-glass-functional-blur)) saturate(var(--glaze-glass-functional-saturation));
+  -webkit-backdrop-filter: blur(var(--glaze-glass-functional-blur)) saturate(var(--glaze-glass-functional-saturation));
+}
+
+/* Operational content remains Solid/Raised; glass is not a universal card treatment. */
+.hero,
+.card,
+.metric-card,
+.detail-card,
+.protection-card,
+.auth-card {
+  background: var(--glaze-surface-strong);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.hero {
+  border-radius: var(--glaze-shape-hero);
+}
+
+.card,
+.metric-card,
+.detail-card,
+.protection-card,
+.auth-card {
+  border-radius: var(--glaze-shape-standard);
+}
+
 /* Glaze controls use practical 44px minimum targets on every viewport. */
 .nav-link,
 .theme-toggle,
@@ -58,7 +104,7 @@ textarea {
   min-block-size: var(--glaze-target-min);
 }
 
-/* Glaze UI 1.2 keeps field composition explicit without replacing native controls. */
+/* Glaze UI keeps field composition explicit without replacing native controls. */
 .auth-card form {
   display: grid;
   gap: var(--glaze-control-group-gap);
@@ -89,6 +135,21 @@ textarea::placeholder {
   background: var(--glaze-selection);
 }
 
+/* Adaptive action groups communicate emphasis without changing logical order. */
+[data-glaze-action-group="adaptive"] {
+  gap: clamp(.35rem, 1vw, .6rem);
+}
+
+.primary-nav[data-glaze-action-group="adaptive"] .nav-link[aria-current="page"] {
+  padding-inline: clamp(.8rem, 1.5vw, 1rem);
+  border-radius: var(--glaze-shape-expressive);
+}
+
+.header-actions[data-glaze-action-group="adaptive"] .theme-toggle,
+.header-actions[data-glaze-action-group="adaptive"] .link-button {
+  border-radius: var(--glaze-shape-expressive);
+}
+
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .brand,
   .nav-link,
@@ -99,17 +160,25 @@ textarea::placeholder {
   select,
   textarea {
     transition:
-      background-color 140ms ease,
-      border-color 140ms ease,
-      color 140ms ease,
-      box-shadow 140ms ease,
-      transform 140ms ease;
+      background-color var(--glaze-motion-effects-fast) var(--glaze-easing-effects),
+      border-color var(--glaze-motion-effects-fast) var(--glaze-easing-effects),
+      color var(--glaze-motion-effects-fast) var(--glaze-easing-effects),
+      box-shadow var(--glaze-motion-effects-standard) var(--glaze-easing-effects),
+      transform var(--glaze-motion-spatial-fast) var(--glaze-easing-spatial),
+      border-radius var(--glaze-motion-spatial-standard) var(--glaze-easing-spatial);
   }
 
   .theme-toggle:hover,
   .link-button:hover,
   .auth-card button[type="submit"]:hover {
     transform: translateY(-1px);
+  }
+
+  .theme-toggle:active,
+  .link-button:active,
+  .auth-card button[type="submit"]:active {
+    transform: translateY(0) scale(.985);
+    border-radius: var(--glaze-shape-pressed);
   }
 }
 
@@ -123,32 +192,25 @@ textarea::placeholder {
 
   .theme-toggle:hover,
   .link-button:hover,
-  .auth-card button[type="submit"]:hover {
+  .auth-card button[type="submit"]:hover,
+  .theme-toggle:active,
+  .link-button:active,
+  .auth-card button[type="submit"]:active {
     transform: none;
   }
 }
 
 /* Preserve hierarchy when glass effects are unavailable instead of reducing readability. */
 @supports not (backdrop-filter: blur(1px)) {
-  .site-header,
-  .hero,
-  .card,
-  .metric-card,
-  .detail-card,
-  .protection-card,
-  .auth-card {
+  .site-header {
     background: var(--surface-strong);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .site-header,
-  .hero,
-  .card,
-  .metric-card,
-  .detail-card,
-  .protection-card,
-  .auth-card {
+  .site-header {
     background: var(--surface-strong);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -278,5 +340,16 @@ textarea::placeholder {
 @media (max-width: 680px) {
   .brand-lockup {
     gap: .3rem;
+  }
+
+  /* Compact reachability keeps DOM/keyboard order unchanged while enlarging frequent actions. */
+  .header-actions[data-glaze-reachability="compact"] {
+    margin-inline-start: auto;
+  }
+
+  .header-actions[data-glaze-reachability="compact"] .theme-toggle,
+  .header-actions[data-glaze-reachability="compact"] .link-button {
+    min-inline-size: var(--glaze-target-min);
+    padding-inline: .8rem;
   }
 }
