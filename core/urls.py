@@ -2,10 +2,11 @@
 
 from django.urls import path
 
-from . import views
+from . import privacy_views, views
 
 urlpatterns = [
     path("", views.overview, name="overview"),
+    path("privacy-shield/", privacy_views.privacy_shield, name="privacy-shield"),
     path("tasks/", views.tasks_view, name="tasks"),
     path("healthz/", views.healthz, name="healthz"),
     path("readyz/", views.readyz, name="readyz"),
