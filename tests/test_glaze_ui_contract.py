@@ -13,6 +13,7 @@ APP_CSS = REPOSITORY_ROOT / "core/static/core/css/app.css"
 GLAZE_CSS = REPOSITORY_ROOT / "core/static/core/css/glaze-ui.css"
 THEME_JS = REPOSITORY_ROOT / "core/static/core/js/theme.js"
 MANAGER_MARK = REPOSITORY_ROOT / "core/static/core/img/manager-mark.svg"
+GLAZE_DOC = REPOSITORY_ROOT / "docs/glaze-ui.md"
 PRIMARY_TEMPLATES = (
     REPOSITORY_ROOT / "core/templates/core/login.html",
     REPOSITORY_ROOT / "core/templates/core/overview.html",
@@ -21,7 +22,7 @@ PRIMARY_TEMPLATES = (
 
 
 class GlazeUiContractTests(SimpleTestCase):
-    """Keep identity, privacy, accessibility, and Glaze 1.2 semantics reviewable."""
+    """Keep identity, privacy, accessibility, and Glaze 1.3 semantics reviewable."""
 
     @staticmethod
     def _read(path: Path) -> str:
@@ -31,8 +32,11 @@ class GlazeUiContractTests(SimpleTestCase):
         base = self._read(BASE_TEMPLATE)
 
         self.assertIn('data-glaze-ui="manager"', base)
-        self.assertIn('data-glaze-version="1.2.0"', base)
+        self.assertIn('data-glaze-version="1.3.0"', base)
         self.assertIn('data-glaze-surface="glaze"', base)
+        self.assertIn('data-glaze-material="functional-glass"', base)
+        self.assertIn('data-glaze-action-group="adaptive"', base)
+        self.assertIn('data-glaze-reachability="compact"', base)
         self.assertIn('viewport-fit=cover', base)
         self.assertIn('content="noindex, nofollow, noarchive"', base)
         self.assertIn('name="referrer" content="same-origin"', base)
@@ -42,11 +46,11 @@ class GlazeUiContractTests(SimpleTestCase):
         self.assertIn('href="#main-content"', base)
         self.assertIn('id="main-content" tabindex="-1"', base)
 
-    def test_glaze_12_semantics_are_explicit_and_product_mapped(self):
+    def test_glaze_13_semantics_are_explicit_and_product_mapped(self):
         css = self._read(GLAZE_CSS)
 
         for contract in (
-            '--glaze-contract-version: "1.2.0"',
+            '--glaze-contract-version: "1.3.0"',
             "--glaze-canvas: var(--bg)",
             "--glaze-surface: var(--surface)",
             "--glaze-surface-strong: var(--surface-strong)",
@@ -67,18 +71,31 @@ class GlazeUiContractTests(SimpleTestCase):
             "--glaze-state-focus: .14",
             "--glaze-state-selected: .12",
             "--glaze-gutter: 1rem",
+            "--glaze-shape-compact: .625rem",
+            "--glaze-shape-standard: 1rem",
+            "--glaze-shape-expressive: 1.375rem",
+            "--glaze-shape-hero: 2rem",
+            "--glaze-shape-pressed: .75rem",
+            "--glaze-glass-functional-blur: 18px",
+            "--glaze-motion-effects-fast: 140ms",
+            "--glaze-motion-effects-standard: 180ms",
+            "--glaze-motion-spatial-fast: 180ms",
+            "--glaze-motion-spatial-standard: 260ms",
+            "--glaze-motion-spatial-emphasized: 360ms",
         ):
             with self.subTest(contract=contract):
                 self.assertIn(contract, css)
 
-        self.assertIn("min-block-size: var(--glaze-target-min)", css)
-        self.assertIn("outline: 3px solid var(--glaze-focus-ring)", css)
-        self.assertIn("background: var(--glaze-selection)", css)
-        self.assertIn("opacity: var(--glaze-placeholder-opacity)", css)
-        self.assertIn("gap: var(--glaze-control-field-gap)", css)
-        self.assertIn("gap: var(--glaze-control-group-gap)", css)
+        self.assertIn('site-header[data-glaze-material="functional-glass"]', css)
+        self.assertIn("background: var(--glaze-surface-strong)", css)
+        self.assertIn("border-radius: var(--glaze-shape-hero)", css)
+        self.assertIn('data-glaze-action-group="adaptive"', self._read(BASE_TEMPLATE))
+        self.assertIn('data-glaze-reachability="compact"', self._read(BASE_TEMPLATE))
+        self.assertIn("transform var(--glaze-motion-spatial-fast)", css)
+        self.assertIn("background-color var(--glaze-motion-effects-fast)", css)
+        self.assertIn("border-radius: var(--glaze-shape-pressed)", css)
 
-    def test_manager_preserves_native_form_controls_under_glaze_12(self):
+    def test_manager_preserves_native_form_controls_under_glaze_13(self):
         css = self._read(GLAZE_CSS)
         login = self._read(REPOSITORY_ROOT / "core/templates/core/login.html")
 
@@ -89,6 +106,18 @@ class GlazeUiContractTests(SimpleTestCase):
         self.assertIn("Password {{ form.password }}", login)
         self.assertIn('role="alert"', login)
         self.assertNotIn("role=\"switch\"", login)
+
+    def test_glaze_13_documentation_pins_stable_source_and_material_boundary(self):
+        doc = self._read(GLAZE_DOC)
+
+        self.assertIn("Glaze UI 1.3.0 Stable", doc)
+        self.assertIn("0cd084d9c888a9697cbd9fdd2c4d2bd91286c56c", doc)
+        self.assertIn("Functional Glass", doc)
+        self.assertIn("Solid/Raised", doc)
+        self.assertIn("effects motion", doc)
+        self.assertIn("spatial motion", doc)
+        self.assertIn("compact reachability", doc)
+        self.assertIn("does not currently place controls over rich media", doc)
 
     def test_explicit_appearance_is_applied_before_stylesheets(self):
         base = self._read(BASE_TEMPLATE)
