@@ -1,0 +1,56 @@
+{% extends "core/base.html" %}
+{% block title %}Privacy Shield — GoreeCloud Manager{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Platform privacy visibility</p>
+  <h1>GoreeCloud Privacy Shield</h1>
+  <p>Manager displays only sanitized Privacy Shield capability and acceptance status. Runtime applications remain authoritative for privacy enforcement, and Manager does not collect raw browsing, DNS, network, credential, or identifying activity for this view.</p>
+  <div class="release">Development release {{ release }}</div>
+</section>
+
+<section class="integration-section">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Read-only privacy status</p>
+      <h2>{{ privacy_shield.product }}</h2>
+    </div>
+    <span class="status status-{{ privacy_shield.state }}">{{ privacy_shield.state }}</span>
+  </div>
+
+  <article class="protection-card native-protection-card">
+    <div class="card-topline">
+      <span class="category">Privacy Shield status contract</span>
+      <span class="item-state {% if privacy_shield.production_approved %}item-good{% else %}item-warning{% endif %}">
+        {% if privacy_shield.production_approved %}Production approved{% else %}Acceptance pending{% endif %}
+      </span>
+    </div>
+    <h3>Privacy boundary</h3>
+    <p>{{ privacy_shield.detail }}</p>
+    <dl class="detail-grid">
+      <div><dt>Runtime authority</dt><dd>{% if privacy_shield.producer %}{{ privacy_shield.producer }}{% else %}Not available{% endif %}</dd></div>
+      <div><dt>Status generated</dt><dd>{% if privacy_shield.generated_at %}{{ privacy_shield.generated_at }}{% else %}Not available{% endif %}</dd></div>
+      <div><dt>Manager role</dt><dd>Read-only status consumer</dd></div>
+      <div><dt>Raw private activity</dt><dd>Not accepted by contract</dd></div>
+    </dl>
+  </article>
+
+  {% if privacy_shield.capabilities %}
+    <div class="detail-list" aria-label="Privacy Shield capabilities">
+      {% for capability in privacy_shield.capabilities %}
+        <article class="detail-card">
+          <div class="card-topline">
+            <span class="category">Privacy capability</span>
+            <span class="item-state {% if capability.state == 'active' %}item-good{% elif capability.state == 'pending-acceptance' %}item-warning{% endif %}">{{ capability.state }}</span>
+          </div>
+          <h3>{{ capability.id }}</h3>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <article class="card integration-message">
+      <h3>No validated Privacy Shield capability status is available</h3>
+      <p>{{ privacy_shield.detail }}</p>
+    </article>
+  {% endif %}
+</section>
+{% endblock %}
