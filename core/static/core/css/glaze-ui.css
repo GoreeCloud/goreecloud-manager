@@ -1,13 +1,14 @@
 /*
- * GoreeCloud Manager — Glaze UI 1.1.0 conformance layer
+ * GoreeCloud Manager — Glaze UI 1.2.0 conformance layer
  *
  * app.css owns Manager-specific layout and component presentation. This file
- * owns cross-cutting Glaze UI identity, accessibility, interaction, and browser
- * capability fallbacks so those requirements remain easy to audit.
+ * owns cross-cutting Glaze UI identity, accessibility, interaction, form
+ * semantics, and browser capability fallbacks so those requirements remain
+ * easy to audit.
  */
 
 :root {
-  --glaze-contract-version: "1.1.0";
+  --glaze-contract-version: "1.2.0";
   --glaze-canvas: var(--bg);
   --glaze-surface: var(--surface);
   --glaze-surface-strong: var(--surface-strong);
@@ -20,6 +21,12 @@
   --glaze-success: var(--good);
   --glaze-warning: var(--warning);
   --glaze-danger: var(--danger);
+  --glaze-focus-ring: var(--accent);
+  --glaze-selection: var(--accent-surface);
+  --glaze-placeholder-opacity: .72;
+  --glaze-control-field-gap: .5rem;
+  --glaze-control-group-gap: 1rem;
+  --glaze-control-message-gap: .375rem;
   --glaze-target-min: 2.75rem;
   --glaze-state-hover: .08;
   --glaze-state-pressed: .12;
@@ -44,19 +51,42 @@
 .nav-link,
 .theme-toggle,
 .link-button,
-button {
+button,
+input:not([type="hidden"]),
+select,
+textarea {
   min-block-size: var(--glaze-target-min);
 }
 
-a:focus-visible {
-  outline: none;
+/* Glaze UI 1.2 keeps field composition explicit without replacing native controls. */
+.auth-card form {
+  display: grid;
+  gap: var(--glaze-control-group-gap);
+}
+
+.auth-card label {
+  gap: var(--glaze-control-field-gap);
+  margin: 0;
+}
+
+.auth-card .error {
+  margin: 0 0 var(--glaze-control-message-gap);
+}
+
+input::placeholder,
+textarea::placeholder {
+  opacity: var(--glaze-placeholder-opacity);
+}
+
+:where(.brand, .nav-link, .theme-toggle, .link-button, button, input, select, textarea, a):focus-visible {
+  outline: 3px solid var(--glaze-focus-ring);
+  outline-offset: 2px;
   box-shadow: var(--focus);
-  border-radius: var(--radius-sm);
 }
 
 ::selection {
-  color: var(--text);
-  background: var(--accent-surface);
+  color: var(--glaze-text);
+  background: var(--glaze-selection);
 }
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
@@ -65,7 +95,9 @@ a:focus-visible {
   .theme-toggle,
   .link-button,
   button,
-  input {
+  input,
+  select,
+  textarea {
     transition:
       background-color 140ms ease,
       border-color 140ms ease,
@@ -148,7 +180,9 @@ a:focus-visible {
   .auth-card,
   .theme-toggle,
   .link-button,
-  .auth-card input {
+  .auth-card input,
+  .auth-card select,
+  .auth-card textarea {
     border-width: 2px;
   }
 }
@@ -184,7 +218,10 @@ a:focus-visible {
   .nav-link,
   .status,
   .release,
-  .auth-card input {
+  .auth-card input,
+  .auth-card select,
+  .auth-card textarea,
+  .error {
     background: Canvas;
     color: CanvasText;
     border-color: CanvasText;
@@ -217,6 +254,8 @@ a:focus-visible {
   .link-button:focus-visible,
   button:focus-visible,
   input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
   a:focus-visible {
     outline: 2px solid Highlight;
     outline-offset: 3px;
