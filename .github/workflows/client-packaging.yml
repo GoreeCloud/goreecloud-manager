@@ -62,7 +62,7 @@ jobs:
 
   debian-package:
     runs-on: ubuntu-24.04
-    container: debian:13
+    container: ubuntu:22.04
     timeout-minutes: 30
     steps:
       - name: Install build prerequisites
@@ -70,7 +70,11 @@ jobs:
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             ca-certificates git python3 python3-venv python3-pip python3-dev build-essential \
-            patchelf dpkg-dev libgl1 libegl1 libdbus-1-3 libxkbcommon0 libxcb-cursor0
+            binutils patchelf dpkg-dev libgl1 libegl1 libdbus-1-3 libxkbcommon0 libxcb-cursor0
+      - name: Verify Jammy compatibility baseline
+        run: |
+          test "$(getconf GNU_LIBC_VERSION)" = "glibc 2.35"
+          python3 --version
       - name: Check out exact source revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -86,8 +90,17 @@ jobs:
         env:
           PATH: /tmp/manager-build-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
         run: bash packaging/build-deb.sh
+      - name: Verify bundled Python glibc requirement
+        run: |
+          LIBPYTHON="$(find build/pyinstaller-dist/goreecloud-manager -type f -name 'libpython*.so*' -print -quit)"
+          test -n "${LIBPYTHON}"
+          if objdump -T "${LIBPYTHON}" | grep -Eq 'GLIBC_2\.(3[6-9]|[4-9][0-9])'; then
+            echo "Bundled Python requires glibc newer than the Jammy 2.35 baseline." >&2
+            objdump -T "${LIBPYTHON}" | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -Vu | tail -n 10 >&2
+            exit 1
+          fi
       - name: Inspect package metadata
-        run: dpkg-deb --info dist/goreecloud-manager_0.2.7_amd64.deb
+        run: dpkg-deb --info dist/goreecloud-manager_0.2.8_amd64.deb
       - name: Upload Debian acceptance artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -95,5 +108,5 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           path: |
-            dist/goreecloud-manager_0.2.7_amd64.deb
-            dist/goreecloud-manager_0.2.7_amd64.deb.sha256
+            dist/goreecloud-manager_0.2.8_amd64.deb
+            dist/goreecloud-manager_0.2.8_amd64.deb.sha256
