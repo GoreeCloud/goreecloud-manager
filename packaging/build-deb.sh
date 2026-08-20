@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="${MANAGER_VERSION:-0.2.8}"
+VERSION="${MANAGER_VERSION:-0.2.9}"
 ARCH="${MANAGER_ARCH:-amd64}"
 BUILD_ROOT="${ROOT}/build/deb"
 APP_ROOT="${BUILD_ROOT}/opt/goreecloud-manager"
@@ -24,12 +24,20 @@ python3 -m PyInstaller \
   --clean \
   --name goreecloud-manager \
   --onedir \
+  --collect-all PySide6 \
   --distpath "${ROOT}/build/pyinstaller-dist" \
   --workpath "${ROOT}/build/pyinstaller-work" \
   --specpath "${ROOT}/build" \
   "${ROOT}/desktop-client/run.py"
 
-cp -a "${ROOT}/build/pyinstaller-dist/goreecloud-manager/." "${APP_ROOT}/"
+PYI_ROOT="${ROOT}/build/pyinstaller-dist/goreecloud-manager"
+XCB_PLUGIN="$(find "${PYI_ROOT}" -type f -name 'libqxcb.so' -print -quit)"
+if [[ -z "${XCB_PLUGIN}" ]]; then
+  echo "PyInstaller output is missing the Qt xcb platform plugin (libqxcb.so)." >&2
+  exit 1
+fi
+
+cp -a "${PYI_ROOT}/." "${APP_ROOT}/"
 install -m 0644 "${ROOT}/desktop-client/assets/goreecloud-manager.svg" "${ICON_ROOT}/goreecloud-manager.svg"
 
 cat > "${BIN_ROOT}/goreecloud-manager" <<'EOF'
@@ -59,7 +67,7 @@ Section: admin
 Priority: optional
 Architecture: ${ARCH}
 Maintainer: GoreeCloud
-Depends: openssh-client
+Depends: openssh-client, libgl1, libegl1, libdbus-1-3, libxkbcommon0, libxkbcommon-x11-0, libxcb1, libxcb-cursor0, libxcb-xinerama0, libxcb-xkb1
 Description: GoreeCloud Manager desktop operations console
  Privacy-first, read-only GoreeCloud administration and monitoring client using the Glaze UI design language and Wardveil Security conventions.
 EOF
