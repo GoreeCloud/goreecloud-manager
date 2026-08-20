@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="${MANAGER_VERSION:-0.2.7}"
+VERSION="${MANAGER_VERSION:-0.2.8}"
 ARCH="${MANAGER_ARCH:-amd64}"
 BUILD_ROOT="${ROOT}/build/deb"
 APP_ROOT="${BUILD_ROOT}/opt/goreecloud-manager"
