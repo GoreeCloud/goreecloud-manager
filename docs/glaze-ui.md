@@ -4,6 +4,8 @@
 
 This document defines the repository-local implementation contract for the GoreeCloud Manager interface. Manager uses **Glaze UI** as its complete visual and interaction language while preserving the application's read-only security model and the authority of integrated systems.
 
+Manager targets **Glaze UI 1.2.0 Stable**. The canonical design-system source is `GoreeCloud/glaze-ui` at Stable merge revision `3594c056dfb4afe118c3900eecf7e4ceaf084046`. Manager maps those semantics into its existing product layer instead of copying the canonical reference stylesheet wholesale.
+
 This implementation is governed by the shared GoreeCloud Glaze UI Design Language, the Application Branding and User Interface Design Standard, Privacy by Default, and the Code Structure and Documentation Standard. Repository-local rules may make those requirements more specific but do not weaken them.
 
 ## Source structure
@@ -12,7 +14,7 @@ The presentation layer is deliberately small and auditable:
 
 - `core/templates/core/base.html` — shared application shell, GoreeCloud identity, browser metadata, navigation, appearance control, and main-content landmark.
 - `core/static/core/css/app.css` — Manager-specific layout, component presentation, semantic states, responsive grids, and product-level visual tokens.
-- `core/static/core/css/glaze-ui.css` — cross-cutting Glaze UI conformance for identity, touch targets, focus behavior, interaction motion, contrast, forced colors, and browser capability fallbacks.
+- `core/static/core/css/glaze-ui.css` — cross-cutting Glaze UI conformance for identity, touch targets, focus behavior, interaction motion, form semantics, contrast, forced colors, and browser capability fallbacks.
 - `core/static/core/js/theme.js` — browser-local System/Light/Dark appearance preference with no server or third-party transmission.
 - `core/static/core/img/manager-mark.svg` — GoreeCloud-controlled local Manager mark used by the application shell and browser favicon.
 
@@ -28,11 +30,27 @@ The shared visual vocabulary includes:
 - softened rounded geometry for cards, controls, navigation, fields, and status pills;
 - restrained shadows for hierarchy rather than heavy borders;
 - purposeful gradients that provide GoreeCloud character without competing with operational content;
-- consistent typography, spacing, radii, and semantic state presentation;
+- consistent typography, spacing, radii, semantic state presentation, focus treatment, and text selection;
 - high-quality System, Light, and Dark appearance behavior;
 - responsive information layouts for desktop, laptop, tablet, and mobile administration.
 
 Glass effects are hierarchy tools, not a requirement on every element. Readability and operational comprehension take precedence over decoration.
+
+## Glaze UI 1.2 application-interface mapping
+
+Manager consumes the 1.2 semantic expansion without inventing controls that the product does not need.
+
+The product layer explicitly maps:
+
+- dedicated focus-ring semantics to Manager's established accent identity;
+- text-selection semantics to Manager's existing accent surface;
+- canonical placeholder opacity;
+- canonical field, group, and message spacing relationships;
+- 44-pixel minimum targets for actionable and form controls;
+- native browser input, select, and textarea behavior rather than unnecessary custom replacements;
+- stronger forced-colors coverage for form controls and error presentation.
+
+The current Manager interface does not require checkbox, radio, switch, segmented-control, progress, or banner primitives solely to satisfy the design-system vocabulary. When one of those controls becomes functionally necessary, it must use the corresponding 1.2 semantic and accessibility contract rather than a product-local substitute.
 
 ## GoreeCloud identity
 
@@ -71,8 +89,9 @@ The shared shell must preserve:
 
 - semantic header, navigation, and main landmarks;
 - a keyboard-accessible skip link targeting a programmatically focusable main region;
-- visible focus indicators for links, buttons, and fields;
+- visible semantic focus indicators for links, buttons, fields, selects, and textareas;
 - practical minimum 44-pixel control targets;
+- persistent visible form labels for the authentication workflow;
 - readable contrast in both themes;
 - keyboard operation for navigation, sign-in, appearance selection, and sign-out;
 - reduced-motion behavior;
@@ -121,6 +140,9 @@ python manage.py test
 The Django suite includes source- and rendered-shell regression coverage for:
 
 - GoreeCloud Manager identity and local mark;
+- exact Glaze UI 1.2.0 consumer version declaration;
+- dedicated 1.2 focus-ring, selection, placeholder, and form-spacing semantics;
+- native form-control preservation and minimum target sizing;
 - noindex/noarchive and same-origin browser metadata;
 - shared-shell inheritance by primary surfaces;
 - local-only browser presentation dependencies;
