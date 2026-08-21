@@ -6,9 +6,9 @@ usage() {
 Usage:
   bash android-client/scripts/verify-apk-metadata.sh <debug-apk> <unsigned-release-apk> <evidence-output>
 
-The verifier requires Android SDK apkanalyzer, resolved from APKA_ANALYZER,
+The verifier requires Android SDK apkanalyzer, resolved from APKANALYZER,
 PATH, ANDROID_HOME, or ANDROID_SDK_ROOT. It records only non-secret package
-identity and release metadata.
+identity, release metadata, and SHA-256 artifact identity.
 EOF
 }
 
@@ -29,8 +29,8 @@ for apk in "$DEBUG_APK" "$RELEASE_APK"; do
 done
 
 resolve_apkanalyzer() {
-  if [[ -n "${APKA_ANALYZER:-}" ]]; then
-    printf '%s\n' "$APKA_ANALYZER"
+  if [[ -n "${APKANALYZER:-}" ]]; then
+    printf '%s\n' "$APKANALYZER"
     return
   fi
 
@@ -75,6 +75,7 @@ DEBUG_VERSION_CODE="$(query "$DEBUG_APK" version-code)"
 DEBUG_MIN_SDK="$(query "$DEBUG_APK" min-sdk)"
 DEBUG_TARGET_SDK="$(query "$DEBUG_APK" target-sdk)"
 DEBUG_DEBUGGABLE="$(query "$DEBUG_APK" debuggable)"
+DEBUG_SHA256="$(sha256sum "$DEBUG_APK" | awk '{print $1}')"
 
 RELEASE_APPLICATION_ID="$(query "$RELEASE_APK" application-id)"
 RELEASE_VERSION_NAME="$(query "$RELEASE_APK" version-name)"
@@ -82,6 +83,7 @@ RELEASE_VERSION_CODE="$(query "$RELEASE_APK" version-code)"
 RELEASE_MIN_SDK="$(query "$RELEASE_APK" min-sdk)"
 RELEASE_TARGET_SDK="$(query "$RELEASE_APK" target-sdk)"
 RELEASE_DEBUGGABLE="$(query "$RELEASE_APK" debuggable)"
+RELEASE_SHA256="$(sha256sum "$RELEASE_APK" | awk '{print $1}')"
 
 require_equal "Debug application ID" "$DEBUG_APPLICATION_ID" "com.goreecloud.manager.debug"
 require_equal "Debug version name" "$DEBUG_VERSION_NAME" "0.1.0-debug"
@@ -102,6 +104,7 @@ umask 077
 cat > "$EVIDENCE_OUTPUT" <<EOF
 GoreeCloud Manager Android package metadata acceptance
 
+debug.sha256=$DEBUG_SHA256
 debug.application_id=$DEBUG_APPLICATION_ID
 debug.version_name=$DEBUG_VERSION_NAME
 debug.version_code=$DEBUG_VERSION_CODE
@@ -109,6 +112,7 @@ debug.min_sdk=$DEBUG_MIN_SDK
 debug.target_sdk=$DEBUG_TARGET_SDK
 debug.debuggable=$DEBUG_DEBUGGABLE
 
+release.sha256=$RELEASE_SHA256
 release.application_id=$RELEASE_APPLICATION_ID
 release.version_name=$RELEASE_VERSION_NAME
 release.version_code=$RELEASE_VERSION_CODE
