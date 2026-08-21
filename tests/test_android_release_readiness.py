@@ -46,6 +46,7 @@ class AndroidReleaseReadinessContractTests(TestCase):
     def test_metadata_helper_enforces_production_and_debug_package_identities(self):
         source = METADATA_SCRIPT.read_text(encoding="utf-8")
         self.assertIn("set -euo pipefail", source)
+        self.assertIn("APKANALYZER", source)
         self.assertIn("apkanalyzer", source)
         self.assertIn('"com.goreecloud.manager.debug"', source)
         self.assertIn('"com.goreecloud.manager"', source)
@@ -55,6 +56,9 @@ class AndroidReleaseReadinessContractTests(TestCase):
         self.assertIn('"35"', source)
         self.assertIn('"true"', source)
         self.assertIn('"false"', source)
+        self.assertIn("sha256sum", source)
+        self.assertIn("debug.sha256=", source)
+        self.assertIn("release.sha256=", source)
         self.assertIn("release.application_id=", source)
         self.assertIn("release.debuggable=", source)
 
@@ -109,3 +113,4 @@ class AndroidReleaseReadinessContractTests(TestCase):
         self.assertIn("com.goreecloud.manager.debug", source)
         self.assertIn("com.goreecloud.manager", source)
         self.assertIn("android-package-metadata.txt", source)
+        self.assertIn("SHA-256", source)
