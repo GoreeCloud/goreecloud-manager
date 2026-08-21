@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 from unittest import TestCase
 
@@ -6,6 +7,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "client-packaging.yml"
 SIGNING_SCRIPT = REPOSITORY_ROOT / "android-client" / "scripts" / "sign-release-apk.sh"
 SIGNING_DOC = REPOSITORY_ROOT / "docs" / "android-release-signing.md"
+BUILD_GRADLE = REPOSITORY_ROOT / "android-client" / "app" / "build.gradle.kts"
 GITIGNORE = REPOSITORY_ROOT / ".gitignore"
 
 
@@ -17,8 +19,18 @@ class AndroidReleaseReadinessContractTests(TestCase):
         self.assertIn("app-release-unsigned.apk", source)
         self.assertIn("goreecloud-manager-android-debug", source)
         self.assertIn("goreecloud-manager-android-release-unsigned", source)
+        self.assertIn("Verify release acceptance APK is unsigned", source)
+        self.assertIn("APKSIGNER_BIN", source)
+        self.assertIn("unexpectedly signed", source)
         self.assertNotIn("ANDROID_KEYSTORE_PASSWORD", source)
         self.assertNotIn("ANDROID_KEY_PASSWORD", source)
+
+    def test_release_variant_has_no_repository_signing_configuration(self):
+        source = BUILD_GRADLE.read_text(encoding="utf-8")
+        self.assertIn("release {", source)
+        self.assertIn("isDebuggable = false", source)
+        self.assertNotIn("signingConfig", source)
+        self.assertNotIn("signingConfigs", source)
 
     def test_signing_helper_requires_external_key_material_and_fails_closed(self):
         source = SIGNING_SCRIPT.read_text(encoding="utf-8")
@@ -37,6 +49,15 @@ class AndroidReleaseReadinessContractTests(TestCase):
         self.assertIn("Refusing to overwrite", source)
         self.assertNotIn("--ks-pass pass:", source)
         self.assertNotIn("--key-pass pass:", source)
+
+    def test_signing_helper_has_valid_bash_syntax(self):
+        result = subprocess.run(
+            ["bash", "-n", str(SIGNING_SCRIPT)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_common_android_signing_containers_are_ignored(self):
         source = GITIGNORE.read_text(encoding="utf-8")
