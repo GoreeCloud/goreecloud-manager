@@ -45,12 +45,18 @@ jobs:
         with:
           gradle-version: '8.10.2'
           cache-provider: basic
-      - name: Build debug acceptance APK
+      - name: Build debug and unsigned release acceptance APKs
         working-directory: android-client
-        run: gradle --no-daemon --stacktrace assembleDebug
-      - name: Record APK checksum
-        run: sha256sum android-client/app/build/outputs/apk/debug/app-debug.apk > android-client/app/build/outputs/apk/debug/app-debug.apk.sha256
-      - name: Upload Android acceptance artifact
+        run: gradle --no-daemon --stacktrace assembleDebug assembleRelease
+      - name: Verify Android acceptance outputs
+        run: |
+          test -f android-client/app/build/outputs/apk/debug/app-debug.apk
+          test -f android-client/app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Record APK checksums
+        run: |
+          sha256sum android-client/app/build/outputs/apk/debug/app-debug.apk > android-client/app/build/outputs/apk/debug/app-debug.apk.sha256
+          sha256sum android-client/app/build/outputs/apk/release/app-release-unsigned.apk > android-client/app/build/outputs/apk/release/app-release-unsigned.apk.sha256
+      - name: Upload Android debug acceptance artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: goreecloud-manager-android-debug
@@ -59,6 +65,15 @@ jobs:
           path: |
             android-client/app/build/outputs/apk/debug/app-debug.apk
             android-client/app/build/outputs/apk/debug/app-debug.apk.sha256
+      - name: Upload Android unsigned release acceptance artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: goreecloud-manager-android-release-unsigned
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            android-client/app/build/outputs/apk/release/app-release-unsigned.apk
+            android-client/app/build/outputs/apk/release/app-release-unsigned.apk.sha256
 
   debian-package:
     runs-on: ubuntu-24.04
