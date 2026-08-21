@@ -6,7 +6,7 @@
     "approval_reference": null,
     "approved_at": null
   },
-  "declared_effective_check_count": 6,
+  "declared_effective_check_count": 8,
   "source_evidence_gates": [
     {
       "workflow_path": ".github/workflows/ci.yml",
@@ -47,6 +47,15 @@
         "monitoring-alert-readiness"
       ],
       "evidence_scope": "private external health monitoring, fixed monitor source, least-privilege alert ACLs, outage and recovery transitions, and alert-data minimization"
+    },
+    {
+      "workflow_path": ".github/workflows/client-packaging.yml",
+      "workflow_name": "Client packaging",
+      "required_jobs": [
+        "android-apk",
+        "debian-package"
+      ],
+      "evidence_scope": "exact-revision Android acceptance APK and Debian desktop package builds, hardened Android network boundary, official Manager client identity, package metadata inspection, and artifact checksums"
     },
     {
       "workflow_path": ".github/workflows/production-readiness-evidence-manifest.yml",

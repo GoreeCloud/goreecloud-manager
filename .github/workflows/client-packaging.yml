@@ -1,0 +1,117 @@
+name: Client packaging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-client/**'
+      - 'desktop-client/**'
+      - 'packaging/**'
+      - '.github/workflows/client-packaging.yml'
+      - 'scripts/manager_production_readiness_manifest.json'
+  pull_request:
+    paths:
+      - 'android-client/**'
+      - 'desktop-client/**'
+      - 'packaging/**'
+      - '.github/workflows/client-packaging.yml'
+      - 'scripts/manager_production_readiness_manifest.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manager-client-packaging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          gradle-version: '8.10.2'
+          cache-provider: basic
+      - name: Build debug acceptance APK
+        working-directory: android-client
+        run: gradle --no-daemon --stacktrace assembleDebug
+      - name: Record APK checksum
+        run: sha256sum android-client/app/build/outputs/apk/debug/app-debug.apk > android-client/app/build/outputs/apk/debug/app-debug.apk.sha256
+      - name: Upload Android acceptance artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: goreecloud-manager-android-debug
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            android-client/app/build/outputs/apk/debug/app-debug.apk
+            android-client/app/build/outputs/apk/debug/app-debug.apk.sha256
+
+  debian-package:
+    runs-on: ubuntu-24.04
+    container: ubuntu:22.04
+    timeout-minutes: 30
+    steps:
+      - name: Install build prerequisites
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates git python3 python3-venv python3-pip python3-dev build-essential \
+            binutils patchelf dpkg-dev libgl1 libegl1 libdbus-1-3 libxkbcommon0 \
+            libxkbcommon-x11-0 libxcb1 libxcb-cursor0 libxcb-xinerama0 libxcb-xkb1
+      - name: Verify Jammy compatibility baseline
+        run: |
+          test "$(getconf GNU_LIBC_VERSION)" = "glibc 2.35"
+          python3 --version
+      - name: Check out exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Create isolated packaging environment
+        run: |
+          python3 -m venv /tmp/manager-build-venv
+          /tmp/manager-build-venv/bin/python -m pip install --disable-pip-version-check --no-cache-dir \
+            -r desktop-client/requirements.txt pyinstaller==6.15.0
+          /tmp/manager-build-venv/bin/python -m pip check
+      - name: Build Debian acceptance package
+        env:
+          PATH: /tmp/manager-build-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+        run: bash packaging/build-deb.sh
+      - name: Verify Qt platform plugins
+        run: |
+          find build/pyinstaller-dist/goreecloud-manager -type f -name 'libqxcb.so' -print -quit | grep -q .
+          echo "Qt xcb platform plugin present."
+      - name: Verify bundled Python glibc requirement
+        run: |
+          LIBPYTHON="$(find build/pyinstaller-dist/goreecloud-manager -type f -name 'libpython*.so*' -print -quit)"
+          test -n "${LIBPYTHON}"
+          if objdump -T "${LIBPYTHON}" | grep -Eq 'GLIBC_2\.(3[6-9]|[4-9][0-9])'; then
+            echo "Bundled Python requires glibc newer than the Jammy 2.35 baseline." >&2
+            objdump -T "${LIBPYTHON}" | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -Vu | tail -n 10 >&2
+            exit 1
+          fi
+      - name: Inspect package metadata
+        run: dpkg-deb --info dist/goreecloud-manager_0.2.9_amd64.deb
+      - name: Upload Debian acceptance artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: goreecloud-manager-debian-amd64
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist/goreecloud-manager_0.2.9_amd64.deb
+            dist/goreecloud-manager_0.2.9_amd64.deb.sha256

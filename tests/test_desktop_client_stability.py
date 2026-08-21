@@ -132,6 +132,6 @@ class DesktopClientStabilityContractTests(TestCase):
         for command in prohibited_commands:
             self.assertNotIn(command, source)
 
-    def test_stabilization_version_is_0_2_7(self):
+    def test_stabilization_version_is_0_2_9(self):
         source = (PACKAGE_ROOT / "__init__.py").read_text(encoding="utf-8")
-        self.assertIn('__version__ = "0.2.7"', source)
+        self.assertIn('__version__ = "0.2.9"', source)
