@@ -14,6 +14,12 @@ staticfiles/
 .env.*
 !.env.example
 
+# Android signing material
+*.jks
+*.keystore
+*.p12
+*.pfx
+
 # Local delegated integration data
 runtime/
 
