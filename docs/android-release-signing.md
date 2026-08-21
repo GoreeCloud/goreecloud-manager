@@ -28,7 +28,7 @@ Before either Android artifact is retained, CI runs `android-client/scripts/veri
 - debug package debuggable state: `true`;
 - release package debuggable state: `false`.
 
-The verifier records these non-secret results in `android-package-metadata.txt`. The Client packaging workflow includes that evidence file with both Android acceptance artifacts. This prevents a production signing operation from beginning with a package that accidentally carries the debug application ID, debug version suffix, wrong SDK contract, wrong version identity, or a debuggable release manifest.
+The verifier also computes SHA-256 for both APKs and records the hashes with those package properties in `android-package-metadata.txt`. The Client packaging workflow includes that evidence file with both Android acceptance artifacts. The hash binding means the metadata evidence identifies the exact APK bytes it describes rather than merely describing a package with the same filename. This prevents a production signing operation from beginning with a package that accidentally carries the debug application ID, debug version suffix, wrong SDK contract, wrong version identity, a debuggable release manifest, or bytes that differ from the accepted metadata evidence.
 
 This metadata contract is intentionally explicit. A future Android version or SDK change must update the Gradle source, verifier, tests, and release documentation together rather than allowing packaging metadata to drift silently.
 
@@ -53,7 +53,7 @@ Before signing, I verify that:
 
 1. The source revision is the accepted release candidate.
 2. Client packaging passed on that exact revision.
-3. The unsigned release APK checksum matches the retained CI evidence.
+3. The unsigned release APK checksum matches both the retained `.sha256` evidence and `release.sha256` in `android-package-metadata.txt`.
 4. `android-package-metadata.txt` identifies the exact unsigned package as `com.goreecloud.manager`, version `0.1.0` / code `1`, minimum SDK `26`, target SDK `35`, and non-debuggable.
 5. The signing system is trusted and has the approved Android SDK `apksigner` tool.
 6. The approved keystore remains outside the repository and is available only for the controlled signing operation.
