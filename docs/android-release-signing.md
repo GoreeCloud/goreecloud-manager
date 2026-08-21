@@ -68,6 +68,32 @@ bash android-client/scripts/sign-release-apk.sh \
 
 The helper fails closed when required inputs are absent, refuses to sign in place, refuses to overwrite existing signed/evidence outputs, signs with the external keystore, runs `apksigner verify --verbose --print-certs`, and records both a SHA-256 checksum and public signature-verification evidence.
 
+## Post-signing evidence verification
+
+After signing, I run the separate public-evidence verifier before installing or classifying the APK:
+
+```bash
+bash android-client/scripts/verify-signed-release-apk.sh \
+  path/to/app-release-unsigned.apk \
+  path/to/goreecloud-manager-release.apk \
+  path/to/android-package-metadata.txt \
+  APPROVED_PUBLIC_CERTIFICATE_SHA256 \
+  path/to/goreecloud-manager-release.evidence.txt
+```
+
+The expected certificate fingerprint is public identity evidence, not private signing material. The verifier does not read the keystore, private key, keystore password, or key password.
+
+The verifier fails closed unless all of the following are true:
+
+- the unsigned APK SHA-256 exactly matches `release.sha256` from the accepted `android-package-metadata.txt`;
+- the metadata still declares the approved production application ID, version, SDK, and non-debuggable contract;
+- both the unsigned and signed APKs report the same accepted production package identity through Android SDK `apkanalyzer`;
+- Android SDK `apksigner` successfully verifies the signed APK;
+- exactly one signer certificate SHA-256 digest is reported;
+- the reported certificate fingerprint exactly matches the approved GoreeCloud Android signing-certificate SHA-256 fingerprint after harmless case/colon normalization.
+
+The verifier records only non-secret evidence: unsigned and signed APK SHA-256 values, the production package identity, the public certificate fingerprint, the verifier identity, and the successful signature-verification state. It refuses to overwrite an existing evidence file so acceptance records are not silently replaced.
+
 ## Acceptance after signing
 
 A cryptographically valid signature is necessary but not sufficient for release acceptance. Before I classify the Android client as Stable or production accepted, I must also:
