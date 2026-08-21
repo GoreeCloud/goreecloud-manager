@@ -2,7 +2,7 @@
 
 ## Purpose
 
-I use this document to define the GoreeCloud Manager Android release-signing boundary. Source validation, unsigned release packaging, production signing, and real-device acceptance are separate stages. A successful CI build does not by itself make an Android package a production or Stable release.
+I use this document to define the GoreeCloud Manager Android release-signing boundary. Source validation, unsigned release packaging, package-identity validation, production signing, and real-device acceptance are separate stages. A successful CI build does not by itself make an Android package a production or Stable release.
 
 ## Package states
 
@@ -12,6 +12,25 @@ GoreeCloud Manager currently produces two Android acceptance artifacts through t
 - `app-release-unsigned.apk` — non-debuggable release-variant package that is intentionally unsigned and cannot be treated as a production installable release.
 
 The production-signed APK is created only after an approved signing identity is available outside the repository and an administrator explicitly performs the signing operation in a trusted environment.
+
+## Package identity acceptance
+
+Before either Android artifact is retained, CI runs `android-client/scripts/verify-apk-metadata.sh` with Android SDK `apkanalyzer`. The verifier fails closed unless the built packages match the approved source identity contract:
+
+- debug application ID: `com.goreecloud.manager.debug`;
+- debug version name: `0.1.0-debug`;
+- debug version code: `1`;
+- release application ID: `com.goreecloud.manager`;
+- release version name: `0.1.0`;
+- release version code: `1`;
+- minimum SDK: `26` for both variants;
+- target SDK: `35` for both variants;
+- debug package debuggable state: `true`;
+- release package debuggable state: `false`.
+
+The verifier records these non-secret results in `android-package-metadata.txt`. The Client packaging workflow includes that evidence file with both Android acceptance artifacts. This prevents a production signing operation from beginning with a package that accidentally carries the debug application ID, debug version suffix, wrong SDK contract, wrong version identity, or a debuggable release manifest.
+
+This metadata contract is intentionally explicit. A future Android version or SDK change must update the Gradle source, verifier, tests, and release documentation together rather than allowing packaging metadata to drift silently.
 
 ## Signing identity boundary
 
@@ -35,8 +54,9 @@ Before signing, I verify that:
 1. The source revision is the accepted release candidate.
 2. Client packaging passed on that exact revision.
 3. The unsigned release APK checksum matches the retained CI evidence.
-4. The signing system is trusted and has the approved Android SDK `apksigner` tool.
-5. The approved keystore remains outside the repository and is available only for the controlled signing operation.
+4. `android-package-metadata.txt` identifies the exact unsigned package as `com.goreecloud.manager`, version `0.1.0` / code `1`, minimum SDK `26`, target SDK `35`, and non-debuggable.
+5. The signing system is trusted and has the approved Android SDK `apksigner` tool.
+6. The approved keystore remains outside the repository and is available only for the controlled signing operation.
 
 I then set the required environment variables in the trusted administrative environment and run:
 
@@ -53,15 +73,16 @@ The helper fails closed when required inputs are absent, refuses to sign in plac
 A cryptographically valid signature is necessary but not sufficient for release acceptance. Before I classify the Android client as Stable or production accepted, I must also:
 
 - compare the reported signing-certificate fingerprint with the approved GoreeCloud Android signing identity record;
+- verify the signed APK still reports the accepted `android-package-metadata.txt` production identity rather than a debug identity or changed manifest contract;
 - install the exact signed APK on an approved physical Android device;
 - verify launch, authentication, HTTPS-only navigation, TLS failure handling, external-navigation rejection, loading/error/retry behavior, application identity, and representative Glaze UI behavior;
-- verify that the signed application retains the intended `com.goreecloud.manager` production application ID rather than the debug application ID;
-- record the exact source revision, unsigned artifact checksum, signed artifact checksum, certificate fingerprint evidence, device acceptance result, and release classification without recording private signing material.
+- verify that the signed application retains the intended `com.goreecloud.manager` production application ID rather than `com.goreecloud.manager.debug`;
+- record the exact source revision, unsigned artifact checksum, signed artifact checksum, package-metadata evidence, certificate fingerprint evidence, device acceptance result, and release classification without recording private signing material.
 
 ## GitHub Actions boundary
 
-I do not add an automatically usable production-signing workflow until the repository has an explicitly protected signing environment with appropriate approval controls and externally stored signing secrets. Referencing an unprotected or automatically created environment would weaken the approval boundary. Until that protection exists, CI stops at the unsigned release artifact and the repository-owned signing helper provides the controlled handoff.
+I do not add an automatically usable production-signing workflow until the repository has an explicitly protected signing environment with appropriate approval controls and externally stored signing secrets. Referencing an unprotected or automatically created environment would weaken the approval boundary. Until that protection exists, CI stops at the validated unsigned release artifact and the repository-owned signing helper provides the controlled handoff.
 
 ## Rollback and recovery
 
-The unsigned release artifact contains no signing secret. Removing the unsigned artifact or reverting the source changes requires no signing-key rollback. If a signing identity is suspected of compromise, I stop release signing, preserve evidence, and follow the separate credential/key-recovery process rather than modifying repository history to conceal the event.
+The unsigned release artifact and `android-package-metadata.txt` contain no signing secret. Removing the unsigned artifact or reverting the source changes requires no signing-key rollback. If a signing identity is suspected of compromise, I stop release signing, preserve evidence, and follow the separate credential/key-recovery process rather than modifying repository history to conceal the event.
