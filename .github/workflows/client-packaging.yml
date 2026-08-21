@@ -52,6 +52,18 @@ jobs:
         run: |
           test -f android-client/app/build/outputs/apk/debug/app-debug.apk
           test -f android-client/app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Verify release acceptance APK is unsigned
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "${SDK_ROOT}"
+          APKSIGNER_BIN="$(find "${SDK_ROOT}/build-tools" -mindepth 2 -maxdepth 2 -type f -name apksigner -print | sort -V | tail -n 1)"
+          test -n "${APKSIGNER_BIN}"
+          test -x "${APKSIGNER_BIN}"
+          if "${APKSIGNER_BIN}" verify android-client/app/build/outputs/apk/release/app-release-unsigned.apk; then
+            echo "Release acceptance APK is unexpectedly signed." >&2
+            exit 1
+          fi
+          echo "Release acceptance APK is unsigned as required."
       - name: Record APK checksums
         run: |
           sha256sum android-client/app/build/outputs/apk/debug/app-debug.apk > android-client/app/build/outputs/apk/debug/app-debug.apk.sha256
