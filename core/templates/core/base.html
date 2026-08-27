@@ -29,6 +29,7 @@
         {% if user.is_authenticated %}
           <nav class="primary-nav" aria-label="Primary" data-glaze-action-group="adaptive">
             <a class="nav-link" href="{% url 'overview' %}" {% if request.resolver_match.url_name == 'overview' %}aria-current="page"{% endif %}>Overview</a>
+            <a class="nav-link" href="{% url 'everkeep' %}" {% if request.resolver_match.url_name == 'everkeep' %}aria-current="page"{% endif %}>Everkeep</a>
             <a class="nav-link" href="{% url 'privacy-shield' %}" {% if request.resolver_match.url_name == 'privacy-shield' %}aria-current="page"{% endif %}>Privacy Shield</a>
             <a class="nav-link" href="{% url 'tasks' %}" {% if request.resolver_match.url_name == 'tasks' %}aria-current="page"{% endif %}>Tasks</a>
           </nav>
