@@ -18,6 +18,7 @@ from django.views.decorators.http import require_GET, require_safe
 
 from core.request_context import get_request_id
 from integrations.beszel import BeszelStatus, beszel_status
+from integrations.everkeep import EverkeepSnapshot, everkeep_snapshot
 from integrations.healthchecks import HealthchecksSnapshot, healthchecks_snapshot
 from integrations.kopia import KopiaStatus, kopia_status
 from integrations.netbird import NetBirdSnapshot, netbird_snapshot
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 SnapshotFactory = Callable[[], Any]
 FailureFactory = Callable[[str], Any]
 
-MAX_OUTSTANDING_INTEGRATION_JOBS = 6
+MAX_OUTSTANDING_INTEGRATION_JOBS = 7
 _INTEGRATION_EXECUTOR = ThreadPoolExecutor(
     max_workers=MAX_OUTSTANDING_INTEGRATION_JOBS,
     thread_name_prefix="manager-integration",
@@ -76,6 +77,10 @@ def _beszel_failure(detail: str) -> BeszelStatus:
 
 def _kopia_failure(detail: str) -> KopiaStatus:
     return KopiaStatus(state="unavailable", detail=detail)
+
+
+def _everkeep_failure(detail: str) -> EverkeepSnapshot:
+    return EverkeepSnapshot(state="unavailable", detail=detail)
 
 
 def _tasks_failure(detail: str) -> TasksSnapshot:
@@ -148,6 +153,7 @@ def _overview_snapshots() -> dict[str, Any]:
         str,
         tuple[str, SnapshotFactory, FailureFactory],
     ] = {
+        "everkeep": ("Everkeep", everkeep_snapshot, _everkeep_failure),
         "netbird": ("NetBird", netbird_snapshot, _netbird_failure),
         "healthchecks": ("Healthchecks", healthchecks_snapshot, _healthchecks_failure),
         "uptime_kuma": ("Uptime Kuma", uptime_kuma_snapshot, _uptime_kuma_failure),
@@ -218,6 +224,7 @@ def _single_snapshot(
 def overview(request):
     """Render the authenticated platform overview."""
     snapshots = _overview_snapshots()
+    everkeep = snapshots["everkeep"]
     netbird = snapshots["netbird"]
     healthchecks = snapshots["healthchecks"]
     uptime_kuma = snapshots["uptime_kuma"]
@@ -229,6 +236,7 @@ def overview(request):
         "core/overview.html",
         {
             "integrations": integration_statuses(
+                everkeep_status=everkeep.integration_status(),
                 netbird_status=netbird.integration_status(),
                 healthchecks_status=healthchecks.integration_status(),
                 uptime_kuma_status=uptime_kuma.integration_status(),
@@ -236,6 +244,7 @@ def overview(request):
                 kopia_status=kopia.integration_status(),
                 tasks_status=tasks.integration_status(),
             ),
+            "everkeep": everkeep,
             "netbird": netbird,
             "healthchecks": healthchecks,
             "uptime_kuma": uptime_kuma,
