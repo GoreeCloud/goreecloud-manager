@@ -1,0 +1,84 @@
+{% extends "core/base.html" %}
+{% block title %}Everkeep · GoreeCloud Manager{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Resilience and recovery visibility</p>
+  <h1>Everkeep</h1>
+  <p>{{ everkeep.message }}</p>
+  <div class="release">Development release {{ release }}</div>
+</section>
+
+<section class="integration-section" aria-labelledby="everkeep-readiness-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Read-only resilience contract</p>
+      <h2 id="everkeep-readiness-heading">Recovery readiness</h2>
+    </div>
+    <span class="status status-{{ everkeep.state }}">{{ everkeep.state }}</span>
+  </div>
+
+  <div class="metrics-grid metrics-grid-four">
+    <article class="metric-card">
+      <span>Recovery readiness</span>
+      <strong>{{ everkeep.recovery_readiness }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Backup verification</span>
+      <strong>{{ everkeep.backup_verification }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Portability continuity</span>
+      <strong>{{ everkeep.portability_continuity }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>Preservation</span>
+      <strong>{{ everkeep.preservation }}</strong>
+    </article>
+  </div>
+
+  <article class="protection-card native-protection-card">
+    <div class="card-topline">
+      <span class="category">Everkeep contract boundary</span>
+      <span class="item-state {% if everkeep.production_approved %}item-good{% else %}item-warning{% endif %}">
+        {% if everkeep.production_approved %}Production approved{% else %}Runtime acceptance required{% endif %}
+      </span>
+    </div>
+    <h3>Evidence without recovery contents</h3>
+    <p>Manager renders only approved resilience state. It does not expose backup contents, file inventories, credentials, recovery secrets, private paths, personal records, or raw legacy records.</p>
+    <dl class="detail-grid">
+      <div><dt>Status generated</dt><dd>{{ everkeep.generated_at }}</dd></div>
+      <div><dt>Backup verification age</dt><dd>{{ everkeep.backup_verification_age }}</dd></div>
+      <div><dt>Runtime acceptance</dt><dd>Required</dd></div>
+      <div><dt>Management authority</dt><dd>Read only</dd></div>
+    </dl>
+  </article>
+</section>
+
+<section class="integration-section" aria-labelledby="everkeep-capabilities-heading">
+  <div class="section-heading">
+    <div>
+      <p class="eyebrow">Capability evidence</p>
+      <h2 id="everkeep-capabilities-heading">Resilience capabilities</h2>
+    </div>
+  </div>
+
+  {% if everkeep.capabilities %}
+    <div class="detail-list" aria-label="Everkeep capability status">
+      {% for capability in everkeep.capabilities %}
+        <article class="detail-card">
+          <div class="card-topline">
+            <span class="item-state {% if capability.state == 'verified' %}item-good{% elif capability.state == 'attention' %}item-warning{% else %}item-muted{% endif %}">{{ capability.state }}</span>
+            <span class="category">Sanitized status</span>
+          </div>
+          <h3>{{ capability.label }}</h3>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <article class="card integration-message">
+      <h3>No capability rows are available</h3>
+      <p>The approved Everkeep status contract did not provide sanitized capability rows for this snapshot.</p>
+    </article>
+  {% endif %}
+</section>
+{% endblock %}
