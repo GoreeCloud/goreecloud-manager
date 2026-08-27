@@ -22,7 +22,7 @@ PRIMARY_TEMPLATES = (
 
 
 class GlazeUiContractTests(SimpleTestCase):
-    """Keep identity, privacy, accessibility, and Glaze 1.3 semantics reviewable."""
+    """Keep identity, privacy, accessibility, and Glaze 1.5 semantics reviewable."""
 
     @staticmethod
     def _read(path: Path) -> str:
@@ -32,9 +32,14 @@ class GlazeUiContractTests(SimpleTestCase):
         base = self._read(BASE_TEMPLATE)
 
         self.assertIn('data-glaze-ui="manager"', base)
-        self.assertIn('data-glaze-version="1.3.0"', base)
+        self.assertIn('data-glaze-version="1.5.0"', base)
+        self.assertIn('data-glaze-density="comfortable"', base)
+        self.assertIn('data-glaze-form-factor="responsive"', base)
         self.assertIn('data-glaze-surface="glaze"', base)
         self.assertIn('data-glaze-material="functional-glass"', base)
+        self.assertIn('data-glaze-depth="navigation"', base)
+        self.assertIn('data-glaze-icon-role="application"', base)
+        self.assertIn('data-glaze-icon-role="security"', base)
         self.assertIn('data-glaze-action-group="adaptive"', base)
         self.assertIn('data-glaze-reachability="compact"', base)
         self.assertIn('viewport-fit=cover', base)
@@ -45,43 +50,48 @@ class GlazeUiContractTests(SimpleTestCase):
         self.assertIn("core/css/glaze-ui.css", base)
         self.assertIn('href="#main-content"', base)
         self.assertIn('id="main-content" tabindex="-1"', base)
+        self.assertNotIn('data-glaze-version="1.3.0"', base)
 
-    def test_glaze_13_semantics_are_explicit_and_product_mapped(self):
+    def test_glaze_15_semantics_are_explicit_and_product_mapped(self):
         css = self._read(GLAZE_CSS)
 
         for contract in (
-            '--glaze-contract-version: "1.3.0"',
+            '--glaze-contract-version: "1.5.0"',
             "--glaze-canvas: var(--bg)",
             "--glaze-surface: var(--surface)",
             "--glaze-surface-strong: var(--surface-strong)",
             "--glaze-accent: var(--accent)",
-            "--glaze-info: var(--accent)",
+            "--glaze-information: var(--accent)",
             "--glaze-success: var(--good)",
             "--glaze-warning: var(--warning)",
             "--glaze-danger: var(--danger)",
+            "--glaze-privacy: var(--accent-strong)",
+            "--glaze-security: var(--accent-strong)",
+            "--glaze-online: var(--good)",
+            "--glaze-offline: var(--text-muted)",
+            "--glaze-syncing: var(--accent)",
+            "--glaze-protected: var(--good)",
+            "--glaze-restricted: var(--warning)",
+            "--glaze-unavailable: var(--text-muted)",
             "--glaze-focus-ring: var(--accent)",
             "--glaze-selection: var(--accent-surface)",
             "--glaze-placeholder-opacity: .72",
-            "--glaze-control-field-gap: .5rem",
-            "--glaze-control-group-gap: 1rem",
-            "--glaze-control-message-gap: .375rem",
             "--glaze-target-min: 2.75rem",
-            "--glaze-state-hover: .08",
-            "--glaze-state-pressed: .12",
-            "--glaze-state-focus: .14",
-            "--glaze-state-selected: .12",
-            "--glaze-gutter: 1rem",
             "--glaze-shape-compact: .625rem",
             "--glaze-shape-standard: 1rem",
             "--glaze-shape-expressive: 1.375rem",
             "--glaze-shape-hero: 2rem",
             "--glaze-shape-pressed: .75rem",
             "--glaze-glass-functional-blur: 18px",
-            "--glaze-motion-effects-fast: 140ms",
-            "--glaze-motion-effects-standard: 180ms",
-            "--glaze-motion-spatial-fast: 180ms",
-            "--glaze-motion-spatial-standard: 260ms",
-            "--glaze-motion-spatial-emphasized: 360ms",
+            "--glaze-depth-base: 0",
+            "--glaze-depth-navigation: 20",
+            "--glaze-depth-overlay: 40",
+            "--glaze-motion-instant: 0ms",
+            "--glaze-motion-micro: 90ms",
+            "--glaze-motion-short: 160ms",
+            "--glaze-motion-medium: 240ms",
+            "--glaze-motion-long: 360ms",
+            "--glaze-motion-ambient: 700ms",
         ):
             with self.subTest(contract=contract):
                 self.assertIn(contract, css)
@@ -89,35 +99,73 @@ class GlazeUiContractTests(SimpleTestCase):
         self.assertIn('site-header[data-glaze-material="functional-glass"]', css)
         self.assertIn("background: var(--glaze-surface-strong)", css)
         self.assertIn("border-radius: var(--glaze-shape-hero)", css)
-        self.assertIn('data-glaze-action-group="adaptive"', self._read(BASE_TEMPLATE))
-        self.assertIn('data-glaze-reachability="compact"', self._read(BASE_TEMPLATE))
-        self.assertIn("transform var(--glaze-motion-spatial-fast)", css)
-        self.assertIn("background-color var(--glaze-motion-effects-fast)", css)
+        self.assertIn("background-color var(--glaze-motion-short)", css)
+        self.assertIn("transform var(--glaze-motion-short)", css)
         self.assertIn("border-radius: var(--glaze-shape-pressed)", css)
+        self.assertNotIn('--glaze-contract-version: "1.3.0"', css)
 
-    def test_manager_preserves_native_form_controls_under_glaze_13(self):
+    def test_glaze_15_layout_density_and_measure_contract_is_explicit(self):
+        css = self._read(GLAZE_CSS)
+        base = self._read(BASE_TEMPLATE)
+
+        for contract in (
+            "--glaze-space-2: 2px",
+            "--glaze-space-4: 4px",
+            "--glaze-space-8: 8px",
+            "--glaze-space-12: 12px",
+            "--glaze-space-16: 16px",
+            "--glaze-space-24: 24px",
+            "--glaze-space-32: 32px",
+            "--glaze-space-48: 48px",
+            "--glaze-space-64: 64px",
+            "--glaze-space-96: 96px",
+            "--glaze-measure-prose: 72ch",
+            "--glaze-measure-form: 720px",
+            "--glaze-measure-standard: 1200px",
+            "--glaze-measure-wide: 1600px",
+            "min-width: 600px",
+            "max-width: 1023px",
+            "min-width: 1024px",
+            "max-width: 1599px",
+            "min-width: 1600px",
+            "--glaze-gutter: var(--glaze-space-48)",
+        ):
+            with self.subTest(contract=contract):
+                self.assertIn(contract, css)
+
+        self.assertIn('data-glaze-density="comfortable"', base)
+        self.assertIn("min-block-size: var(--glaze-target-min)", css)
+
+    def test_manager_preserves_native_form_and_state_semantics(self):
         css = self._read(GLAZE_CSS)
         login = self._read(REPOSITORY_ROOT / "core/templates/core/login.html")
 
-        self.assertIn("input:not([type=\"hidden\"])", css)
+        self.assertIn('input:not([type="hidden"])', css)
         self.assertIn("select", css)
         self.assertIn("textarea", css)
+        self.assertIn("button:disabled", css)
+        self.assertIn('[aria-disabled="true"]', css)
+        self.assertIn("input[readonly]", css)
+        self.assertIn('[aria-readonly="true"]', css)
+        self.assertIn('[aria-busy="true"]', css)
         self.assertIn("Username {{ form.username }}", login)
         self.assertIn("Password {{ form.password }}", login)
         self.assertIn('role="alert"', login)
-        self.assertNotIn("role=\"switch\"", login)
+        self.assertNotIn('role="switch"', login)
 
-    def test_glaze_13_documentation_pins_stable_source_and_material_boundary(self):
+    def test_glaze_15_documentation_pins_stable_source_and_material_boundary(self):
         doc = self._read(GLAZE_DOC)
 
-        self.assertIn("Glaze UI 1.3.0 Stable", doc)
-        self.assertIn("0cd084d9c888a9697cbd9fdd2c4d2bd91286c56c", doc)
+        self.assertIn("Glaze UI 1.5.0 Stable", doc)
+        self.assertIn("2e1618397f6ebcdd254a76bfdd7e98846f2c5aa3", doc)
         self.assertIn("Functional Glass", doc)
         self.assertIn("Solid/Raised", doc)
-        self.assertIn("effects motion", doc)
-        self.assertIn("spatial motion", doc)
-        self.assertIn("compact reachability", doc)
-        self.assertIn("does not currently place controls over rich media", doc)
+        self.assertIn("adaptive color", doc.lower())
+        self.assertIn("material and depth", doc.lower())
+        self.assertIn("interaction state", doc.lower())
+        self.assertIn("comfortable", doc)
+        self.assertIn("Glaze Motion", doc)
+        self.assertIn("Experimental", doc)
 
     def test_explicit_appearance_is_applied_before_stylesheets(self):
         base = self._read(BASE_TEMPLATE)
@@ -143,6 +191,7 @@ class GlazeUiContractTests(SimpleTestCase):
         for contract in (
             "prefers-reduced-motion: reduce",
             "prefers-reduced-transparency: reduce",
+            'data-glaze-reduced-transparency="true"',
             "prefers-contrast: more",
             "forced-colors: active",
             "@supports not (backdrop-filter: blur(1px))",
