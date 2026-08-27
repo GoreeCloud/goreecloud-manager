@@ -5,12 +5,34 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 STATUS_SCHEMA_VERSION = 1
+MAX_BACKUP_VERIFICATION_AGE_SECONDS = 31 * 24 * 60 * 60
 ALLOWED_STATES = {"ready", "partial", "attention", "unavailable", "development"}
 ALLOWED_CAPABILITY_STATES = {"verified", "pending", "attention", "unavailable"}
+TOP_LEVEL_KEYS = {"schema_version", "producer", "generated_at", "state", "privacy", "acceptance", "resilience", "capabilities"}
+PRODUCER_KEYS = {"adapter_id", "runtime_authority"}
+PRIVACY_KEYS = {
+    "contains_backup_contents",
+    "contains_file_inventory",
+    "contains_recovery_secrets",
+    "contains_credentials",
+    "contains_private_paths",
+    "contains_personal_records",
+    "contains_raw_legacy_records",
+}
+ACCEPTANCE_KEYS = {"runtime_acceptance_required", "production_approved"}
+RESILIENCE_KEYS = {
+    "recovery_readiness",
+    "backup_verification",
+    "backup_verification_age_seconds",
+    "portability_continuity",
+    "preservation",
+}
+CAPABILITY_KEYS = {"id", "state"}
 
 
 @dataclass(frozen=True)
@@ -27,6 +49,7 @@ class EverkeepSnapshot:
     generated_at: str = ""
     recovery_readiness: str = "unavailable"
     backup_verification: str = "unavailable"
+    backup_verification_age_seconds: int | None = None
     portability_continuity: str = "unavailable"
     preservation: str = "unavailable"
     capabilities: tuple[EverkeepCapability, ...] = field(default_factory=tuple)
@@ -51,15 +74,31 @@ def _status_path() -> Path | None:
     return Path(raw) if raw else None
 
 
+def _has_exact_keys(value: dict[str, Any], expected: set[str]) -> bool:
+    return set(value) == expected
+
+
+def _valid_utc_timestamp(value: Any) -> bool:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        return False
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError:
+        return False
+    return parsed.tzinfo == timezone.utc
+
+
 def _validate(payload: Any) -> EverkeepSnapshot:
     if not isinstance(payload, dict):
         return _unavailable("Everkeep status is not a JSON object.")
+    if not _has_exact_keys(payload, TOP_LEVEL_KEYS):
+        return _unavailable("Everkeep status contains missing or unapproved top-level fields.")
     if payload.get("schema_version") != STATUS_SCHEMA_VERSION:
         return _unavailable("Everkeep status uses an unsupported contract version.")
 
     producer = payload.get("producer")
-    if not isinstance(producer, dict):
-        return _unavailable("Everkeep status is missing producer metadata.")
+    if not isinstance(producer, dict) or not _has_exact_keys(producer, PRODUCER_KEYS):
+        return _unavailable("Everkeep status has malformed producer metadata.")
     runtime_authority = producer.get("runtime_authority")
     adapter_id = producer.get("adapter_id")
     if not isinstance(runtime_authority, str) or not runtime_authority.startswith("GoreeCloud/"):
@@ -68,32 +107,23 @@ def _validate(payload: Any) -> EverkeepSnapshot:
         return _unavailable("Everkeep status has invalid adapter identity.")
 
     generated_at = payload.get("generated_at")
-    if not isinstance(generated_at, str) or not generated_at:
-        return _unavailable("Everkeep status is missing its generation timestamp.")
+    if not _valid_utc_timestamp(generated_at):
+        return _unavailable("Everkeep status has an invalid UTC generation timestamp.")
 
     state = payload.get("state")
     if state not in ALLOWED_STATES:
         return _unavailable("Everkeep status has an unsupported state.")
 
     privacy = payload.get("privacy")
-    if not isinstance(privacy, dict):
-        return _unavailable("Everkeep status is missing sensitive-content guarantees.")
-    required_guarantees = (
-        "contains_backup_contents",
-        "contains_file_inventory",
-        "contains_recovery_secrets",
-        "contains_credentials",
-        "contains_private_paths",
-        "contains_personal_records",
-        "contains_raw_legacy_records",
-    )
-    for guarantee in required_guarantees:
+    if not isinstance(privacy, dict) or not _has_exact_keys(privacy, PRIVACY_KEYS):
+        return _unavailable("Everkeep status has malformed sensitive-content guarantees.")
+    for guarantee in PRIVACY_KEYS:
         if privacy.get(guarantee) is not False:
             return _unavailable("Everkeep status was rejected because sensitive recovery content is present or undeclared.")
 
     acceptance = payload.get("acceptance")
-    if not isinstance(acceptance, dict):
-        return _unavailable("Everkeep status is missing acceptance metadata.")
+    if not isinstance(acceptance, dict) or not _has_exact_keys(acceptance, ACCEPTANCE_KEYS):
+        return _unavailable("Everkeep status has malformed acceptance metadata.")
     if acceptance.get("runtime_acceptance_required") is not True:
         return _unavailable("Everkeep status must preserve the runtime acceptance boundary.")
     production_approved = acceptance.get("production_approved")
@@ -101,8 +131,8 @@ def _validate(payload: Any) -> EverkeepSnapshot:
         return _unavailable("Everkeep status has invalid production approval state.")
 
     resilience = payload.get("resilience")
-    if not isinstance(resilience, dict):
-        return _unavailable("Everkeep status is missing resilience state.")
+    if not isinstance(resilience, dict) or not _has_exact_keys(resilience, RESILIENCE_KEYS):
+        return _unavailable("Everkeep status has malformed resilience state.")
 
     normalized = {}
     for key in ("recovery_readiness", "backup_verification", "portability_continuity", "preservation"):
@@ -111,14 +141,20 @@ def _validate(payload: Any) -> EverkeepSnapshot:
             return _unavailable(f"Everkeep status has invalid {key.replace('_', ' ')} state.")
         normalized[key] = value
 
+    backup_age = resilience.get("backup_verification_age_seconds")
+    if isinstance(backup_age, bool) or not isinstance(backup_age, int):
+        return _unavailable("Everkeep status has invalid backup-verification recency metadata.")
+    if backup_age < 0 or backup_age > MAX_BACKUP_VERIFICATION_AGE_SECONDS:
+        return _unavailable("Everkeep backup-verification recency is outside the approved bound.")
+
     capability_rows = payload.get("capabilities")
     if not isinstance(capability_rows, list):
         return _unavailable("Everkeep status capabilities are malformed.")
     capabilities: list[EverkeepCapability] = []
     seen: set[str] = set()
     for row in capability_rows:
-        if not isinstance(row, dict):
-            return _unavailable("Everkeep capability status is malformed.")
+        if not isinstance(row, dict) or not _has_exact_keys(row, CAPABILITY_KEYS):
+            return _unavailable("Everkeep capability status contains malformed or unapproved fields.")
         capability_id = row.get("id")
         capability_state = row.get("state")
         if not isinstance(capability_id, str) or not capability_id or capability_id in seen:
@@ -141,6 +177,7 @@ def _validate(payload: Any) -> EverkeepSnapshot:
         generated_at=generated_at,
         recovery_readiness=normalized["recovery_readiness"],
         backup_verification=normalized["backup_verification"],
+        backup_verification_age_seconds=backup_age,
         portability_continuity=normalized["portability_continuity"],
         preservation=normalized["preservation"],
         capabilities=tuple(capabilities),
