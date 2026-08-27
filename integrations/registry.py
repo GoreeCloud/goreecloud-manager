@@ -32,9 +32,11 @@ def integration_statuses(
     kopia_status: dict[str, str] | None = None,
     tasks_status: dict[str, str] | None = None,
     privacy_shield_status: dict[str, str] | None = None,
+    everkeep_status: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
     definitions = [
         ("privacy-shield", "Privacy Shield", "Privacy", None),
+        ("everkeep", "Everkeep", "Protection / Continuity", "EVERKEEP_ENABLED"),
         ("netbird", "NetBird", "Network", "NETBIRD_ENABLED"),
         ("healthchecks", "Healthchecks", "Monitoring", "HEALTHCHECKS_ENABLED"),
         ("docker", "Docker", "Infrastructure", None),
@@ -47,6 +49,7 @@ def integration_statuses(
 
     live_statuses = {
         "privacy-shield": privacy_shield_status,
+        "everkeep": everkeep_status,
         "netbird": netbird_status,
         "healthchecks": healthchecks_status,
         "uptime-kuma": uptime_kuma_status,
