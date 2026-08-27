@@ -37,6 +37,10 @@ class EverkeepSnapshot:
         payload["capabilities"] = [asdict(item) for item in self.capabilities]
         return payload
 
+    def integration_status(self) -> dict[str, str]:
+        """Return only the minimum registry-facing status fields."""
+        return {"state": self.state, "detail": self.detail}
+
 
 def _unavailable(detail: str) -> EverkeepSnapshot:
     return EverkeepSnapshot(state="unavailable", detail=detail)
