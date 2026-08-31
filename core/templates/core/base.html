@@ -14,9 +14,9 @@
   <link rel="stylesheet" href="{% static 'core/css/app.css' %}">
   <link rel="stylesheet" href="{% static 'core/css/glaze-ui.css' %}">
 </head>
-<body data-glaze-ui="manager" data-glaze-version="1.5.0" data-glaze-density="comfortable" data-glaze-form-factor="responsive">
+<body data-glaze-ui="manager" data-glaze-version="2.1.0" data-glaze-density="comfortable" data-glaze-form-factor="responsive" data-glaze-touch-assistance="false">
   <a class="skip-link" href="#main-content">Skip to main content</a>
-  <header class="site-header" data-glaze-surface="glaze" data-glaze-material="functional-glass" data-glaze-depth="navigation">
+  <header class="site-header" data-glaze-surface="interaction" data-glaze-material-level="soft-glaze" data-glaze-clarity="balanced" data-glaze-depth="navigation">
     <div class="site-header-inner">
       <div class="header-cluster">
         <a class="brand" href="{% url 'overview' %}" aria-label="GoreeCloud Manager overview">
@@ -55,7 +55,7 @@
       </div>
     </div>
   </header>
-  <main class="container" id="main-content" tabindex="-1" data-glaze-material="solid" data-glaze-depth="base">
+  <main class="container" id="main-content" tabindex="-1" data-glaze-surface="content" data-glaze-material-level="surface" data-glaze-depth="base">
     {% block content %}{% endblock %}
   </main>
 </body>
