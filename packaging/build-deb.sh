@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="${MANAGER_VERSION:-0.2.9}"
 ARCH="${MANAGER_ARCH:-amd64}"
 SOURCE_REVISION="${MANAGER_SOURCE_REVISION:-local}"
+EXPECTED_LICENSE_BLOB="be3f7b28e564e7dd05eaf59d64adba1a4065ac0e"
 BUILD_ROOT="${ROOT}/build/deb"
 APP_ROOT="${BUILD_ROOT}/opt/goreecloud-manager"
 BIN_ROOT="${BUILD_ROOT}/usr/bin"
@@ -20,6 +21,11 @@ mkdir -p "${APP_ROOT}" "${BIN_ROOT}" "${DESKTOP_ROOT}" "${ICON_ROOT}" \
 SOURCE_VERSION="$(python3 -c 'from pathlib import Path; ns={}; exec(Path("desktop-client/goreecloud_manager/__init__.py").read_text(), ns); print(ns["__version__"])')"
 if [[ "${SOURCE_VERSION}" != "${VERSION}" ]]; then
   echo "Package version ${VERSION} does not match desktop client ${SOURCE_VERSION}." >&2
+  exit 1
+fi
+
+if [[ "$(git hash-object "${ROOT}/LICENSE")" != "${EXPECTED_LICENSE_BLOB}" ]]; then
+  echo "Repository LICENSE is not the approved byte-exact GNU AGPLv3 text." >&2
   exit 1
 fi
 
@@ -46,7 +52,6 @@ install -m 0644 "${ROOT}/desktop-client/assets/goreecloud-manager.svg" "${ICON_R
 install -m 0644 "${ROOT}/LICENSE" "${DOC_ROOT}/LICENSE"
 install -m 0644 "${ROOT}/LICENSE-NOTICE.md" "${DOC_ROOT}/LICENSE-NOTICE.md"
 install -m 0644 "${ROOT}/THIRD_PARTY_NOTICES.md" "${DOC_ROOT}/THIRD_PARTY_NOTICES.md"
-python3 "${ROOT}/packaging/fetch-agpl-license.py" "${DOC_ROOT}/AGPL-3.0.txt"
 python3 "${ROOT}/packaging/collect-python-license-material.py" "${THIRD_PARTY_ROOT}"
 
 cat > "${DOC_ROOT}/copyright" <<'EOF'
@@ -56,10 +61,10 @@ Source: https://github.com/GoreeCloud/goreecloud-manager
 Files: *
 Copyright: 2026 LaDamian Goree / GoreeCloud
 License: AGPL-3.0-only
- The GoreeCloud Manager source grant and prior-MIT continuity terms are installed
- as /usr/share/doc/goreecloud-manager/LICENSE and LICENSE-NOTICE.md. The complete
- canonical GNU Affero General Public License version 3 legal text is installed as
- /usr/share/doc/goreecloud-manager/AGPL-3.0.txt.
+ The complete GNU Affero General Public License version 3 text is installed as
+ /usr/share/doc/goreecloud-manager/LICENSE. The Manager-specific AGPL-3.0-only
+ version choice, copyright notice, and prior-MIT continuity record are installed
+ as /usr/share/doc/goreecloud-manager/LICENSE-NOTICE.md.
  Third-party and separately licensed material is documented in
  /usr/share/doc/goreecloud-manager/THIRD_PARTY_NOTICES.md and the
  /usr/share/doc/goreecloud-manager/third-party/ directory.
@@ -75,8 +80,12 @@ artifacts, use the exact source revision recorded here to obtain the correspondi
 source and build scripts. Third-party components remain governed by their own terms.
 EOF
 
-if [[ ! -s "${DOC_ROOT}/LICENSE" || ! -s "${DOC_ROOT}/LICENSE-NOTICE.md" || ! -s "${DOC_ROOT}/AGPL-3.0.txt" || ! -s "${DOC_ROOT}/copyright" || ! -s "${DOC_ROOT}/SOURCE" ]]; then
+if [[ ! -s "${DOC_ROOT}/LICENSE" || ! -s "${DOC_ROOT}/LICENSE-NOTICE.md" || ! -s "${DOC_ROOT}/copyright" || ! -s "${DOC_ROOT}/SOURCE" ]]; then
   echo "Required GoreeCloud Manager package licensing material is missing." >&2
+  exit 1
+fi
+if [[ "$(git hash-object "${DOC_ROOT}/LICENSE")" != "${EXPECTED_LICENSE_BLOB}" ]]; then
+  echo "Packaged LICENSE does not match the approved GNU AGPLv3 text." >&2
   exit 1
 fi
 if ! find "${THIRD_PARTY_ROOT}" -type f -size +0c -print -quit | grep -q .; then
