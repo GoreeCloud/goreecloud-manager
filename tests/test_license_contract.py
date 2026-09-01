@@ -76,6 +76,9 @@ class LicenseContractTests(TestCase):
             "pyinstaller",
         ):
             self.assertIn(f'"{distribution}"', collector)
+        self.assertIn("relative.is_absolute()", collector)
+        self.assertIn('".." in relative.parts', collector)
+        self.assertIn('doc_root / f"python{major}.{minor}" / "copyright"', collector)
         self.assertIn("required bundled distribution exposes no installed license material", collector)
         self.assertIn("packaged Python runtime license/copyright material was not found", collector)
 
