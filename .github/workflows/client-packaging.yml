@@ -155,10 +155,12 @@ jobs:
           dpkg-deb -x dist/goreecloud-manager_0.2.9_amd64.deb /tmp/manager-package-inspect
           DOC=/tmp/manager-package-inspect/usr/share/doc/goreecloud-manager
           test -s "${DOC}/LICENSE"
-          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' "${DOC}/LICENSE"
-          grep -Fq 'Version 3, 19 November 2007' "${DOC}/LICENSE"
+          grep -Fq 'SPDX-License-Identifier: AGPL-3.0-only' "${DOC}/LICENSE"
           test -s "${DOC}/LICENSE-NOTICE.md"
           grep -Fq 'SPDX identifier: `AGPL-3.0-only`' "${DOC}/LICENSE-NOTICE.md"
+          test -s "${DOC}/AGPL-3.0.txt"
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' "${DOC}/AGPL-3.0.txt"
+          grep -Fq 'Version 3, 19 November 2007' "${DOC}/AGPL-3.0.txt"
           test -s "${DOC}/THIRD_PARTY_NOTICES.md"
           test -s "${DOC}/copyright"
           test -s "${DOC}/SOURCE"
