@@ -95,9 +95,25 @@ def test_wrong_service_identity_fails_closed():
     assert "producer identity" in result.detail
 
 
+def test_wrong_adapter_identity_fails_closed():
+    payload = clone_valid()
+    payload["producer"]["adapter_id"] = "goreecloud-gateway/status-v1"
+    result = snapshot(payload)
+    assert result.state == "unavailable"
+    assert "adapter identity" in result.detail
+
+
 def test_non_goreecloud_runtime_authority_fails_closed():
     payload = clone_valid()
     payload["producer"]["runtime_authority"] = "netbird-direct"
+    result = snapshot(payload)
+    assert result.state == "unavailable"
+    assert "runtime authority" in result.detail
+
+
+def test_wrong_goreecloud_runtime_authority_fails_closed():
+    payload = clone_valid()
+    payload["producer"]["runtime_authority"] = "GoreeCloud/CaddyDataPlane"
     result = snapshot(payload)
     assert result.state == "unavailable"
     assert "runtime authority" in result.detail
