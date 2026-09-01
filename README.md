@@ -223,4 +223,6 @@ See:
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+Current GoreeCloud Manager source is licensed under `AGPL-3.0-only`. See [`LICENSE`](LICENSE). Copies or releases previously distributed under the MIT License remain usable under the MIT permissions already granted to those copies; this prospective relicense does not revoke earlier grants.
+
+Bundled dependencies and separately licensed assets retain their own terms. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md), and review the license/copyright material included with binary packages.
