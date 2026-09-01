@@ -3,10 +3,15 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
 from integrations.infrastructure import infrastructure_snapshot
+
+
+def fresh_timestamp() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 VALID_STATUS = {
@@ -16,7 +21,7 @@ VALID_STATUS = {
         "adapter_id": "goreecloud-network/status-v1",
         "runtime_authority": "GoreeCloud/NetBirdDataPlane",
     },
-    "generated_at": "2026-09-01T16:00:00Z",
+    "generated_at": fresh_timestamp(),
     "state": "development",
     "privacy": {
         "contains_credentials": False,
@@ -38,7 +43,9 @@ VALID_STATUS = {
 
 
 def clone_valid() -> dict:
-    return json.loads(json.dumps(VALID_STATUS))
+    payload = json.loads(json.dumps(VALID_STATUS))
+    payload["generated_at"] = fresh_timestamp()
+    return payload
 
 
 def snapshot(payload: dict, *, service_id: str = "goreecloud-network"):
@@ -55,7 +62,7 @@ def snapshot(payload: dict, *, service_id: str = "goreecloud-network"):
 
 
 def test_valid_network_status_is_accepted_without_inventory():
-    result = snapshot(VALID_STATUS)
+    result = snapshot(clone_valid())
     assert result.state == "development"
     assert result.service_id == "goreecloud-network"
     assert result.production_approved is False
@@ -118,6 +125,26 @@ def test_invalid_timestamp_fails_closed():
     result = snapshot(payload)
     assert result.state == "unavailable"
     assert "timestamp" in result.detail
+
+
+def test_stale_timestamp_fails_closed():
+    payload = clone_valid()
+    payload["generated_at"] = (
+        datetime.now(timezone.utc) - timedelta(minutes=6)
+    ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    result = snapshot(payload)
+    assert result.state == "unavailable"
+    assert "stale" in result.detail
+
+
+def test_future_timestamp_fails_closed():
+    payload = clone_valid()
+    payload["generated_at"] = (
+        datetime.now(timezone.utc) + timedelta(minutes=2)
+    ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    result = snapshot(payload)
+    assert result.state == "unavailable"
+    assert "future" in result.detail
 
 
 def test_missing_configuration_is_unavailable():
