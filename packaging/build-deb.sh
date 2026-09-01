@@ -46,6 +46,7 @@ install -m 0644 "${ROOT}/desktop-client/assets/goreecloud-manager.svg" "${ICON_R
 install -m 0644 "${ROOT}/LICENSE" "${DOC_ROOT}/LICENSE"
 install -m 0644 "${ROOT}/LICENSE-NOTICE.md" "${DOC_ROOT}/LICENSE-NOTICE.md"
 install -m 0644 "${ROOT}/THIRD_PARTY_NOTICES.md" "${DOC_ROOT}/THIRD_PARTY_NOTICES.md"
+python3 "${ROOT}/packaging/fetch-agpl-license.py" "${DOC_ROOT}/AGPL-3.0.txt"
 python3 "${ROOT}/packaging/collect-python-license-material.py" "${THIRD_PARTY_ROOT}"
 
 cat > "${DOC_ROOT}/copyright" <<'EOF'
@@ -55,10 +56,10 @@ Source: https://github.com/GoreeCloud/goreecloud-manager
 Files: *
 Copyright: 2026 LaDamian Goree / GoreeCloud
 License: AGPL-3.0-only
- The complete GNU Affero General Public License version 3 text is installed as
- /usr/share/doc/goreecloud-manager/LICENSE. The Manager-specific copyright,
- AGPL-3.0-only designation, and prior-MIT continuity notice are installed as
- /usr/share/doc/goreecloud-manager/LICENSE-NOTICE.md.
+ The GoreeCloud Manager source grant and prior-MIT continuity terms are installed
+ as /usr/share/doc/goreecloud-manager/LICENSE and LICENSE-NOTICE.md. The complete
+ canonical GNU Affero General Public License version 3 legal text is installed as
+ /usr/share/doc/goreecloud-manager/AGPL-3.0.txt.
  Third-party and separately licensed material is documented in
  /usr/share/doc/goreecloud-manager/THIRD_PARTY_NOTICES.md and the
  /usr/share/doc/goreecloud-manager/third-party/ directory.
@@ -74,7 +75,7 @@ artifacts, use the exact source revision recorded here to obtain the correspondi
 source and build scripts. Third-party components remain governed by their own terms.
 EOF
 
-if [[ ! -s "${DOC_ROOT}/LICENSE" || ! -s "${DOC_ROOT}/LICENSE-NOTICE.md" || ! -s "${DOC_ROOT}/copyright" || ! -s "${DOC_ROOT}/SOURCE" ]]; then
+if [[ ! -s "${DOC_ROOT}/LICENSE" || ! -s "${DOC_ROOT}/LICENSE-NOTICE.md" || ! -s "${DOC_ROOT}/AGPL-3.0.txt" || ! -s "${DOC_ROOT}/copyright" || ! -s "${DOC_ROOT}/SOURCE" ]]; then
   echo "Required GoreeCloud Manager package licensing material is missing." >&2
   exit 1
 fi
