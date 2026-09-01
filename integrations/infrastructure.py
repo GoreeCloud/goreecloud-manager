@@ -34,6 +34,11 @@ SERVICE_CONFIG = {
     "goreecloud-dns": ("GoreeCloud DNS", "GOREECLOUD_DNS_STATUS_FILE"),
     "goreecloud-network": ("GoreeCloud Network", "GOREECLOUD_NETWORK_STATUS_FILE"),
 }
+EXPECTED_PRODUCERS = {
+    "goreecloud-gateway": ("goreecloud-gateway/status-v1", "GoreeCloud/CaddyDataPlane"),
+    "goreecloud-dns": ("goreecloud-dns/status-v1", "GoreeCloud/AdGuardHomeDataPlane"),
+    "goreecloud-network": ("goreecloud-network/status-v1", "GoreeCloud/NetBirdDataPlane"),
+}
 
 
 @dataclass(frozen=True)
@@ -105,12 +110,13 @@ def _validate(service_id: str, payload: Any) -> InfrastructureSnapshot:
         return _unavailable(service_id, f"{name} status has malformed producer metadata.")
     if producer.get("service_id") != service_id:
         return _unavailable(service_id, f"{name} status producer identity does not match the configured service.")
+    expected_adapter_id, expected_runtime_authority = EXPECTED_PRODUCERS[service_id]
     adapter_id = producer.get("adapter_id")
     runtime_authority = producer.get("runtime_authority")
-    if not isinstance(adapter_id, str) or not adapter_id.strip():
-        return _unavailable(service_id, f"{name} status has invalid adapter identity.")
-    if not isinstance(runtime_authority, str) or not runtime_authority.startswith("GoreeCloud/"):
-        return _unavailable(service_id, f"{name} status has invalid runtime authority.")
+    if adapter_id != expected_adapter_id:
+        return _unavailable(service_id, f"{name} status adapter identity does not match the approved producer contract.")
+    if runtime_authority != expected_runtime_authority:
+        return _unavailable(service_id, f"{name} status runtime authority does not match the approved producer contract.")
 
     generated_at = payload.get("generated_at")
     generated = _parse_utc_timestamp(generated_at)
