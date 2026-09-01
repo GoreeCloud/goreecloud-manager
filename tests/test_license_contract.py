@@ -12,9 +12,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 class LicenseContractTests(TestCase):
     def test_repository_license_is_agpl_3_only(self):
         license_text = (REPOSITORY_ROOT / "LICENSE").read_text(encoding="utf-8")
-        self.assertIn("SPDX-License-Identifier: AGPL-3.0-only", license_text)
-        self.assertIn("version 3 only", license_text)
-        self.assertNotIn("MIT License", license_text)
+        notice = (REPOSITORY_ROOT / "LICENSE-NOTICE.md").read_text(encoding="utf-8")
+        self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", license_text)
+        self.assertIn("Version 3, 19 November 2007", license_text)
+        self.assertIn("SPDX identifier: `AGPL-3.0-only`", notice)
+        self.assertIn("does not automatically opt into a future license version", notice)
+        self.assertIn("Copyright (C) 2026 LaDamian Goree / GoreeCloud", notice)
 
     def test_readme_records_prospective_relicense_and_prior_grants(self):
         readme = (REPOSITORY_ROOT / "README.md").read_text(encoding="utf-8")
@@ -40,6 +43,7 @@ class LicenseContractTests(TestCase):
         builder = (REPOSITORY_ROOT / "packaging" / "build-deb.sh").read_text(encoding="utf-8")
         self.assertIn("/usr/share/doc/goreecloud-manager", builder)
         self.assertIn('install -m 0644 "${ROOT}/LICENSE"', builder)
+        self.assertIn('install -m 0644 "${ROOT}/LICENSE-NOTICE.md"', builder)
         self.assertIn("THIRD_PARTY_NOTICES.md", builder)
         self.assertIn("collect-python-license-material.py", builder)
         self.assertIn("MANAGER_SOURCE_REVISION", builder)
@@ -68,9 +72,11 @@ class LicenseContractTests(TestCase):
             encoding="utf-8"
         )
         self.assertGreaterEqual(workflow.count("- 'LICENSE'"), 2)
+        self.assertGreaterEqual(workflow.count("- 'LICENSE-NOTICE.md'"), 2)
         self.assertGreaterEqual(workflow.count("- 'THIRD_PARTY_NOTICES.md'"), 2)
         self.assertIn("Verify packaged licensing material", workflow)
-        self.assertIn("SPDX-License-Identifier: AGPL-3.0-only", workflow)
+        self.assertIn("GNU AFFERO GENERAL PUBLIC LICENSE", workflow)
+        self.assertIn("SPDX identifier: `AGPL-3.0-only`", workflow)
         self.assertIn("third-party/MANIFEST.txt", workflow)
         self.assertIn("MANAGER_SOURCE_REVISION", workflow)
 
