@@ -41,7 +41,20 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Create exact corresponding-source archive
+        env:
+          MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p dist
+          SOURCE_ARCHIVE="dist/goreecloud-manager-source-${MANAGER_SOURCE_REVISION}.tar.gz"
+          git archive --format=tar.gz --prefix=goreecloud-manager-source/ -o "${SOURCE_ARCHIVE}" "${MANAGER_SOURCE_REVISION}"
+          sha256sum "${SOURCE_ARCHIVE}" > "${SOURCE_ARCHIVE}.sha256"
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/LICENSE'
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/LICENSE-NOTICE.md'
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/packaging/build-deb.sh'
       - name: Prepare Android licensing assets
+        env:
+          MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           LEGAL=android-client/app/src/main/assets/legal
           mkdir -p "${LEGAL}"
@@ -49,11 +62,12 @@ jobs:
           cp LICENSE-NOTICE.md "${LEGAL}/LICENSE-NOTICE.md"
           cp THIRD_PARTY_NOTICES.md "${LEGAL}/THIRD_PARTY_NOTICES.md"
           python3 packaging/fetch-agpl-license.py "${LEGAL}/AGPL-3.0.txt"
-          cat > "${LEGAL}/SOURCE" <<EOF
-          GoreeCloud Manager Corresponding Source
-          Repository: https://github.com/GoreeCloud/goreecloud-manager
-          Source revision: ${{ github.event.pull_request.head.sha || github.sha }}
-          EOF
+          printf '%s\n' \
+            'GoreeCloud Manager Corresponding Source' \
+            'Repository: https://github.com/GoreeCloud/goreecloud-manager' \
+            "Source revision: ${MANAGER_SOURCE_REVISION}" \
+            'An exact corresponding-source archive accompanies this APK in its GoreeCloud acceptance artifact.' \
+            > "${LEGAL}/SOURCE"
       - name: Set up Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
@@ -114,6 +128,8 @@ jobs:
             android-client/app/build/outputs/apk/debug/app-debug.apk
             android-client/app/build/outputs/apk/debug/app-debug.apk.sha256
             android-client/app/build/outputs/apk/android-package-metadata.txt
+            dist/goreecloud-manager-source-*.tar.gz
+            dist/goreecloud-manager-source-*.tar.gz.sha256
       - name: Upload Android unsigned release acceptance artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -124,6 +140,8 @@ jobs:
             android-client/app/build/outputs/apk/release/app-release-unsigned.apk
             android-client/app/build/outputs/apk/release/app-release-unsigned.apk.sha256
             android-client/app/build/outputs/apk/android-package-metadata.txt
+            dist/goreecloud-manager-source-*.tar.gz
+            dist/goreecloud-manager-source-*.tar.gz.sha256
 
   debian-package:
     runs-on: ubuntu-24.04
@@ -146,6 +164,17 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Create exact corresponding-source archive
+        env:
+          MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p dist
+          SOURCE_ARCHIVE="dist/goreecloud-manager-source-${MANAGER_SOURCE_REVISION}.tar.gz"
+          git archive --format=tar.gz --prefix=goreecloud-manager-source/ -o "${SOURCE_ARCHIVE}" "${MANAGER_SOURCE_REVISION}"
+          sha256sum "${SOURCE_ARCHIVE}" > "${SOURCE_ARCHIVE}.sha256"
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/LICENSE'
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/LICENSE-NOTICE.md'
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/packaging/build-deb.sh'
       - name: Create isolated packaging environment
         run: |
           python3 -m venv /tmp/manager-build-venv
@@ -202,3 +231,5 @@ jobs:
           path: |
             dist/goreecloud-manager_0.2.9_amd64.deb
             dist/goreecloud-manager_0.2.9_amd64.deb.sha256
+            dist/goreecloud-manager-source-*.tar.gz
+            dist/goreecloud-manager-source-*.tar.gz.sha256
