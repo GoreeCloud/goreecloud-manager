@@ -39,6 +39,11 @@ EXPECTED_PRODUCERS = {
     "goreecloud-dns": ("goreecloud-dns/status-v1", "GoreeCloud/AdGuardHomeDataPlane"),
     "goreecloud-network": ("goreecloud-network/status-v1", "GoreeCloud/NetBirdDataPlane"),
 }
+EXPECTED_CAPABILITY_IDS = {
+    "goreecloud-gateway": {"ingress", "https", "certificates", "publication"},
+    "goreecloud-dns": {"resolver", "filtering", "encrypted-dns", "dns-policy"},
+    "goreecloud-network": {"private-connectivity", "peer-coordination", "access-policy", "network-dns"},
+}
 
 
 @dataclass(frozen=True)
@@ -164,6 +169,8 @@ def _validate(service_id: str, payload: Any) -> InfrastructureSnapshot:
             return _unavailable(service_id, f"{name} capability status is unsupported.")
         seen.add(capability_id)
         capabilities.append(InfrastructureCapability(id=capability_id, state=capability_state))
+    if seen != EXPECTED_CAPABILITY_IDS[service_id]:
+        return _unavailable(service_id, f"{name} capability inventory does not match the approved Infrastructure Status v1 contract.")
 
     detail = f"{name} supplied an accepted privacy-minimized status document with {len(capabilities)} capability state(s)."
     return InfrastructureSnapshot(
