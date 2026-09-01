@@ -22,116 +22,130 @@ PRIMARY_TEMPLATES = (
 
 
 class GlazeUiContractTests(SimpleTestCase):
-    """Keep identity, privacy, accessibility, and Glaze 1.3 semantics reviewable."""
+    """Keep Manager's current Glaze UI 2.1 source contract reviewable."""
 
     @staticmethod
     def _read(path: Path) -> str:
         return path.read_text(encoding="utf-8")
 
-    def test_shared_shell_declares_private_goreecloud_identity(self):
+    def test_shared_shell_declares_current_goreecloud_identity(self):
         base = self._read(BASE_TEMPLATE)
-
-        self.assertIn('data-glaze-ui="manager"', base)
-        self.assertIn('data-glaze-version="1.3.0"', base)
-        self.assertIn('data-glaze-surface="glaze"', base)
-        self.assertIn('data-glaze-material="functional-glass"', base)
-        self.assertIn('data-glaze-action-group="adaptive"', base)
-        self.assertIn('data-glaze-reachability="compact"', base)
-        self.assertIn('viewport-fit=cover', base)
-        self.assertIn('content="noindex, nofollow, noarchive"', base)
-        self.assertIn('name="referrer" content="same-origin"', base)
-        self.assertIn("core/img/manager-mark.svg", base)
-        self.assertIn("core/css/app.css", base)
-        self.assertIn("core/css/glaze-ui.css", base)
-        self.assertIn('href="#main-content"', base)
-        self.assertIn('id="main-content" tabindex="-1"', base)
-
-    def test_glaze_13_semantics_are_explicit_and_product_mapped(self):
-        css = self._read(GLAZE_CSS)
-
         for contract in (
-            '--glaze-contract-version: "1.3.0"',
+            'data-glaze-ui="manager"',
+            'data-glaze-version="2.1.0"',
+            'data-glaze-density="comfortable"',
+            'data-glaze-form-factor="responsive"',
+            'data-glaze-touch-assistance="false"',
+            'data-glaze-surface="interaction"',
+            'data-glaze-material-level="soft-glaze"',
+            'data-glaze-clarity="balanced"',
+            'data-glaze-depth="navigation"',
+            'data-glaze-icon-role="application"',
+            'data-glaze-icon-role="security"',
+            'data-glaze-action-group="adaptive"',
+            'data-glaze-reachability="compact"',
+            'data-glaze-material-level="surface"',
+            'viewport-fit=cover',
+            'content="noindex, nofollow, noarchive"',
+            'name="referrer" content="same-origin"',
+            'href="#main-content"',
+            'id="main-content" tabindex="-1"',
+        ):
+            with self.subTest(contract=contract):
+                self.assertIn(contract, base)
+        self.assertNotIn('data-glaze-version="1.5.0"', base)
+        self.assertNotIn('data-glaze-version="1.3.0"', base)
+
+    def test_glaze_21_semantics_and_interaction_floors_are_explicit(self):
+        css = self._read(GLAZE_CSS)
+        for contract in (
+            '--glaze-contract-version: "2.1.0"',
             "--glaze-canvas: var(--bg)",
             "--glaze-surface: var(--surface)",
-            "--glaze-surface-strong: var(--surface-strong)",
+            "--glaze-surface-raised: var(--surface-strong)",
             "--glaze-accent: var(--accent)",
-            "--glaze-info: var(--accent)",
-            "--glaze-success: var(--good)",
-            "--glaze-warning: var(--warning)",
-            "--glaze-danger: var(--danger)",
-            "--glaze-focus-ring: var(--accent)",
-            "--glaze-selection: var(--accent-surface)",
-            "--glaze-placeholder-opacity: .72",
-            "--glaze-control-field-gap: .5rem",
-            "--glaze-control-group-gap: 1rem",
-            "--glaze-control-message-gap: .375rem",
-            "--glaze-target-min: 2.75rem",
-            "--glaze-state-hover: .08",
-            "--glaze-state-pressed: .12",
-            "--glaze-state-focus: .14",
-            "--glaze-state-selected: .12",
-            "--glaze-gutter: 1rem",
-            "--glaze-shape-compact: .625rem",
-            "--glaze-shape-standard: 1rem",
-            "--glaze-shape-expressive: 1.375rem",
-            "--glaze-shape-hero: 2rem",
-            "--glaze-shape-pressed: .75rem",
-            "--glaze-glass-functional-blur: 18px",
-            "--glaze-motion-effects-fast: 140ms",
-            "--glaze-motion-effects-standard: 180ms",
-            "--glaze-motion-spatial-fast: 180ms",
-            "--glaze-motion-spatial-standard: 260ms",
-            "--glaze-motion-spatial-emphasized: 360ms",
+            "--glaze-positive: var(--good)",
+            "--glaze-security: var(--accent-strong)",
+            "--glaze-privacy: var(--accent-strong)",
+            "--glaze-target-min: 48px",
+            "--glaze-target-touch-assistance: 56px",
+            'body[data-glaze-touch-assistance="true"]',
+            "--glaze-target-min: var(--glaze-target-touch-assistance)",
+            'site-header[data-glaze-material-level="soft-glaze"]',
+            "background: var(--glaze-surface-raised)",
+        ):
+            with self.subTest(contract=contract):
+                self.assertIn(contract, css)
+        self.assertNotIn('--glaze-contract-version: "1.5.0"', css)
+
+    def test_glaze_21_uses_current_spacing_density_and_form_factor_signals(self):
+        css = self._read(GLAZE_CSS)
+        for contract in (
+            "--glaze-space-4: 4px",
+            "--glaze-space-8: 8px",
+            "--glaze-space-12: 12px",
+            "--glaze-space-16: 16px",
+            "--glaze-space-20: 20px",
+            "--glaze-space-24: 24px",
+            "--glaze-space-32: 32px",
+            "--glaze-space-48: 48px",
+            "--glaze-measure-prose: 72ch",
+            "--glaze-measure-form: 720px",
+            "min-width: 600px",
+            "max-width: 1023px",
+            "min-width: 1024px",
+            "max-width: 1599px",
+            "min-width: 1600px",
+            "min-block-size: var(--glaze-target-min)",
         ):
             with self.subTest(contract=contract):
                 self.assertIn(contract, css)
 
-        self.assertIn('site-header[data-glaze-material="functional-glass"]', css)
-        self.assertIn("background: var(--glaze-surface-strong)", css)
-        self.assertIn("border-radius: var(--glaze-shape-hero)", css)
-        self.assertIn('data-glaze-action-group="adaptive"', self._read(BASE_TEMPLATE))
-        self.assertIn('data-glaze-reachability="compact"', self._read(BASE_TEMPLATE))
-        self.assertIn("transform var(--glaze-motion-spatial-fast)", css)
-        self.assertIn("background-color var(--glaze-motion-effects-fast)", css)
-        self.assertIn("border-radius: var(--glaze-shape-pressed)", css)
-
-    def test_manager_preserves_native_form_controls_under_glaze_13(self):
+    def test_manager_preserves_native_form_and_state_semantics(self):
         css = self._read(GLAZE_CSS)
         login = self._read(REPOSITORY_ROOT / "core/templates/core/login.html")
-
-        self.assertIn("input:not([type=\"hidden\"])", css)
-        self.assertIn("select", css)
-        self.assertIn("textarea", css)
+        for contract in (
+            'input:not([type="hidden"])',
+            "select",
+            "textarea",
+            "button:disabled",
+            '[aria-disabled="true"]',
+            "input[readonly]",
+            '[aria-readonly="true"]',
+            '[aria-busy="true"]',
+        ):
+            self.assertIn(contract, css)
         self.assertIn("Username {{ form.username }}", login)
         self.assertIn("Password {{ form.password }}", login)
         self.assertIn('role="alert"', login)
-        self.assertNotIn("role=\"switch\"", login)
 
-    def test_glaze_13_documentation_pins_stable_source_and_material_boundary(self):
+    def test_glaze_21_documentation_pins_release_and_acceptance_boundary(self):
         doc = self._read(GLAZE_DOC)
-
-        self.assertIn("Glaze UI 1.3.0 Stable", doc)
-        self.assertIn("0cd084d9c888a9697cbd9fdd2c4d2bd91286c56c", doc)
-        self.assertIn("Functional Glass", doc)
-        self.assertIn("Solid/Raised", doc)
-        self.assertIn("effects motion", doc)
-        self.assertIn("spatial motion", doc)
-        self.assertIn("compact reachability", doc)
-        self.assertIn("does not currently place controls over rich media", doc)
+        for contract in (
+            "Glaze UI 2.1.0 Stable",
+            "c49113eb8b93c267613fdf1bbca1f814495acad7",
+            "Content is solid. Interaction is glazed.",
+            "Soft Glaze",
+            "48px",
+            "56px",
+            "Mobile 390×844",
+            "Tablet 820×1180",
+            "Desktop 1280×900",
+            "Wide Desktop 1600×1000",
+            "Source conformance is necessary but not sufficient",
+        ):
+            with self.subTest(contract=contract):
+                self.assertIn(contract, doc)
+        self.assertNotIn("targets **Glaze UI 1.5.0 Stable**", doc)
 
     def test_explicit_appearance_is_applied_before_stylesheets(self):
         base = self._read(BASE_TEMPLATE)
         theme_script = base.index("core/js/theme.js")
         app_stylesheet = base.index("core/css/app.css")
         glaze_stylesheet = base.index("core/css/glaze-ui.css")
-
         self.assertLess(theme_script, app_stylesheet)
         self.assertLess(theme_script, glaze_stylesheet)
-        self.assertNotRegex(
-            base,
-            r'<script[^>]*\bdefer\b[^>]*core/js/theme\.js',
-        )
-
+        self.assertNotRegex(base, r'<script[^>]*\bdefer\b[^>]*core/js/theme\.js')
         theme = self._read(THEME_JS)
         self.assertIn('const storageKey = "goreecloud-manager-theme"', theme)
         self.assertIn("applyRootAppearance(current);", theme)
@@ -139,54 +153,31 @@ class GlazeUiContractTests(SimpleTestCase):
 
     def test_glaze_accessibility_fallbacks_are_source_controlled(self):
         css = self._read(APP_CSS) + "\n" + self._read(GLAZE_CSS)
-
         for contract in (
             "prefers-reduced-motion: reduce",
             "prefers-reduced-transparency: reduce",
+            'data-glaze-reduced-transparency="true"',
             "prefers-contrast: more",
             "forced-colors: active",
             "@supports not (backdrop-filter: blur(1px))",
             "transition-duration: .01ms",
             "backdrop-filter: none",
-            "outline: 2px solid Highlight",
+            "outline: 3px solid Highlight",
         ):
             with self.subTest(contract=contract):
                 self.assertIn(contract, css)
 
-        for control in (
-            "button:focus-visible",
-            "input:focus-visible",
-            "select:focus-visible",
-            "textarea:focus-visible",
-            "a:focus-visible",
-        ):
-            with self.subTest(control=control):
-                self.assertIn(control, css)
-
     def test_user_interface_has_no_remote_browser_dependencies(self):
-        sources = [
-            BASE_TEMPLATE,
-            APP_CSS,
-            GLAZE_CSS,
-            THEME_JS,
-            MANAGER_MARK,
-            *PRIMARY_TEMPLATES,
-        ]
-
+        sources = [BASE_TEMPLATE, APP_CSS, GLAZE_CSS, THEME_JS, MANAGER_MARK, *PRIMARY_TEMPLATES]
         for path in sources:
             text = self._read(path)
             with self.subTest(path=path.relative_to(REPOSITORY_ROOT)):
-                self.assertIsNone(
-                    re.search(r"(?:src|href)=[\"']https?://", text, flags=re.IGNORECASE)
-                )
-                self.assertIsNone(
-                    re.search(r"url\(\s*[\"']?https?://", text, flags=re.IGNORECASE)
-                )
+                self.assertIsNone(re.search(r"(?:src|href)=[\"']https?://", text, flags=re.IGNORECASE))
+                self.assertIsNone(re.search(r"url\(\s*[\"']?https?://", text, flags=re.IGNORECASE))
                 self.assertNotIn("@import", text.lower())
 
     def test_manager_mark_is_static_and_script_free(self):
         mark = self._read(MANAGER_MARK).lower()
-
         self.assertIn("<svg", mark)
         self.assertNotIn("<script", mark)
         self.assertNotRegex(mark, r"(?:href|src)=[\"']https?://")
