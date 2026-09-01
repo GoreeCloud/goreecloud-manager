@@ -90,6 +90,7 @@ class LicenseContractTests(TestCase):
         self.assertGreaterEqual(workflow.count("- 'LICENSE-NOTICE.md'"), 2)
         self.assertGreaterEqual(workflow.count("- 'THIRD_PARTY_NOTICES.md'"), 2)
         self.assertEqual(workflow.count("Create exact corresponding-source archive"), 2)
+        self.assertEqual(workflow.count('git config --global --add safe.directory "${GITHUB_WORKSPACE}"'), 1)
         self.assertIn("git archive --format=tar.gz", workflow)
         self.assertIn("goreecloud-manager-source-${MANAGER_SOURCE_REVISION}.tar.gz", workflow)
         self.assertGreaterEqual(workflow.count("dist/goreecloud-manager-source-*.tar.gz"), 3)
