@@ -23,7 +23,7 @@ SOURCE_REPOSITORY = "https://github.com/GoreeCloud/goreecloud-manager"
 OCI_LABELS = {
     "org.opencontainers.image.title": PROJECT_NAME,
     "org.opencontainers.image.source": SOURCE_REPOSITORY,
-    "org.opencontainers.image.licenses": "MIT",
+    "org.opencontainers.image.licenses": "AGPL-3.0-only",
     "org.opencontainers.image.vendor": "GoreeCloud",
 }
 FULL_GIT_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
