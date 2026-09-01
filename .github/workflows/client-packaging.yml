@@ -41,6 +41,19 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Prepare Android licensing assets
+        run: |
+          LEGAL=android-client/app/src/main/assets/legal
+          mkdir -p "${LEGAL}"
+          cp LICENSE "${LEGAL}/LICENSE"
+          cp LICENSE-NOTICE.md "${LEGAL}/LICENSE-NOTICE.md"
+          cp THIRD_PARTY_NOTICES.md "${LEGAL}/THIRD_PARTY_NOTICES.md"
+          python3 packaging/fetch-agpl-license.py "${LEGAL}/AGPL-3.0.txt"
+          cat > "${LEGAL}/SOURCE" <<EOF
+          GoreeCloud Manager Corresponding Source
+          Repository: https://github.com/GoreeCloud/goreecloud-manager
+          Source revision: ${{ github.event.pull_request.head.sha || github.sha }}
+          EOF
       - name: Set up Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
@@ -58,6 +71,17 @@ jobs:
         run: |
           test -f android-client/app/build/outputs/apk/debug/app-debug.apk
           test -f android-client/app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Verify Android licensing material
+        run: |
+          for apk in \
+            android-client/app/build/outputs/apk/debug/app-debug.apk \
+            android-client/app/build/outputs/apk/release/app-release-unsigned.apk; do
+            unzip -p "${apk}" assets/legal/LICENSE | grep -Fq 'SPDX-License-Identifier: AGPL-3.0-only'
+            unzip -p "${apk}" assets/legal/LICENSE-NOTICE.md | grep -Fq 'SPDX identifier: `AGPL-3.0-only`'
+            unzip -p "${apk}" assets/legal/AGPL-3.0.txt | grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE'
+            unzip -p "${apk}" assets/legal/AGPL-3.0.txt | grep -Fq 'Version 3, 19 November 2007'
+            unzip -p "${apk}" assets/legal/SOURCE | grep -Fq '${{ github.event.pull_request.head.sha || github.sha }}'
+          done
       - name: Verify release acceptance APK is unsigned
         run: |
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
