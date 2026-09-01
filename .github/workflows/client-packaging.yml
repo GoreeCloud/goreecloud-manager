@@ -7,6 +7,8 @@ on:
       - 'android-client/**'
       - 'desktop-client/**'
       - 'packaging/**'
+      - 'LICENSE'
+      - 'THIRD_PARTY_NOTICES.md'
       - '.github/workflows/client-packaging.yml'
       - 'scripts/manager_production_readiness_manifest.json'
   pull_request:
@@ -14,6 +16,8 @@ on:
       - 'android-client/**'
       - 'desktop-client/**'
       - 'packaging/**'
+      - 'LICENSE'
+      - 'THIRD_PARTY_NOTICES.md'
       - '.github/workflows/client-packaging.yml'
       - 'scripts/manager_production_readiness_manifest.json'
   workflow_dispatch:
@@ -125,6 +129,7 @@ jobs:
       - name: Build Debian acceptance package
         env:
           PATH: /tmp/manager-build-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash packaging/build-deb.sh
       - name: Verify Qt platform plugins
         run: |
@@ -141,6 +146,22 @@ jobs:
           fi
       - name: Inspect package metadata
         run: dpkg-deb --info dist/goreecloud-manager_0.2.9_amd64.deb
+      - name: Verify packaged licensing material
+        run: |
+          rm -rf /tmp/manager-package-inspect
+          mkdir -p /tmp/manager-package-inspect
+          dpkg-deb -x dist/goreecloud-manager_0.2.9_amd64.deb /tmp/manager-package-inspect
+          DOC=/tmp/manager-package-inspect/usr/share/doc/goreecloud-manager
+          test -s "${DOC}/LICENSE"
+          grep -Fq 'SPDX-License-Identifier: AGPL-3.0-only' "${DOC}/LICENSE"
+          test -s "${DOC}/THIRD_PARTY_NOTICES.md"
+          test -s "${DOC}/copyright"
+          test -s "${DOC}/SOURCE"
+          grep -Fq "${{ github.event.pull_request.head.sha || github.sha }}" "${DOC}/SOURCE"
+          test -s "${DOC}/third-party/MANIFEST.txt"
+          for component in PySide6 PySide6_Addons PySide6_Essentials shiboken6 psutil PyYAML pyinstaller CPython-runtime; do
+            find "${DOC}/third-party" -maxdepth 1 -type d -name "${component}*" -print -quit | grep -q .
+          done
       - name: Upload Debian acceptance artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
