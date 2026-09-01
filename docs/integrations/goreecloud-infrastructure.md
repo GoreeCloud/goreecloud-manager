@@ -10,7 +10,15 @@ Manager consumes local, sanitized status documents for:
 - `goreecloud-dns` via `GOREECLOUD_DNS_STATUS_FILE`;
 - `goreecloud-network` via `GOREECLOUD_NETWORK_STATUS_FILE`.
 
-The parser is strict and fail-closed. It rejects unknown top-level or nested fields, unsupported schema/state values, mismatched producer identity, non-GoreeCloud runtime authority, malformed timestamps, undeclared sensitive-content exclusions, ambiguous acceptance metadata, duplicate capability IDs, and oversized documents.
+The parser is strict and fail-closed. It rejects unknown top-level or nested fields, unsupported schema/state values, mismatched service identity, mismatched adapter identity, mismatched runtime authority, malformed timestamps, undeclared sensitive-content exclusions, ambiguous acceptance metadata, duplicate capability IDs, capability inventories that differ from the approved v1 producer contract, and oversized documents.
+
+Infrastructure Status v1 binds each configured service to one exact producer tuple and one exact capability inventory:
+
+- Gateway: `goreecloud-gateway/status-v1`, `GoreeCloud/CaddyDataPlane`, with `ingress`, `https`, `certificates`, and `publication`.
+- DNS: `goreecloud-dns/status-v1`, `GoreeCloud/AdGuardHomeDataPlane`, with `resolver`, `filtering`, `encrypted-dns`, and `dns-policy`.
+- Network: `goreecloud-network/status-v1`, `GoreeCloud/NetBirdDataPlane`, with `private-connectivity`, `peer-coordination`, `access-policy`, and `network-dns`.
+
+Changing a v1 adapter identity, runtime authority, or capability inventory requires a coordinated producer/consumer contract change rather than silent acceptance by Manager. A future native data-plane authority transition must therefore be explicit and evidence-backed.
 
 ## Approved content
 
