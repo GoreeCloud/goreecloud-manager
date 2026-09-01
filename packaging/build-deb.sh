@@ -44,6 +44,7 @@ fi
 cp -a "${PYI_ROOT}/." "${APP_ROOT}/"
 install -m 0644 "${ROOT}/desktop-client/assets/goreecloud-manager.svg" "${ICON_ROOT}/goreecloud-manager.svg"
 install -m 0644 "${ROOT}/LICENSE" "${DOC_ROOT}/LICENSE"
+install -m 0644 "${ROOT}/LICENSE-NOTICE.md" "${DOC_ROOT}/LICENSE-NOTICE.md"
 install -m 0644 "${ROOT}/THIRD_PARTY_NOTICES.md" "${DOC_ROOT}/THIRD_PARTY_NOTICES.md"
 python3 "${ROOT}/packaging/collect-python-license-material.py" "${THIRD_PARTY_ROOT}"
 
@@ -54,8 +55,10 @@ Source: https://github.com/GoreeCloud/goreecloud-manager
 Files: *
 Copyright: 2026 LaDamian Goree / GoreeCloud
 License: AGPL-3.0-only
- The GoreeCloud Manager license notice is installed as
- /usr/share/doc/goreecloud-manager/LICENSE.
+ The complete GNU Affero General Public License version 3 text is installed as
+ /usr/share/doc/goreecloud-manager/LICENSE. The Manager-specific copyright,
+ AGPL-3.0-only designation, and prior-MIT continuity notice are installed as
+ /usr/share/doc/goreecloud-manager/LICENSE-NOTICE.md.
  Third-party and separately licensed material is documented in
  /usr/share/doc/goreecloud-manager/THIRD_PARTY_NOTICES.md and the
  /usr/share/doc/goreecloud-manager/third-party/ directory.
@@ -71,7 +74,7 @@ artifacts, use the exact source revision recorded here to obtain the correspondi
 source and build scripts. Third-party components remain governed by their own terms.
 EOF
 
-if [[ ! -s "${DOC_ROOT}/LICENSE" || ! -s "${DOC_ROOT}/copyright" || ! -s "${DOC_ROOT}/SOURCE" ]]; then
+if [[ ! -s "${DOC_ROOT}/LICENSE" || ! -s "${DOC_ROOT}/LICENSE-NOTICE.md" || ! -s "${DOC_ROOT}/copyright" || ! -s "${DOC_ROOT}/SOURCE" ]]; then
   echo "Required GoreeCloud Manager package licensing material is missing." >&2
   exit 1
 fi
