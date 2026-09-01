@@ -4,7 +4,8 @@ GoreeCloud Manager is licensed under the **GNU Affero General Public License v3.
 
 - SPDX identifier: `AGPL-3.0-only`
 - Copyright: Copyright (C) 2026 LaDamian Goree / GoreeCloud
-- Full license text: `LICENSE`
+- Source grant and prior-license continuity: `LICENSE`
+- Complete AGPLv3 legal text for binary distributions: `AGPL-3.0.txt`
 
 The `-only` designation is intentional. Current GoreeCloud Manager source is licensed under version 3 of the GNU Affero General Public License and does not automatically opt into a future license version.
 
@@ -12,6 +13,6 @@ This is a prospective relicense. Copies and releases that GoreeCloud previously 
 
 Third-party libraries, frameworks, container images, bundled runtimes, and separately licensed assets retain their own licenses and copyright notices. See `THIRD_PARTY_NOTICES.md` and the license material included with distributed binary packages.
 
-Modified versions used to provide network service must comply with the AGPL remote-network source requirements. Binary distribution must also preserve the applicable license notices and corresponding-source obligations.
+Modified versions used to provide network service must comply with the AGPL remote-network source requirements. Binary distribution must also preserve the applicable license notices and corresponding-source obligations. GoreeCloud's Debian build retrieves the complete AGPLv3 legal text from the immutable canonical GoreeCloud Tasks license revision and verifies the pinned Git blob identity before packaging it.
 
 Selecting this license does not itself authorize a production deployment, release promotion, public service publication, or any other lifecycle action. Those remain governed by the GoreeCloud Manager project specification and readiness requirements.
