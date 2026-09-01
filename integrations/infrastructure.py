@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -182,12 +183,15 @@ def infrastructure_snapshot(service_id: str) -> InfrastructureSnapshot:
         return _unavailable(service_id, f"{name} status is disabled until {env_name} points to an approved sanitized status document.")
     path = Path(raw_path)
     try:
-        if not path.is_file():
-            return _unavailable(service_id, f"Configured {name} status file is unavailable.")
-        if path.stat().st_size > MAX_STATUS_BYTES:
+        with path.open("rb") as handle:
+            mode = os.fstat(handle.fileno()).st_mode
+            if not stat.S_ISREG(mode):
+                return _unavailable(service_id, f"Configured {name} status file is unavailable.")
+            raw = handle.read(MAX_STATUS_BYTES + 1)
+        if len(raw) > MAX_STATUS_BYTES:
             return _unavailable(service_id, f"Configured {name} status file exceeds the approved size bound.")
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        payload = json.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return _unavailable(service_id, f"Configured {name} status file could not be safely read.")
     return _validate(service_id, payload)
 
