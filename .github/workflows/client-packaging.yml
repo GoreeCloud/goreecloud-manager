@@ -8,6 +8,7 @@ on:
       - 'desktop-client/**'
       - 'packaging/**'
       - 'LICENSE'
+      - 'LICENSE-NOTICE.md'
       - 'THIRD_PARTY_NOTICES.md'
       - '.github/workflows/client-packaging.yml'
       - 'scripts/manager_production_readiness_manifest.json'
@@ -17,6 +18,7 @@ on:
       - 'desktop-client/**'
       - 'packaging/**'
       - 'LICENSE'
+      - 'LICENSE-NOTICE.md'
       - 'THIRD_PARTY_NOTICES.md'
       - '.github/workflows/client-packaging.yml'
       - 'scripts/manager_production_readiness_manifest.json'
@@ -153,7 +155,10 @@ jobs:
           dpkg-deb -x dist/goreecloud-manager_0.2.9_amd64.deb /tmp/manager-package-inspect
           DOC=/tmp/manager-package-inspect/usr/share/doc/goreecloud-manager
           test -s "${DOC}/LICENSE"
-          grep -Fq 'SPDX-License-Identifier: AGPL-3.0-only' "${DOC}/LICENSE"
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' "${DOC}/LICENSE"
+          grep -Fq 'Version 3, 19 November 2007' "${DOC}/LICENSE"
+          test -s "${DOC}/LICENSE-NOTICE.md"
+          grep -Fq 'SPDX identifier: `AGPL-3.0-only`' "${DOC}/LICENSE-NOTICE.md"
           test -s "${DOC}/THIRD_PARTY_NOTICES.md"
           test -s "${DOC}/copyright"
           test -s "${DOC}/SOURCE"
