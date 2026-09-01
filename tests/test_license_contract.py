@@ -81,7 +81,10 @@ class LicenseContractTests(TestCase):
         self.assertIn("relative.is_absolute()", collector)
         self.assertIn('".." in relative.parts', collector)
         self.assertIn('doc_root / f"python{major}.{minor}" / "copyright"', collector)
-        self.assertIn("required bundled distribution exposes no installed license material", collector)
+        self.assertIn("License-Expression", collector)
+        self.assertIn("PACKAGE-LICENSE-METADATA.txt", collector)
+        self.assertIn("neither installed license files nor declared", collector)
+        self.assertIn("does not claim that the wheel contained a standalone license file", collector)
         self.assertIn("packaged Python runtime license/copyright material was not found", collector)
 
     def test_client_packaging_revalidates_license_changes_and_package_contents(self):
