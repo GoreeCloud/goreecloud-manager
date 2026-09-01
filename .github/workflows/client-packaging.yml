@@ -168,6 +168,7 @@ jobs:
         env:
           MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
           mkdir -p dist
           SOURCE_ARCHIVE="dist/goreecloud-manager-source-${MANAGER_SOURCE_REVISION}.tar.gz"
           git archive --format=tar.gz --prefix=goreecloud-manager-source/ -o "${SOURCE_ARCHIVE}" "${MANAGER_SOURCE_REVISION}"
