@@ -38,6 +38,12 @@ def _component_dir(name: str, version: str) -> str:
     return SAFE_COMPONENT.sub("-", f"{name}-{version}").strip("-")
 
 
+def _safe_relative(relative: Path) -> Path:
+    if relative.is_absolute() or ".." in relative.parts:
+        raise RuntimeError("bundled distribution license path escaped its package metadata boundary")
+    return relative
+
+
 def collect_distribution(name: str, destination: Path) -> tuple[str, str, int]:
     try:
         dist = metadata.distribution(name)
@@ -52,10 +58,10 @@ def collect_distribution(name: str, destination: Path) -> tuple[str, str, int]:
     copied = 0
 
     for relative in notice_files:
+        relative_path = _safe_relative(Path(str(relative)))
         source = Path(dist.locate_file(relative))
         if not source.is_file():
             continue
-        relative_path = Path(str(relative))
         target = component / relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
@@ -69,17 +75,16 @@ def collect_distribution(name: str, destination: Path) -> tuple[str, str, int]:
 
 
 def collect_python_runtime(destination: Path) -> Path:
-    candidates: list[Path] = []
-    for root in (Path("/usr/share/doc"), Path(sys.base_prefix)):
-        if not root.exists():
-            continue
-        if root == Path("/usr/share/doc"):
-            candidates.extend(sorted(root.glob("python3*/copyright")))
-        else:
-            for name in ("LICENSE", "LICENSE.txt", "COPYING", "COPYING.txt"):
-                candidate = root / name
-                if candidate.is_file():
-                    candidates.append(candidate)
+    major, minor = sys.version_info[:2]
+    doc_root = Path("/usr/share/doc")
+    candidates = [
+        doc_root / f"python{major}.{minor}" / "copyright",
+        doc_root / f"python{major}.{minor}-minimal" / "copyright",
+        doc_root / f"libpython{major}.{minor}-stdlib" / "copyright",
+        doc_root / "python3" / "copyright",
+    ]
+    for name in ("LICENSE", "LICENSE.txt", "COPYING", "COPYING.txt"):
+        candidates.append(Path(sys.base_prefix) / name)
 
     for source in candidates:
         if source.is_file() and source.stat().st_size > 0:
