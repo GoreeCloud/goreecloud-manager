@@ -1,0 +1,49 @@
+/*
+ * GoreeCloud Manager semantic state presentation.
+ *
+ * These rules style only the state text supplied by an authoritative adapter.
+ * They do not create or strengthen connectivity, availability, privacy,
+ * security, or continuity claims. Unrecognized states inherit the neutral
+ * .status treatment from app.css.
+ */
+
+/* Configuration/planning is not verified live health or availability. */
+.status-configured,
+.status-planned,
+.status-disabled,
+.status-unknown,
+.status-inactive,
+.status-paused,
+.status-managed {
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+/* Positive operational states are source-owned and remain text-labelled. */
+.status-healthy,
+.status-available,
+.status-ready,
+.status-active {
+  color: var(--good);
+  border-color: var(--good-border);
+}
+
+/* Attention states remain distinct from hard unavailability. */
+.status-degraded,
+.status-restricted,
+.status-misconfigured {
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+.status-unavailable {
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+@media (forced-colors: active) {
+  .status {
+    forced-color-adjust: auto;
+    border-color: CanvasText;
+  }
+}
