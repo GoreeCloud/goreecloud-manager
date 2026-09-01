@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
-from integrations.infrastructure import infrastructure_snapshot
+from integrations.infrastructure import MAX_STATUS_BYTES, infrastructure_snapshot
 
 
 def fresh_timestamp() -> str:
@@ -145,6 +145,34 @@ def test_future_timestamp_fails_closed():
     result = snapshot(payload)
     assert result.state == "unavailable"
     assert "future" in result.detail
+
+
+def test_status_file_read_is_hard_bounded():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        path = Path(temp_dir) / "status.json"
+        path.write_bytes(b" " * (MAX_STATUS_BYTES + 1))
+        with patch.dict(
+            os.environ,
+            {"GOREECLOUD_NETWORK_STATUS_FILE": str(path)},
+            clear=False,
+        ):
+            result = infrastructure_snapshot("goreecloud-network")
+    assert result.state == "unavailable"
+    assert "size bound" in result.detail
+
+
+def test_non_utf8_status_file_fails_closed():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        path = Path(temp_dir) / "status.json"
+        path.write_bytes(b"\xff\xfe\xfd")
+        with patch.dict(
+            os.environ,
+            {"GOREECLOUD_NETWORK_STATUS_FILE": str(path)},
+            clear=False,
+        ):
+            result = infrastructure_snapshot("goreecloud-network")
+    assert result.state == "unavailable"
+    assert "safely read" in result.detail
 
 
 def test_missing_configuration_is_unavailable():
