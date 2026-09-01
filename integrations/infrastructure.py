@@ -5,13 +5,15 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 STATUS_SCHEMA_VERSION = 1
 MAX_STATUS_BYTES = 64 * 1024
 MAX_CAPABILITIES = 32
+MAX_STATUS_AGE = timedelta(minutes=5)
+MAX_FUTURE_SKEW = timedelta(seconds=30)
 ALLOWED_STATES = {"ready", "partial", "attention", "unavailable", "development"}
 ALLOWED_CAPABILITY_STATES = {"verified", "pending", "attention", "unavailable"}
 TOP_LEVEL_KEYS = {"schema_version", "producer", "generated_at", "state", "privacy", "acceptance", "capabilities"}
@@ -76,14 +78,16 @@ def _has_exact_keys(value: dict[str, Any], expected: set[str]) -> bool:
     return set(value) == expected
 
 
-def _valid_utc_timestamp(value: Any) -> bool:
+def _parse_utc_timestamp(value: Any) -> datetime | None:
     if not isinstance(value, str) or not value.endswith("Z"):
-        return False
+        return None
     try:
         parsed = datetime.fromisoformat(value[:-1] + "+00:00")
     except ValueError:
-        return False
-    return parsed.tzinfo == timezone.utc
+        return None
+    if parsed.tzinfo != timezone.utc:
+        return None
+    return parsed
 
 
 def _validate(service_id: str, payload: Any) -> InfrastructureSnapshot:
@@ -108,8 +112,14 @@ def _validate(service_id: str, payload: Any) -> InfrastructureSnapshot:
         return _unavailable(service_id, f"{name} status has invalid runtime authority.")
 
     generated_at = payload.get("generated_at")
-    if not _valid_utc_timestamp(generated_at):
+    generated = _parse_utc_timestamp(generated_at)
+    if generated is None:
         return _unavailable(service_id, f"{name} status has an invalid UTC generation timestamp.")
+    now = datetime.now(timezone.utc)
+    if generated > now + MAX_FUTURE_SKEW:
+        return _unavailable(service_id, f"{name} status generation timestamp is unacceptably far in the future.")
+    if generated < now - MAX_STATUS_AGE:
+        return _unavailable(service_id, f"{name} status is stale and has failed closed.")
 
     state = payload.get("state")
     if state not in ALLOWED_STATES:
