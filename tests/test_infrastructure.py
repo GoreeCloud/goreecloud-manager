@@ -37,7 +37,9 @@ VALID_STATUS = {
     },
     "capabilities": [
         {"id": "private-connectivity", "state": "pending"},
+        {"id": "peer-coordination", "state": "pending"},
         {"id": "access-policy", "state": "pending"},
+        {"id": "network-dns", "state": "pending"},
     ],
 }
 
@@ -66,7 +68,7 @@ def test_valid_network_status_is_accepted_without_inventory():
     assert result.state == "development"
     assert result.service_id == "goreecloud-network"
     assert result.production_approved is False
-    assert len(result.capabilities) == 2
+    assert len(result.capabilities) == 4
     assert result.integration_status()["state"] == "development"
 
 
@@ -125,6 +127,23 @@ def test_duplicate_capability_fails_closed():
     result = snapshot(payload)
     assert result.state == "unavailable"
     assert "duplicated" in result.detail
+
+
+def test_unknown_capability_identity_fails_closed():
+    payload = clone_valid()
+    payload["capabilities"][-1]["id"] = "invented-network-capability"
+    result = snapshot(payload)
+    assert result.state == "unavailable"
+    assert "capability inventory" in result.detail
+    assert "invented-network-capability" not in result.detail
+
+
+def test_missing_required_capability_fails_closed():
+    payload = clone_valid()
+    payload["capabilities"] = payload["capabilities"][:-1]
+    result = snapshot(payload)
+    assert result.state == "unavailable"
+    assert "capability inventory" in result.detail
 
 
 def test_unapproved_capability_field_fails_closed_without_leak():
