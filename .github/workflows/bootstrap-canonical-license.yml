@@ -1,0 +1,57 @@
+name: Bootstrap canonical license
+
+on:
+  push:
+    branches: [licensing/relicense-agpl-3.0-only]
+    paths:
+      - '.github/workflows/bootstrap-canonical-license.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  canonicalize-license:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: licensing/relicense-agpl-3.0-only
+          persist-credentials: true
+      - name: Install byte-exact canonical AGPLv3 text
+        env:
+          CANONICAL_URL: https://raw.githubusercontent.com/GoreeCloud/goreecloud-tasks/9d4f2bca2f754ab1eca7b518dd062b330689b969/LICENSE
+          EXPECTED_BLOB: be3f7b28e564e7dd05eaf59d64adba1a4065ac0e
+        run: |
+          python3 - <<'PY'
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          url = os.environ['CANONICAL_URL']
+          request = urllib.request.Request(url, headers={'User-Agent': 'GoreeCloud-Manager-License-Bootstrap/1'})
+          with urllib.request.urlopen(request, timeout=15) as response:
+              payload = response.read(128 * 1024)
+          if len(payload) != 34523:
+              raise SystemExit(f'unexpected canonical license size: {len(payload)}')
+          Path('LICENSE').write_bytes(payload)
+          PY
+          test "$(git hash-object LICENSE)" = "${EXPECTED_BLOB}"
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' LICENSE
+          grep -Fq 'Version 3, 19 November 2007' LICENSE
+      - name: Commit exact license if needed
+        env:
+          EXPECTED_BLOB: be3f7b28e564e7dd05eaf59d64adba1a4065ac0e
+        run: |
+          test "$(git hash-object LICENSE)" = "${EXPECTED_BLOB}"
+          if git diff --quiet -- LICENSE; then
+            echo 'LICENSE already canonical.'
+            exit 0
+          fi
+          git config user.name 'GoreeCloud'
+          git config user.email '295260680+GoreeCloud@users.noreply.github.com'
+          git add LICENSE
+          git commit -m 'Use byte-exact canonical AGPLv3 text'
+          git push origin HEAD:licensing/relicense-agpl-3.0-only
