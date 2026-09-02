@@ -7,6 +7,9 @@ on:
       - 'android-client/**'
       - 'desktop-client/**'
       - 'packaging/**'
+      - 'LICENSE'
+      - 'LICENSE-NOTICE.md'
+      - 'THIRD_PARTY_NOTICES.md'
       - '.github/workflows/client-packaging.yml'
       - 'scripts/manager_production_readiness_manifest.json'
   pull_request:
@@ -14,6 +17,9 @@ on:
       - 'android-client/**'
       - 'desktop-client/**'
       - 'packaging/**'
+      - 'LICENSE'
+      - 'LICENSE-NOTICE.md'
+      - 'THIRD_PARTY_NOTICES.md'
       - '.github/workflows/client-packaging.yml'
       - 'scripts/manager_production_readiness_manifest.json'
   workflow_dispatch:
@@ -25,6 +31,9 @@ concurrency:
   group: manager-client-packaging-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  MANAGER_AGPL_BLOB: be3f7b28e564e7dd05eaf59d64adba1a4065ac0e
+
 jobs:
   android-apk:
     runs-on: ubuntu-24.04
@@ -35,6 +44,39 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Verify repository license identity
+        run: |
+          test "$(git hash-object LICENSE)" = "${MANAGER_AGPL_BLOB}"
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' LICENSE
+          grep -Fq 'Version 3, 19 November 2007' LICENSE
+          grep -Fq 'SPDX identifier: `AGPL-3.0-only`' LICENSE-NOTICE.md
+      - name: Create exact corresponding-source archive
+        env:
+          MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p dist
+          SOURCE_ARCHIVE="dist/goreecloud-manager-source-${MANAGER_SOURCE_REVISION}.tar.gz"
+          git archive --format=tar.gz --prefix=goreecloud-manager-source/ -o "${SOURCE_ARCHIVE}" "${MANAGER_SOURCE_REVISION}"
+          sha256sum "${SOURCE_ARCHIVE}" > "${SOURCE_ARCHIVE}.sha256"
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/LICENSE'
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/LICENSE-NOTICE.md'
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/packaging/build-deb.sh'
+          test "$(tar -xOzf "${SOURCE_ARCHIVE}" goreecloud-manager-source/LICENSE | git hash-object --stdin)" = "${MANAGER_AGPL_BLOB}"
+      - name: Prepare Android licensing assets
+        env:
+          MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          LEGAL=android-client/app/src/main/assets/legal
+          mkdir -p "${LEGAL}"
+          cp LICENSE "${LEGAL}/LICENSE"
+          cp LICENSE-NOTICE.md "${LEGAL}/LICENSE-NOTICE.md"
+          cp THIRD_PARTY_NOTICES.md "${LEGAL}/THIRD_PARTY_NOTICES.md"
+          printf '%s\n' \
+            'GoreeCloud Manager Corresponding Source' \
+            'Repository: https://github.com/GoreeCloud/goreecloud-manager' \
+            "Source revision: ${MANAGER_SOURCE_REVISION}" \
+            'An exact corresponding-source archive accompanies this APK in its GoreeCloud acceptance artifact.' \
+            > "${LEGAL}/SOURCE"
       - name: Set up Java
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
@@ -52,6 +94,17 @@ jobs:
         run: |
           test -f android-client/app/build/outputs/apk/debug/app-debug.apk
           test -f android-client/app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Verify Android licensing material
+        run: |
+          for apk in \
+            android-client/app/build/outputs/apk/debug/app-debug.apk \
+            android-client/app/build/outputs/apk/release/app-release-unsigned.apk; do
+            test "$(unzip -p "${apk}" assets/legal/LICENSE | git hash-object --stdin)" = "${MANAGER_AGPL_BLOB}"
+            unzip -p "${apk}" assets/legal/LICENSE | grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE'
+            unzip -p "${apk}" assets/legal/LICENSE | grep -Fq 'Version 3, 19 November 2007'
+            unzip -p "${apk}" assets/legal/LICENSE-NOTICE.md | grep -Fq 'SPDX identifier: `AGPL-3.0-only`'
+            unzip -p "${apk}" assets/legal/SOURCE | grep -Fq '${{ github.event.pull_request.head.sha || github.sha }}'
+          done
       - name: Verify release acceptance APK is unsigned
         run: |
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
@@ -84,6 +137,8 @@ jobs:
             android-client/app/build/outputs/apk/debug/app-debug.apk
             android-client/app/build/outputs/apk/debug/app-debug.apk.sha256
             android-client/app/build/outputs/apk/android-package-metadata.txt
+            dist/goreecloud-manager-source-*.tar.gz
+            dist/goreecloud-manager-source-*.tar.gz.sha256
       - name: Upload Android unsigned release acceptance artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -94,6 +149,8 @@ jobs:
             android-client/app/build/outputs/apk/release/app-release-unsigned.apk
             android-client/app/build/outputs/apk/release/app-release-unsigned.apk.sha256
             android-client/app/build/outputs/apk/android-package-metadata.txt
+            dist/goreecloud-manager-source-*.tar.gz
+            dist/goreecloud-manager-source-*.tar.gz.sha256
 
   debian-package:
     runs-on: ubuntu-24.04
@@ -116,6 +173,26 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Trust checked-out container workspace
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+      - name: Verify repository license identity
+        run: |
+          test "$(git hash-object LICENSE)" = "${MANAGER_AGPL_BLOB}"
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' LICENSE
+          grep -Fq 'Version 3, 19 November 2007' LICENSE
+          grep -Fq 'SPDX identifier: `AGPL-3.0-only`' LICENSE-NOTICE.md
+      - name: Create exact corresponding-source archive
+        env:
+          MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p dist
+          SOURCE_ARCHIVE="dist/goreecloud-manager-source-${MANAGER_SOURCE_REVISION}.tar.gz"
+          git archive --format=tar.gz --prefix=goreecloud-manager-source/ -o "${SOURCE_ARCHIVE}" "${MANAGER_SOURCE_REVISION}"
+          sha256sum "${SOURCE_ARCHIVE}" > "${SOURCE_ARCHIVE}.sha256"
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/LICENSE'
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/LICENSE-NOTICE.md'
+          tar -tzf "${SOURCE_ARCHIVE}" | grep -Fxq 'goreecloud-manager-source/packaging/build-deb.sh'
+          test "$(tar -xOzf "${SOURCE_ARCHIVE}" goreecloud-manager-source/LICENSE | git hash-object --stdin)" = "${MANAGER_AGPL_BLOB}"
       - name: Create isolated packaging environment
         run: |
           python3 -m venv /tmp/manager-build-venv
@@ -125,6 +202,7 @@ jobs:
       - name: Build Debian acceptance package
         env:
           PATH: /tmp/manager-build-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash packaging/build-deb.sh
       - name: Verify Qt platform plugins
         run: |
@@ -141,6 +219,26 @@ jobs:
           fi
       - name: Inspect package metadata
         run: dpkg-deb --info dist/goreecloud-manager_0.2.9_amd64.deb
+      - name: Verify packaged licensing material
+        run: |
+          rm -rf /tmp/manager-package-inspect
+          mkdir -p /tmp/manager-package-inspect
+          dpkg-deb -x dist/goreecloud-manager_0.2.9_amd64.deb /tmp/manager-package-inspect
+          DOC=/tmp/manager-package-inspect/usr/share/doc/goreecloud-manager
+          test -s "${DOC}/LICENSE"
+          test "$(git hash-object "${DOC}/LICENSE")" = "${MANAGER_AGPL_BLOB}"
+          grep -Fq 'GNU AFFERO GENERAL PUBLIC LICENSE' "${DOC}/LICENSE"
+          grep -Fq 'Version 3, 19 November 2007' "${DOC}/LICENSE"
+          test -s "${DOC}/LICENSE-NOTICE.md"
+          grep -Fq 'SPDX identifier: `AGPL-3.0-only`' "${DOC}/LICENSE-NOTICE.md"
+          test -s "${DOC}/THIRD_PARTY_NOTICES.md"
+          test -s "${DOC}/copyright"
+          test -s "${DOC}/SOURCE"
+          grep -Fq "${{ github.event.pull_request.head.sha || github.sha }}" "${DOC}/SOURCE"
+          test -s "${DOC}/third-party/MANIFEST.txt"
+          for component in PySide6 PySide6_Addons PySide6_Essentials shiboken6 psutil PyYAML pyinstaller CPython-runtime; do
+            find "${DOC}/third-party" -maxdepth 1 -type d -name "${component}*" -print -quit | grep -q .
+          done
       - name: Upload Debian acceptance artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -150,3 +248,5 @@ jobs:
           path: |
             dist/goreecloud-manager_0.2.9_amd64.deb
             dist/goreecloud-manager_0.2.9_amd64.deb.sha256
+            dist/goreecloud-manager-source-*.tar.gz
+            dist/goreecloud-manager-source-*.tar.gz.sha256

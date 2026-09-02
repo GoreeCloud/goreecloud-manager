@@ -9,7 +9,7 @@ LABEL org.opencontainers.image.title="GoreeCloud Manager" \
       org.opencontainers.image.description="Private GoreeCloud administrative visibility and control-plane foundation." \
       org.opencontainers.image.source="https://github.com/GoreeCloud/goreecloud-manager" \
       org.opencontainers.image.revision="${MANAGER_SOURCE_REVISION}" \
-      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.licenses="AGPL-3.0-only" \
       org.opencontainers.image.vendor="GoreeCloud"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
