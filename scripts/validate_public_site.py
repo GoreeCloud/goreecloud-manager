@@ -18,14 +18,24 @@ args = parser.parse_args()
 BASE = DIST if args.dist else SOURCE
 errors = []
 
+LEGACY_DIRECT_CANDIDATE_ASSETS = (
+    "glaze.workspace.candidate.css",
+    "glaze-2.candidate.css",
+    "glaze-2.foldable.candidate.css",
+    "glaze-2.emerging.candidate.css",
+)
+
+
 def check(condition: bool, message: str) -> None:
     if not condition:
         errors.append(message)
 
+
 def blob_sha(path: Path) -> str:
     data = path.read_bytes()
     prefix = b"blob " + str(len(data)).encode("ascii") + b"\0"
-    return hashlib.sha1(prefix + data).hexdigest()
+    return hashlib.sha1(prefix + data, usedforsecurity=False).hexdigest()
+
 
 class PublicHtmlAudit(HTMLParser):
     def handle_starttag(self, tag, attrs):
@@ -42,16 +52,27 @@ class PublicHtmlAudit(HTMLParser):
             rel = values.get("rel", "")
             if href.startswith(("http://", "https://", "//")) and "canonical" not in rel.split():
                 errors.append(f"remote runtime link is forbidden: {href}")
+            if "stylesheet" in rel.split() and ".candidate.css" in href:
+                errors.append(
+                    "direct Candidate stylesheet imports are forbidden by the "
+                    f"Glaze 2.2 Stable consumer contract: {href}"
+                )
         if tag == "a":
             href = values.get("href", "")
             if href.startswith("http://"):
                 errors.append(f"external navigation must use HTTPS: {href}")
+
 
 lock = json.loads((SOURCE / "glaze.lock.json").read_text(encoding="utf-8"))
 check(lock.get("version") == "2.2.0", "Glaze version must be 2.2.0")
 check(lock.get("lifecycle") == "Stable", "Glaze lifecycle must be Stable")
 check(lock.get("stable_commit") == "6731098b28dd0393faa878c70d989a221d714a20", "Glaze Stable commit must be pinned")
 check(lock.get("tag") == "v2.2.0", "Glaze Stable tag must be pinned")
+for legacy_candidate in LEGACY_DIRECT_CANDIDATE_ASSETS:
+    check(
+        legacy_candidate not in lock.get("files", {}),
+        f"legacy Candidate asset must not remain in production consumer lock: {legacy_candidate}",
+    )
 
 html = (BASE / "index.html").read_text(encoding="utf-8")
 css = (BASE / "assets" / "site.css" if args.dist else SOURCE / "site.css").read_text(encoding="utf-8")
