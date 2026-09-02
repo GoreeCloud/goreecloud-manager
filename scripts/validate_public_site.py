@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "website"
 DIST = ROOT / "dist"
 PRODUCT = ROOT.name.lower()
+PUBLIC_MANAGER_ORIGIN = "https://manage.goreecloud.com/"
+PRIVATE_MANAGER_HOST = "manager.goreecloud.com"
 parser = argparse.ArgumentParser()
 parser.add_argument("--dist", action="store_true")
 args = parser.parse_args()
@@ -87,9 +89,11 @@ else:
     check(mark.exists(), "Manager mark missing")
     if mark.exists():
         check(blob_sha(mark) == "81d5d6659bf22ee61a1be46fce816031b835f967", "Manager mark diverged from approved product blob")
-    check("noindex,nofollow,noarchive" in html, "Manager must remain noindex before public hostname approval")
-    check("manager.goreecloud.com" not in html, "private Manager application hostname must not be advertised by public site")
-    check("Disallow: /" in (BASE / "robots.txt").read_text(encoding="utf-8"), "Manager robots must block indexing before public hostname approval")
+    check("noindex,nofollow,noarchive" in html, "Manager must remain noindex before public deployment acceptance")
+    check(f'rel="canonical" href="{PUBLIC_MANAGER_ORIGIN}"' in html, "Manager public canonical must use manage.goreecloud.com")
+    check("manage.goreecloud.com" in html, "Manager public hostname identity is missing")
+    check(PRIVATE_MANAGER_HOST not in html, "private Manager application hostname must not be advertised by public site")
+    check("Disallow: /" in (BASE / "robots.txt").read_text(encoding="utf-8"), "Manager robots must block indexing before public deployment acceptance")
     check("Conceptual · no live data" in html, "Manager conceptual graphic must be labeled non-live")
 
 if args.dist:
