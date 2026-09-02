@@ -1,0 +1,53 @@
+name: Validate public website
+
+on:
+  pull_request:
+    paths:
+      - 'website/**'
+      - 'scripts/build_public_site.py'
+      - 'scripts/validate_public_site.py'
+      - '.github/workflows/validate-website.yml'
+      - 'WEBSITE.md'
+      - 'BRANDING.md'
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'scripts/build_public_site.py'
+      - 'scripts/validate_public_site.py'
+      - '.github/workflows/validate-website.yml'
+      - 'WEBSITE.md'
+      - 'BRANDING.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out exact website candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Check out pinned Glaze UI 2.2.0 Stable source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: GoreeCloud/goreecloud-glaze-ui
+          ref: 6731098b28dd0393faa878c70d989a221d714a20
+          path: .glaze-ui
+          persist-credentials: false
+      - name: Compile website tools
+        run: python -m py_compile scripts/build_public_site.py scripts/validate_public_site.py
+      - name: Validate source contract
+        run: python scripts/validate_public_site.py
+      - name: Build exact public candidate
+        env:
+          GLAZE_UI_SOURCE: ${{ github.workspace }}/.glaze-ui
+        run: python scripts/build_public_site.py
+      - name: Validate built artifact
+        run: python scripts/validate_public_site.py --dist
+      - name: Validate JavaScript syntax
+        run: node --check website/site.js
