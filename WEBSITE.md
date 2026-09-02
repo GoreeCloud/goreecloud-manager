@@ -9,11 +9,12 @@ GoreeCloud Manager owns a standalone **public informational website** source in 
 - Build command: `python scripts/build_public_site.py`
 - Build output directory: `dist`
 - Root directory: blank
-- Public hostname: **not yet approved**
+- Public hostname: `https://manage.goreecloud.com/`
+- Private Manager application hostname: `https://manager.goreecloud.com/` — reserved for the authenticated private application and not a public-website destination
 
-A distinct public namespace must be approved and documented before canonical URL, sitemap, indexing, DNS, or production publication is enabled. The existing private Manager application namespace remains reserved for the private application and must not be repurposed by this website.
+The public website canonical namespace is `manage.goreecloud.com`. That namespace assignment does not by itself prove DNS, Cloudflare Pages, TLS, exact deployed-revision, or production publication acceptance.
 
-Until that public namespace is approved, the source intentionally ships `noindex` metadata and a blocking `robots.txt`.
+Until public deployment is independently accepted, the source intentionally ships `noindex` metadata and a blocking `robots.txt`.
 
 ## Glaze UI baseline
 
@@ -25,7 +26,7 @@ The website is a ground-up consumer of **Glaze UI 2.2.0 Stable**. `website/glaze
 - `website/assets/manager-mark.svg` — byte-identical consumer derivative of the approved Manager product mark
 - `website/glaze.lock.json` — Glaze UI 2.2.0 Stable consumer lock
 - `scripts/build_public_site.py` — produces the isolated `dist/` artifact
-- `scripts/validate_public_site.py` — validates branding, Glaze provenance, accessibility hooks, private/public separation, indexing gate, security headers, and built-asset integrity
+- `scripts/validate_public_site.py` — validates branding, Glaze provenance, accessibility hooks, public/private hostname separation, indexing gate, security headers, and built-asset integrity
 - `.github/workflows/validate-website.yml` — exact-revision website acceptance gate
 
 ## Public truth boundary
