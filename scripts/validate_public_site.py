@@ -28,6 +28,10 @@ def blob_sha(path: Path) -> str:
 class PublicHtmlAudit(HTMLParser):
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
+        if "style" in values:
+            errors.append("inline style attributes are forbidden by the public-site CSP")
+        if tag == "script" and not values.get("src"):
+            errors.append("inline scripts are forbidden by the public-site CSP")
         src = values.get("src", "")
         if src.startswith(("http://", "https://", "//")):
             errors.append(f"remote runtime source is forbidden: {src}")
@@ -50,7 +54,8 @@ check(lock.get("tag") == "v2.2.0", "Glaze Stable tag must be pinned")
 html = (BASE / "index.html").read_text(encoding="utf-8")
 css = (BASE / "assets" / "site.css" if args.dist else SOURCE / "site.css").read_text(encoding="utf-8")
 js = (BASE / "assets" / "site.js" if args.dist else SOURCE / "site.js").read_text(encoding="utf-8")
-PublicHtmlAudit().feed(html)
+for page in (BASE / "index.html", BASE / "404.html"):
+    PublicHtmlAudit().feed(page.read_text(encoding="utf-8"))
 
 check('data-glaze-version="2.2.0"' in html, "missing Glaze 2.2.0 document marker")
 check('name="goreecloud-glaze-ui" content="2.2.0"' in html, "missing Glaze 2.2.0 meta marker")
@@ -93,6 +98,10 @@ if args.dist:
         check(path.exists(), f"missing built Glaze asset: {name}")
         if path.exists():
             check(blob_sha(path) == expected_sha, f"Glaze asset integrity mismatch: {name}")
+    built_mark = DIST / "assets" / mark.name
+    check(built_mark.exists(), f"missing built product mark: {mark.name}")
+    if built_mark.exists():
+        check(blob_sha(built_mark) == blob_sha(mark), f"built product mark integrity mismatch: {mark.name}")
     check((DIST / "_headers").exists(), "built security headers missing")
 
 if errors:
