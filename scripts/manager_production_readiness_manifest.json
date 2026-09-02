@@ -6,7 +6,7 @@
     "approval_reference": null,
     "approved_at": null
   },
-  "declared_effective_check_count": 8,
+  "declared_effective_check_count": 9,
   "source_evidence_gates": [
     {
       "workflow_path": ".github/workflows/ci.yml",
@@ -56,6 +56,14 @@
         "debian-package"
       ],
       "evidence_scope": "exact-revision Android acceptance APK and Debian desktop package builds, hardened Android network boundary, official Manager client identity, package metadata inspection, and artifact checksums"
+    },
+    {
+      "workflow_path": ".github/workflows/validate-website.yml",
+      "workflow_name": "Validate public website",
+      "required_jobs": [
+        "validate"
+      ],
+      "evidence_scope": "exact-revision public informational website build, Glaze UI 2.2 Stable asset integrity, canonical public/private hostname separation, accessibility fallbacks, and browser security/privacy controls"
     },
     {
       "workflow_path": ".github/workflows/production-readiness-evidence-manifest.yml",
