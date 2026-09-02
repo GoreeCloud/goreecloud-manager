@@ -1,0 +1,166 @@
+schema_version: "1.0"
+component:
+  id: goreecloud.manager
+  product_name: GoreeCloud Manager
+  kind: application
+  repository: GoreeCloud/goreecloud-manager
+  lifecycle: Development
+  version: "0.1"
+  supported_platforms:
+    - web
+    - linux-server
+  user_facing: true
+api:
+  version: null
+  endpoints:
+    - id: health
+      method: GET
+      path: /healthz/
+      purpose: Minimal Manager liveness interface.
+    - id: tasks-integration-health
+      method: GET
+      path: /healthz/integrations/tasks/
+      purpose: Data-minimized health signal for the read-only GoreeCloud Tasks integration.
+glaze_ui:
+  applicable: true
+  required_version: "2.2.0"
+  implemented_version: null
+  migration_status: required
+  evidence:
+    - manager-readme
+platform_systems:
+  manager:
+    status: "Not Applicable — Justified"
+    justification: GoreeCloud Manager is this component; it must not consume itself as a separate authority.
+    evidence:
+      - manager-readme
+  identity:
+    status: "Applicable — Nonconformant"
+    justification: The current authenticated Django shell does not yet provide accepted GoreeCloud Identity integration evidence.
+    evidence:
+      - manager-readme
+  wardveil_security:
+    status: "Applicable — Nonconformant"
+    justification: Security-oriented integration boundaries exist, but current Wardveil Security acceptance evidence is not recorded in this contract.
+    evidence:
+      - manager-readme
+  privacy_shield:
+    status: "Applicable — Nonconformant"
+    justification: Data-minimization boundaries exist, but current Privacy Shield acceptance evidence is not recorded in this contract.
+    evidence:
+      - manager-readme
+  everkeep:
+    status: "Applicable — Nonconformant"
+    justification: Manager exposes backup-oriented signals, but verified Everkeep recovery acceptance for Manager is not established.
+    evidence:
+      - manager-readme
+  mesh:
+    status: "Applicable — Nonconformant"
+    justification: Manager does not yet consume the canonical GoreeCloud Mesh platform registry and conformance representation.
+    evidence:
+      - manager-readme
+  glaze_ui:
+    status: "Applicable — Migration Required"
+    justification: The current Stable platform baseline is Glaze UI 2.2.0 and the repository has not yet completed 2.2 rendered and accessibility acceptance.
+    evidence:
+      - manager-readme
+mesh:
+  registration: required
+  capabilities: []
+  dependencies:
+    - goreecloud.mesh
+  published_events: []
+  consumed_events: []
+  evidence: []
+health:
+  liveness:
+    - method: GET
+      path: /healthz/
+  readiness: []
+recovery:
+  backup_required: true
+  backup_status: implemented_unverified
+  restore_required: true
+  restore_status: required_missing
+  last_verified_restore: null
+  recovery_dependencies:
+    - protected application data
+    - deployment configuration
+    - secret re-provisioning
+  documentation:
+    - README.md
+  evidence:
+    - manager-readme
+data_portability:
+  export_capability: unknown
+  export_formats: []
+  last_export_validation: null
+  portability_requirements:
+    - define export scope for Manager-owned state
+    - validate import or reconstruction path where applicable
+  evidence: []
+external_dependencies:
+  - id: netbird
+    purpose: Transitional read-only network visibility.
+    required: false
+    compatibility: Adapter must fail soft and remain read-only.
+  - id: healthchecks
+    purpose: Read-only scheduled-job monitoring visibility.
+    required: false
+    compatibility: Uses a dedicated read-only Management API boundary.
+  - id: uptime-kuma
+    purpose: Read-only availability metrics visibility.
+    required: false
+    compatibility: Uses protected metrics rather than administrator authority.
+  - id: kopia-status
+    purpose: Sanitized backup-protection visibility.
+    required: false
+    compatibility: Status artifacts do not establish restore success.
+  - id: beszel-status
+    purpose: Sanitized resource visibility.
+    required: false
+    compatibility: Delegated status artifacts remain read-only.
+  - id: goreecloud-tasks
+    purpose: Read-only operational task visibility.
+    required: false
+    compatibility: Tasks remains authoritative for task data and authorization.
+compatibility:
+  platform_releases: []
+  api_requirements:
+    - goreecloud.tasks.manager.v1 when the Tasks integration is enabled
+  schema_requirements:
+    - goreecloud.platform/1.0
+  component_requirements:
+    - Glaze UI 2.2.0
+    - GoreeCloud Mesh platform registry v1 before platform overview acceptance
+conformance:
+  declared_state: migration_required
+  stable_eligible: false
+  checks:
+    - {id: glaze-ui, mandatory: true, status: pending, evidence: [manager-readme], note: "Glaze UI 2.2 migration and rendered acceptance are incomplete."}
+    - {id: goreecloud-identity, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: wardveil-security, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: privacy-shield, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: everkeep-recovery, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: mesh-registration, mandatory: true, status: pending, evidence: []}
+    - {id: api-compatibility, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: accessibility, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: platform-acceptance, mandatory: true, status: pending, evidence: []}
+    - {id: backup, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: restore, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: export-portability, mandatory: true, status: pending, evidence: []}
+    - {id: security-validation, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: privacy-validation, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: required-documentation, mandatory: true, status: pass, evidence: [manager-readme]}
+    - {id: required-tests, mandatory: true, status: pending, evidence: [manager-readme]}
+    - {id: release-evidence, mandatory: true, status: pending, evidence: []}
+evidence:
+  acceptance:
+    - id: manager-readme
+      kind: documentation
+      location: README.md
+      revision: null
+      observed_at: null
+      producer: GoreeCloud/goreecloud-manager
+      description: Repository-local current-state, integration-boundary, recovery-semantics, and validation documentation. Documentation alone does not satisfy implementation gates.
+  release: []
