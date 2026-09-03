@@ -54,11 +54,14 @@ platform_systems:
     notes: Manager has a bounded Everkeep resilience-status integration and disposable recovery evidence, while target-environment recovery and production acceptance remain outstanding.
   glaze_ui:
     status: partial
-    version: 1.3.0
+    version: 1.0.0
     evidence:
       - docs/glaze-ui.md
+      - core/templates/core/base.html
       - core/static/core/css/glaze-ui.css
-    notes: Repository source documents a Glaze UI 1.3.0 application baseline with source-level conformance checks; migration to the current platform baseline and rendered application acceptance remain open.
+      - tests/test_glaze_ui_contract.py
+      - tests/test_glaze_ui_rendered.py
+    notes: Repository-local GLAZE UI V1.0 source mapping and automated rendered validation cover the Django web interface only. Exact-head application acceptance, human review where automation is insufficient, applicable upstream production eligibility, release/deployment approval, and separate desktop, Android, and public-website V1 disposition remain incomplete.
   mesh:
     status: planned
     version: null
@@ -108,6 +111,7 @@ external_dependencies:
 compatibility:
   requires:
     - goreecloud-platform-contract=0.1
+    - glaze-ui==1.0.0
   provides: []
 
 conformance:
@@ -117,6 +121,10 @@ conformance:
     - README.md
     - docs/project-specification.md
     - docs/glaze-ui.md
+    - core/templates/core/base.html
+    - core/static/core/css/glaze-ui.css
+    - tests/test_glaze_ui_contract.py
+    - tests/test_glaze_ui_rendered.py
     - core/urls.py
     - integrations/privacy_shield.py
     - integrations/everkeep.py
@@ -125,5 +133,6 @@ conformance:
     - GoreeCloud Mesh integration remains planned.
     - GoreeCloud Identity integration remains planned.
     - Wardveil Security runtime integration and acceptance remain outstanding.
-    - Current Glaze UI platform-baseline migration and rendered application acceptance remain outstanding.
+    - GLAZE UI V1.0 Django-web consumer promotion is incomplete; exact-head application acceptance, human visual/accessibility review where automation is insufficient, applicable upstream production eligibility, release/deployment approval, and target-environment validation remain outstanding.
+    - Manager desktop, Android, and public-website V1 disposition and acceptance remain separate unresolved surfaces.
     - Full target-environment backup, restore, publication, and production-readiness acceptance remain outstanding.
