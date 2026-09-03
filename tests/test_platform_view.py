@@ -17,38 +17,38 @@ class PlatformViewTests(TestCase):
         self.assertIn(reverse("login"), response.url)
 
     @patch("core.views.mesh_platform_snapshot")
-    def test_platform_page_preserves_producer_and_restore_boundaries(self, mocked_snapshot):
+    def test_platform_page_preserves_authority_and_restore_boundaries(self, mocked_snapshot):
         mocked_snapshot.return_value = MeshPlatformSnapshot(
             state="healthy",
             detail="Live authority-preserving Mesh platform registry data verified for 1 component(s).",
             condition="healthy",
             records=(
                 MeshPlatformRecord(
-                    component_id="goreecloud.tasks",
+                    component_id="goreecloud-tasks",
                     product_name="GoreeCloud Tasks",
                     kind="application",
-                    lifecycle="Development",
+                    lifecycle="development",
                     version="0.1",
                     supported_platforms=("web", "linux-server"),
                     repository="GoreeCloud/goreecloud-tasks",
                     source_revision="0123456789abcdef0123456789abcdef01234567",
                     capabilities=("operational-work",),
-                    dependencies=("goreecloud.mesh",),
+                    dependencies=("goreecloud-mesh",),
                     relationships=(
                         MeshRelationship(
-                            target="goreecloud.mesh",
+                            target="goreecloud-mesh",
                             relationship_type="platform-coordination",
                             required=True,
                         ),
                     ),
                     platform_systems=(
-                        ("manager", "Applicable — Nonconformant"),
-                        ("identity", "Applicable — Migration Required"),
-                        ("wardveil_security", "Applicable — Nonconformant"),
-                        ("privacy_shield", "Applicable — Nonconformant"),
-                        ("everkeep", "Applicable — Nonconformant"),
-                        ("mesh", "Applicable — Nonconformant"),
-                        ("glaze_ui", "Applicable — Migration Required"),
+                        ("manager", "applicable-nonconformant"),
+                        ("identity", "applicable-migration-required"),
+                        ("wardveil_security", "applicable-nonconformant"),
+                        ("privacy_shield", "applicable-nonconformant"),
+                        ("everkeep", "applicable-nonconformant"),
+                        ("mesh", "applicable-nonconformant"),
+                        ("glaze_ui", "applicable-migration-required"),
                     ),
                     runtime_state="unknown",
                     health_state="unknown",
@@ -58,9 +58,14 @@ class PlatformViewTests(TestCase):
                     last_verified_restore=None,
                     export_status="implemented_unverified",
                     export_formats=("json",),
-                    overall_result="non-conformant",
+                    declared_result="nonconformant",
+                    computed_result="nonconformant",
                     stable_eligible=False,
+                    evaluator_repository="GoreeCloud/GoreeCloud",
+                    evaluator_revision="abcdef0123456789abcdef0123456789abcdef01",
+                    evaluated_at=datetime(2026, 9, 3, 0, 29, tzinfo=UTC),
                     missing_mandatory_evidence=("restore", "platform-acceptance"),
+                    blockers=("target acceptance incomplete",),
                     observed_at=datetime(2026, 9, 3, 0, 30, tzinfo=UTC),
                 ),
             ),
@@ -76,13 +81,17 @@ class PlatformViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "GoreeCloud Platform")
         self.assertContains(response, "GoreeCloud Tasks")
-        self.assertContains(response, "goreecloud.tasks")
-        self.assertContains(response, "Applicable — Migration Required")
-        self.assertContains(response, "goreecloud.mesh")
+        self.assertContains(response, "goreecloud-tasks")
+        self.assertContains(response, "applicable-migration-required")
+        self.assertContains(response, "goreecloud-mesh")
         self.assertContains(response, "Backup is not restore proof")
         self.assertContains(response, "required_missing")
         self.assertContains(response, "Stable: not eligible")
         self.assertContains(response, "Manager presents normalized Mesh records but does not approve")
+        self.assertContains(response, "canonical GoreeCloud evaluator remains authoritative")
+        self.assertContains(response, "GoreeCloud/GoreeCloud")
+        self.assertContains(response, "abcdef012345")
+        self.assertContains(response, "target acceptance incomplete")
         self.assertContains(response, "Manager does not present it as currently restorable")
         self.assertContains(response, "Wardveil Security")
         self.assertContains(response, "Privacy Shield")
