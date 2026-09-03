@@ -12,6 +12,30 @@ WORKFLOW_ROOT = REPOSITORY_ROOT / ".github" / "workflows"
 EXACT_REVISION_EXPRESSION = "${{ github.event.pull_request.head.sha || github.sha }}"
 
 
+def workflow_job_blocks(workflow: str) -> dict[str, str]:
+    """Return top-level workflow job bodies without requiring a YAML dependency."""
+    lines = workflow.splitlines()
+    try:
+        jobs_index = next(index for index, line in enumerate(lines) if line.rstrip() == "jobs:")
+    except StopIteration:
+        return {}
+
+    jobs: dict[str, list[str]] = {}
+    current_job: str | None = None
+    for line in lines[jobs_index + 1 :]:
+        if line and not line.startswith((" ", "\t", "#")):
+            break
+        job_match = re.match(r"^  ([A-Za-z0-9_-]+):\s*(?:#.*)?$", line)
+        if job_match:
+            current_job = job_match.group(1)
+            jobs[current_job] = []
+            continue
+        if current_job is not None:
+            jobs[current_job].append(line)
+
+    return {name: "\n".join(body) for name, body in jobs.items()}
+
+
 class SupplyChainImmutabilityTests(SimpleTestCase):
     def test_lock_contains_only_exact_hashed_packages_and_covers_direct_requirements(self):
         direct_text = (REPOSITORY_ROOT / "requirements.txt").read_text(encoding="utf-8")
@@ -79,18 +103,56 @@ class SupplyChainImmutabilityTests(SimpleTestCase):
 
     def test_all_external_github_actions_use_full_commit_shas_and_exact_checkout(self):
         action_pattern = re.compile(r"uses:\s*([^\s@]+/[^\s@]+)@([^\s#]+)")
+        reusable_job_pattern = re.compile(
+            r"^    uses:\s*([^\s@]+/[^\s@]+)@([^\s#]+)\s*$",
+            re.MULTILINE,
+        )
         found = []
 
         for workflow_path in sorted(WORKFLOW_ROOT.glob("*.yml")):
             workflow = workflow_path.read_text(encoding="utf-8")
-            self.assertNotIn("runs-on: ubuntu-latest", workflow)
-            self.assertIn("runs-on: ubuntu-24.04", workflow)
-            self.assertRegex(workflow, r"timeout-minutes:\s*\d+")
-            self.assertIn(
-                f"ref: {EXACT_REVISION_EXPRESSION}",
-                workflow,
-                f"{workflow_path.name} must check out the exact PR head or main commit",
-            )
+            jobs = workflow_job_blocks(workflow)
+            self.assertTrue(jobs, f"{workflow_path.name} must define at least one job")
+
+            for job_name, job in jobs.items():
+                reusable = reusable_job_pattern.search(job)
+                if reusable:
+                    self.assertNotIn(
+                        "runs-on:",
+                        job,
+                        f"{workflow_path.name}:{job_name} reusable caller must not own a runner",
+                    )
+                    self.assertNotIn(
+                        "timeout-minutes:",
+                        job,
+                        f"{workflow_path.name}:{job_name} reusable caller timeout belongs in called workflow",
+                    )
+                    self.assertRegex(
+                        reusable.group(2),
+                        r"^[0-9a-f]{40}$",
+                        f"{workflow_path.name}:{job_name} uses mutable reusable workflow reference",
+                    )
+                else:
+                    self.assertNotIn(
+                        "runs-on: ubuntu-latest",
+                        job,
+                        f"{workflow_path.name}:{job_name} must use the pinned runner image",
+                    )
+                    self.assertIn(
+                        "runs-on: ubuntu-24.04",
+                        job,
+                        f"{workflow_path.name}:{job_name} must use ubuntu-24.04",
+                    )
+                    self.assertRegex(
+                        job,
+                        r"timeout-minutes:\s*\d+",
+                        f"{workflow_path.name}:{job_name} must have an explicit timeout",
+                    )
+                    self.assertIn(
+                        f"ref: {EXACT_REVISION_EXPRESSION}",
+                        job,
+                        f"{workflow_path.name}:{job_name} must check out the exact PR head or main commit",
+                    )
 
             for repository, reference in action_pattern.findall(workflow):
                 found.append((workflow_path.name, repository, reference))
