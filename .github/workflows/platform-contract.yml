@@ -1,0 +1,71 @@
+name: Platform contract
+
+on:
+  pull_request:
+    paths:
+      - goreecloud.platform.yaml
+      - .github/workflows/platform-contract.yml
+      - docs/glaze-ui.md
+      - core/templates/core/base.html
+      - core/static/core/css/glaze-ui.css
+      - desktop-client/goreecloud_manager/theme.py
+      - android-client/app/src/main/java/com/goreecloud/manager/MainActivity.kt
+  push:
+    branches:
+      - main
+    paths:
+      - goreecloud.platform.yaml
+      - .github/workflows/platform-contract.yml
+      - docs/glaze-ui.md
+      - core/templates/core/base.html
+      - core/static/core/css/glaze-ui.css
+      - desktop-client/goreecloud_manager/theme.py
+      - android-client/app/src/main/java/com/goreecloud/manager/MainActivity.kt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate GoreeCloud platform declaration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Check out exact Manager candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Check out pinned canonical platform contract
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: GoreeCloud/GoreeCloud
+          ref: 2ff2e68756cad3e8d99b904b1f41ede8ee4319e5
+          path: .goreecloud-platform
+          persist-credentials: false
+      - name: Install validator dependencies
+        run: python3 -m pip install --requirement .goreecloud-platform/requirements-platform-contract.txt
+      - name: Validate declaration and compute conformance
+        run: >-
+          python3 .goreecloud-platform/scripts/validate_platform_contract.py
+          goreecloud.platform.yaml
+          --schema .goreecloud-platform/schemas/goreecloud.platform.schema.json
+          --result-schema .goreecloud-platform/schemas/goreecloud.conformance-result.schema.json
+          --rules .goreecloud-platform/contracts/goreecloud.platform-rules.v1.json
+          --expected-repository "${{ github.repository }}"
+          --source-revision "$MANAGER_SOURCE_REVISION"
+          --output conformance-result.json
+      - name: Publish result to job summary
+        shell: bash
+        run: |
+          echo '## GoreeCloud platform conformance' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat conformance-result.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
