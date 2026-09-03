@@ -16,8 +16,6 @@ on:
 permissions:
   contents: read
 
-data:
-
 jobs:
   validate:
     uses: GoreeCloud/GoreeCloud/.github/workflows/reusable-platform-manifest.yml@a4d4a0f80530f454c04ddcc752d0bcca824a590b
