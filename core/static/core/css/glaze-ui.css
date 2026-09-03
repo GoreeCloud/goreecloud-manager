@@ -1,60 +1,314 @@
 /*
- * GoreeCloud Manager — Glaze UI 1.3.0 conformance layer
+ * GoreeCloud Manager — GLAZE UI V1.0 Django-web consumer mapping.
+ * Canonical authority: GoreeCloud/goreecloud-glaze-ui
+ * Exact source revision: 70909bbdccad378fb7281ae1842e2f5beed64c38
+ * Scope: repository-owned Django web application only.
+ * Consumer state: migration in progress; release and production acceptance remain separate.
  *
- * app.css owns Manager-specific layout and component presentation. This file
- * owns cross-cutting Glaze UI identity, accessibility, interaction, form,
- * expressive hierarchy, and browser capability fallbacks so those requirements
- * remain easy to audit.
+ * V1 rule: Solid where users read or make explicit critical decisions.
+ * Glazed where users interact with transient navigation, command, search,
+ * control, or feedback chrome.
  */
 
 :root {
-  --glaze-contract-version: "1.3.0";
-  --glaze-canvas: var(--bg);
-  --glaze-surface: var(--surface);
-  --glaze-surface-strong: var(--surface-strong);
-  --glaze-surface-muted: var(--surface-soft);
-  --glaze-text: var(--text);
-  --glaze-muted: var(--text-muted);
-  --glaze-line: var(--border);
-  --glaze-accent: var(--accent);
-  --glaze-info: var(--accent);
-  --glaze-success: var(--good);
-  --glaze-warning: var(--warning);
-  --glaze-danger: var(--danger);
-  --glaze-focus-ring: var(--accent);
-  --glaze-selection: var(--accent-surface);
-  --glaze-placeholder-opacity: .72;
-  --glaze-control-field-gap: .5rem;
-  --glaze-control-group-gap: 1rem;
-  --glaze-control-message-gap: .375rem;
-  --glaze-target-min: 2.75rem;
-  --glaze-state-hover: .08;
-  --glaze-state-pressed: .12;
-  --glaze-state-focus: .14;
-  --glaze-state-selected: .12;
-  --glaze-gutter: 1rem;
+  color-scheme: light dark;
 
-  /* 1.3 expressive hierarchy. */
-  --glaze-shape-compact: .625rem;
-  --glaze-shape-standard: 1rem;
-  --glaze-shape-expressive: 1.375rem;
-  --glaze-shape-hero: 2rem;
-  --glaze-shape-pressed: .75rem;
-  --glaze-glass-functional-blur: 18px;
-  --glaze-glass-functional-saturation: 130%;
-  --glaze-motion-effects-fast: 140ms;
-  --glaze-motion-effects-standard: 180ms;
-  --glaze-motion-spatial-fast: 180ms;
-  --glaze-motion-spatial-standard: 260ms;
-  --glaze-motion-spatial-emphasized: 360ms;
-  --glaze-easing-effects: ease;
-  --glaze-easing-spatial: cubic-bezier(.2, .8, .2, 1);
+  /* Repository-local provenance markers; these are not canonical Glaze tokens. */
+  --manager-glaze-version: "1.0.0";
+  --manager-glaze-source-revision: "70909bbdccad378fb7281ae1842e2f5beed64c38";
+
+  /* Canonical V1 dark semantic roles mirrored from the pinned source revision. */
+  --glz1-canvas: #0b0d11;
+  --glz1-base: #12151b;
+  --glz1-raised: #1b2028;
+  --glz1-text-primary: #f5f7fa;
+  --glz1-text-secondary: #b0b7c3;
+  --glz1-text-tertiary: #8d96a5;
+  --glz1-line: rgba(225, 232, 244, 0.14);
+  --glz1-focus: #8db5ff;
+  --glz1-info: #82afff;
+  --glz1-success: #72d9a3;
+  --glz1-warning: #f0bc65;
+  --glz1-critical: #ff8c84;
+  --glz1-glaze-blue: #82afff;
+
+  --glz1-space-1: 4px;
+  --glz1-space-2: 8px;
+  --glz1-space-3: 12px;
+  --glz1-space-4: 16px;
+  --glz1-space-5: 20px;
+  --glz1-space-6: 24px;
+  --glz1-space-8: 32px;
+  --glz1-space-12: 48px;
+  --glz1-space-16: 64px;
+
+  --glz1-radius-small: 12px;
+  --glz1-radius-standard: 20px;
+  --glz1-radius-soft: 28px;
+  --glz1-radius-panel: 28px;
+  --glz1-radius-pill: 999px;
+
+  --glz1-target-shell: 48px;
+  --glz1-target-assisted: 56px;
+  --glz1-focus-width: 3px;
+  --glz1-focus-offset: 2px;
+
+  --glz1-overlay-bg: rgba(24, 29, 38, 0.76);
+  --glz1-overlay-blur: 22px;
+  --glz1-panel-bg: rgba(24, 29, 38, 0.86);
+  --glz1-panel-blur: 28px;
+  --glz1-critical-bg: rgba(18, 21, 27, 0.97);
+  --glz1-shadow-overlay: 0 18px 54px rgba(0, 0, 0, 0.30);
+  --glz1-shadow-panel: 0 28px 84px rgba(0, 0, 0, 0.40);
+
+  --glz1-motion-popover: 180ms;
+  --glz1-motion-panel: 250ms;
+  --glz1-motion-workspace: 360ms;
+  --glz1-ease-snap: cubic-bezier(0.2, 0, 0, 1);
+  --glz1-ease-glide: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Map the existing Manager product vocabulary onto V1 semantics. */
+  --bg: var(--glz1-canvas);
+  --surface: var(--glz1-overlay-bg);
+  --surface-strong: var(--glz1-raised);
+  --surface-soft: color-mix(in srgb, var(--glz1-raised) 88%, var(--glz1-canvas));
+  --border: var(--glz1-line);
+  --border-strong: color-mix(in srgb, var(--glz1-text-secondary) 38%, transparent);
+  --text: var(--glz1-text-primary);
+  --text-secondary: var(--glz1-text-secondary);
+  --text-muted: var(--glz1-text-tertiary);
+  --accent: var(--glz1-focus);
+  --accent-strong: var(--glz1-info);
+  --accent-surface: color-mix(in srgb, var(--glz1-focus) 14%, transparent);
+  --good: var(--glz1-success);
+  --warning: var(--glz1-warning);
+  --danger: var(--glz1-critical);
+  --focus: 0 0 0 4px color-mix(in srgb, var(--glz1-focus) 34%, transparent);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --glz1-canvas: #f5f7fa;
+    --glz1-base: #ffffff;
+    --glz1-raised: #ffffff;
+    --glz1-text-primary: #151a23;
+    --glz1-text-secondary: #5d6675;
+    --glz1-text-tertiary: #7b8492;
+    --glz1-line: rgba(25, 35, 50, 0.14);
+    --glz1-focus: #3478f6;
+    --glz1-info: #3478f6;
+    --glz1-success: #2f9e63;
+    --glz1-warning: #b56a00;
+    --glz1-critical: #c63b32;
+    --glz1-glaze-blue: #4f8dff;
+    --glz1-overlay-bg: rgba(255, 255, 255, 0.78);
+    --glz1-panel-bg: rgba(255, 255, 255, 0.88);
+    --glz1-critical-bg: rgba(255, 255, 255, 0.98);
+    --glz1-shadow-overlay: 0 18px 52px rgba(24, 34, 50, 0.14);
+    --glz1-shadow-panel: 0 28px 80px rgba(14, 22, 36, 0.20);
+  }
+}
+
+:root[data-theme="light"] {
+  --glz1-canvas: #f5f7fa;
+  --glz1-base: #ffffff;
+  --glz1-raised: #ffffff;
+  --glz1-text-primary: #151a23;
+  --glz1-text-secondary: #5d6675;
+  --glz1-text-tertiary: #7b8492;
+  --glz1-line: rgba(25, 35, 50, 0.14);
+  --glz1-focus: #3478f6;
+  --glz1-info: #3478f6;
+  --glz1-success: #2f9e63;
+  --glz1-warning: #b56a00;
+  --glz1-critical: #c63b32;
+  --glz1-glaze-blue: #4f8dff;
+  --glz1-overlay-bg: rgba(255, 255, 255, 0.78);
+  --glz1-panel-bg: rgba(255, 255, 255, 0.88);
+  --glz1-critical-bg: rgba(255, 255, 255, 0.98);
+  --glz1-shadow-overlay: 0 18px 52px rgba(24, 34, 50, 0.14);
+  --glz1-shadow-panel: 0 28px 80px rgba(14, 22, 36, 0.20);
+}
+
+:root[data-theme="dark"] {
+  --glz1-canvas: #0b0d11;
+  --glz1-base: #12151b;
+  --glz1-raised: #1b2028;
+  --glz1-text-primary: #f5f7fa;
+  --glz1-text-secondary: #b0b7c3;
+  --glz1-text-tertiary: #8d96a5;
+  --glz1-line: rgba(225, 232, 244, 0.14);
+  --glz1-focus: #8db5ff;
+  --glz1-info: #82afff;
+  --glz1-success: #72d9a3;
+  --glz1-warning: #f0bc65;
+  --glz1-critical: #ff8c84;
+  --glz1-glaze-blue: #82afff;
+  --glz1-overlay-bg: rgba(24, 29, 38, 0.76);
+  --glz1-panel-bg: rgba(24, 29, 38, 0.86);
+  --glz1-critical-bg: rgba(18, 21, 27, 0.97);
+  --glz1-shadow-overlay: 0 18px 54px rgba(0, 0, 0, 0.30);
+  --glz1-shadow-panel: 0 28px 84px rgba(0, 0, 0, 0.40);
+}
+
+[data-glz-appearance="deep-dark"] {
+  --glz1-canvas: #05070a;
+  --glz1-base: #0d1015;
+  --glz1-raised: #171c23;
+  --glz1-text-primary: #f5f7fa;
+  --glz1-text-secondary: #abb4c2;
+  --glz1-text-tertiary: #8d96a5;
+  --glz1-line: rgba(225, 232, 244, 0.15);
+  --glz1-overlay-bg: rgba(18, 22, 29, 0.80);
+  --glz1-panel-bg: rgba(18, 22, 29, 0.90);
+  --glz1-critical-bg: rgba(13, 16, 21, 0.98);
+}
+
+html {
+  background: var(--glz1-canvas);
+}
+
+body.glz1-workspace {
+  min-block-size: 100%;
+  background:
+    radial-gradient(circle at 10% -10%, color-mix(in srgb, var(--glz1-glaze-blue) 12%, transparent), transparent 32rem),
+    var(--glz1-canvas);
+  color: var(--glz1-text-primary);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--glz1-focus) 20%, transparent);
+  color: var(--glz1-text-primary);
+}
+
+.glaze-skip-link {
+  min-block-size: var(--glz1-target-shell);
+  display: inline-flex;
+  align-items: center;
+  border: 2px solid var(--glz1-focus);
+  border-radius: var(--glz1-radius-standard);
+  background: var(--glz1-raised);
+  color: var(--glz1-text-primary);
+}
+
+/* System Overlay navigation chrome. Solid/Raised remain durable content surfaces. */
+.site-header[data-glz-surface="system-overlay"] {
+  border-color: var(--glz1-line);
+  background: var(--glz1-overlay-bg);
+  -webkit-backdrop-filter: blur(var(--glz1-overlay-blur)) saturate(1.18);
+  backdrop-filter: blur(var(--glz1-overlay-blur)) saturate(1.18);
+  box-shadow: var(--glz1-shadow-overlay);
+}
+
+[data-glz-material="glaze"] [data-glz-material="glaze"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+main[data-glz-surface="solid"],
+.hero,
+.card,
+.metric-card,
+.detail-card,
+.protection-card,
+.auth-card,
+.status,
+.release {
+  border-color: var(--glz1-line);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.hero,
+.card,
+.metric-card,
+.detail-card,
+.protection-card,
+.auth-card {
+  background: var(--glz1-raised);
+}
+
+.hero {
+  border-radius: var(--glz1-radius-soft);
+}
+
+.card,
+.metric-card,
+.detail-card,
+.protection-card,
+.auth-card {
+  border-radius: var(--glz1-radius-standard);
+}
+
+/* Shared V1 interaction and target contract. */
+.brand,
+.nav-link,
+.theme-toggle,
+.link-button,
+button,
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+select {
+  min-block-size: var(--glz1-target-shell);
+}
+
+.brand,
+.nav-link,
+.theme-toggle,
+.link-button,
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  transition:
+    background-color var(--glz1-motion-popover) var(--glz1-ease-snap),
+    border-color var(--glz1-motion-popover) var(--glz1-ease-snap),
+    color var(--glz1-motion-popover) var(--glz1-ease-snap),
+    box-shadow var(--glz1-motion-popover) var(--glz1-ease-snap);
+}
+
+textarea {
+  min-block-size: max(108px, var(--glz1-target-shell));
+}
+
+button:focus,
+a:focus,
+input:focus,
+select:focus,
+textarea:focus,
+summary:focus,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: var(--glz1-focus-width) solid var(--glz1-focus) !important;
+  outline-offset: var(--glz1-focus-offset) !important;
+  box-shadow: none;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--glz1-focus);
+}
+
+.primary-nav[data-glz-action-group="adaptive"],
+.header-actions[data-glz-action-group="adaptive"] {
+  gap: clamp(.35rem, 1vw, .6rem);
+}
+
+.primary-nav[data-glz-action-group="adaptive"] .nav-link[aria-current="page"] {
+  border-radius: var(--glz1-radius-pill);
+  background: color-mix(in srgb, var(--glz1-focus) 14%, var(--glz1-raised));
+  color: var(--glz1-text-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--glz1-focus) 34%, transparent);
 }
 
 .brand-symbol {
   flex: 0 0 auto;
-  border-radius: 9px;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, .16);
+  border-radius: var(--glz1-radius-small);
 }
 
 .brand-lockup {
@@ -63,177 +317,79 @@
   gap: .45rem;
 }
 
-/* Functional Glass is reserved for navigation and interactive chrome. */
-.site-header[data-glaze-material="functional-glass"] {
-  backdrop-filter: blur(var(--glaze-glass-functional-blur)) saturate(var(--glaze-glass-functional-saturation));
-  -webkit-backdrop-filter: blur(var(--glaze-glass-functional-blur)) saturate(var(--glaze-glass-functional-saturation));
+/* Explicit V1 input and accessibility host vocabulary. */
+[data-glz-input="touch"] .brand,
+[data-glz-input="touch"] .nav-link,
+[data-glz-input="touch"] .theme-toggle,
+[data-glz-input="touch"] .link-button,
+[data-glz-input="touch"] button,
+[data-glz-input="touch"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+[data-glz-input="touch"] select {
+  min-block-size: var(--glz1-target-shell);
 }
 
-/* Operational content remains Solid/Raised; glass is not a universal card treatment. */
-.hero,
-.card,
-.metric-card,
-.detail-card,
-.protection-card,
-.auth-card {
-  background: var(--glaze-surface-strong);
-  backdrop-filter: none;
+[data-glz-touch-assistance="true"] .brand,
+[data-glz-touch-assistance="true"] .nav-link,
+[data-glz-touch-assistance="true"] .theme-toggle,
+[data-glz-touch-assistance="true"] .link-button,
+[data-glz-touch-assistance="true"] button,
+[data-glz-touch-assistance="true"] input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+[data-glz-touch-assistance="true"] select {
+  min-block-size: var(--glz1-target-assisted);
+}
+
+[data-glz-text-scale="200"] {
+  font-size: 200%;
+}
+
+[data-glz-transparency="reduced"] .site-header,
+[data-glz-performance="reduced"] .site-header {
+  background: var(--glz1-raised);
   -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
-.hero {
-  border-radius: var(--glaze-shape-hero);
+html[data-mode="increased-contrast"] {
+  --glz1-line: color-mix(in srgb, var(--glz1-text-primary) 48%, transparent);
+  --glz1-focus-width: 4px;
 }
 
-.card,
-.metric-card,
-.detail-card,
-.protection-card,
-.auth-card {
-  border-radius: var(--glaze-shape-standard);
-}
-
-/* Glaze controls use practical 44px minimum targets on every viewport. */
-.nav-link,
-.theme-toggle,
-.link-button,
-button,
-input:not([type="hidden"]),
-select,
-textarea {
-  min-block-size: var(--glaze-target-min);
-}
-
-/* Glaze UI keeps field composition explicit without replacing native controls. */
-.auth-card form {
-  display: grid;
-  gap: var(--glaze-control-group-gap);
-}
-
-.auth-card label {
-  gap: var(--glaze-control-field-gap);
-  margin: 0;
-}
-
-.auth-card .error {
-  margin: 0 0 var(--glaze-control-message-gap);
-}
-
-input::placeholder,
-textarea::placeholder {
-  opacity: var(--glaze-placeholder-opacity);
-}
-
-:where(.brand, .nav-link, .theme-toggle, .link-button, button, input, select, textarea, a):focus-visible {
-  outline: 3px solid var(--glaze-focus-ring);
-  outline-offset: 2px;
-  box-shadow: var(--focus);
-}
-
-::selection {
-  color: var(--glaze-text);
-  background: var(--glaze-selection);
-}
-
-/* Adaptive action groups communicate emphasis without changing logical order. */
-[data-glaze-action-group="adaptive"] {
-  gap: clamp(.35rem, 1vw, .6rem);
-}
-
-.primary-nav[data-glaze-action-group="adaptive"] .nav-link[aria-current="page"] {
-  padding-inline: clamp(.8rem, 1.5vw, 1rem);
-  border-radius: var(--glaze-shape-expressive);
-}
-
-.header-actions[data-glaze-action-group="adaptive"] .theme-toggle,
-.header-actions[data-glaze-action-group="adaptive"] .link-button {
-  border-radius: var(--glaze-shape-expressive);
-}
-
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .brand,
-  .nav-link,
-  .theme-toggle,
-  .link-button,
-  button,
-  input,
-  select,
-  textarea {
-    transition:
-      background-color var(--glaze-motion-effects-fast) var(--glaze-easing-effects),
-      border-color var(--glaze-motion-effects-fast) var(--glaze-easing-effects),
-      color var(--glaze-motion-effects-fast) var(--glaze-easing-effects),
-      box-shadow var(--glaze-motion-effects-standard) var(--glaze-easing-effects),
-      transform var(--glaze-motion-spatial-fast) var(--glaze-easing-spatial),
-      border-radius var(--glaze-motion-spatial-standard) var(--glaze-easing-spatial);
-  }
-
-  .theme-toggle:hover,
-  .link-button:hover,
-  .auth-card button[type="submit"]:hover {
-    transform: translateY(-1px);
-  }
-
-  .theme-toggle:active,
-  .link-button:active,
-  .auth-card button[type="submit"]:active {
-    transform: translateY(0) scale(.985);
-    border-radius: var(--glaze-shape-pressed);
-  }
+html[data-mode="increased-contrast"] .hero,
+html[data-mode="increased-contrast"] .card,
+html[data-mode="increased-contrast"] .metric-card,
+html[data-mode="increased-contrast"] .detail-card,
+html[data-mode="increased-contrast"] .protection-card,
+html[data-mode="increased-contrast"] .auth-card,
+html[data-mode="increased-contrast"] .theme-toggle,
+html[data-mode="increased-contrast"] .link-button {
+  border-width: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;
-    animation-duration: .01ms !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
-  }
-
-  .theme-toggle:hover,
-  .link-button:hover,
-  .auth-card button[type="submit"]:hover,
-  .theme-toggle:active,
-  .link-button:active,
-  .auth-card button[type="submit"]:active {
-    transform: none;
-  }
-}
-
-/* Preserve hierarchy when glass effects are unavailable instead of reducing readability. */
-@supports not (backdrop-filter: blur(1px)) {
-  .site-header {
-    background: var(--surface-strong);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    transition-duration: 0.01ms !important;
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .site-header {
-    background: var(--surface-strong);
-    backdrop-filter: none;
+    background: var(--glz1-raised);
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
   }
 }
 
-/* Respect explicit requests for stronger visual separation. */
 @media (prefers-contrast: more) {
   :root {
-    --border: rgba(188, 211, 230, .56);
-    --border-strong: rgba(211, 228, 241, .78);
-    --text-muted: #b8c8d6;
-    --focus: 0 0 0 4px rgba(141, 199, 255, .56);
+    --glz1-line: color-mix(in srgb, var(--glz1-text-primary) 48%, transparent);
+    --glz1-focus-width: 4px;
   }
 
-  :root[data-theme="light"] {
-    --border: rgba(36, 58, 77, .42);
-    --border-strong: rgba(24, 45, 64, .62);
-    --text-muted: #455d70;
-    --focus: 0 0 0 4px rgba(23, 103, 168, .34);
-  }
-
-  .status,
   .hero,
   .card,
   .metric-card,
@@ -242,32 +398,42 @@ textarea::placeholder {
   .auth-card,
   .theme-toggle,
   .link-button,
-  .auth-card input,
-  .auth-card select,
-  .auth-card textarea {
+  input,
+  select,
+  textarea {
     border-width: 2px;
   }
 }
 
-@media (prefers-contrast: more) and (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --border: rgba(36, 58, 77, .42);
-    --border-strong: rgba(24, 45, 64, .62);
-    --text-muted: #455d70;
-    --focus: 0 0 0 4px rgba(23, 103, 168, .34);
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header {
+    background: var(--glz1-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
   }
 }
 
-/* Windows High Contrast and other forced-color environments remain fully operable. */
 @media (forced-colors: active) {
   :root {
-    forced-color-adjust: auto;
+    --glz1-canvas: Canvas;
+    --glz1-base: Canvas;
+    --glz1-raised: Canvas;
+    --glz1-text-primary: CanvasText;
+    --glz1-text-secondary: CanvasText;
+    --glz1-text-tertiary: CanvasText;
+    --glz1-line: CanvasText;
+    --glz1-focus: Highlight;
+    --glz1-info: Highlight;
+    --glz1-success: Highlight;
+    --glz1-warning: Highlight;
+    --glz1-critical: Highlight;
+    --glz1-overlay-bg: Canvas;
+    --glz1-panel-bg: Canvas;
+    --glz1-critical-bg: Canvas;
   }
 
-  body {
-    background: Canvas;
-  }
-
+  body,
   .site-header,
   .hero,
   .card,
@@ -280,61 +446,39 @@ textarea::placeholder {
   .nav-link,
   .status,
   .release,
-  .auth-card input,
-  .auth-card select,
-  .auth-card textarea,
+  input,
+  select,
+  textarea,
   .error {
     background: Canvas;
     color: CanvasText;
     border-color: CanvasText;
     box-shadow: none;
+    -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 
-  .nav-link[aria-current="page"],
-  .status-configured,
-  .status-healthy,
-  .status-degraded,
-  .status-misconfigured,
-  .status-unavailable,
-  .item-good,
-  .item-warning,
-  .check-up,
-  .check-down,
-  .attempt-success,
-  .attempt-failed {
-    color: CanvasText;
+  .nav-link[aria-current="page"] {
+    color: HighlightText;
+    background: Highlight;
+    forced-color-adjust: none;
   }
 
-  .brand-symbol {
-    box-shadow: none;
-  }
-
-  .brand:focus-visible,
-  .nav-link:focus-visible,
-  .theme-toggle:focus-visible,
-  .link-button:focus-visible,
+  button:focus,
+  a:focus,
+  input:focus,
+  select:focus,
+  textarea:focus,
+  summary:focus,
   button:focus-visible,
+  a:focus-visible,
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible,
-  a:focus-visible {
-    outline: 2px solid Highlight;
-    outline-offset: 3px;
-    box-shadow: none;
+  summary:focus-visible {
+    outline: 3px solid Highlight !important;
+    outline-offset: 3px !important;
   }
-}
-
-@media (min-width: 600px) and (max-width: 1023px) {
-  :root { --glaze-gutter: 1.5rem; }
-}
-
-@media (min-width: 1024px) and (max-width: 1439px) {
-  :root { --glaze-gutter: 2rem; }
-}
-
-@media (min-width: 1440px) {
-  :root { --glaze-gutter: 2.5rem; }
 }
 
 @media (max-width: 680px) {
@@ -342,14 +486,11 @@ textarea::placeholder {
     gap: .3rem;
   }
 
-  /* Compact reachability keeps DOM/keyboard order unchanged while enlarging frequent actions. */
-  .header-actions[data-glaze-reachability="compact"] {
+  .header-actions[data-glz-reachability="compact"] {
     margin-inline-start: auto;
   }
 
-  .header-actions[data-glaze-reachability="compact"] .theme-toggle,
-  .header-actions[data-glaze-reachability="compact"] .link-button {
-    min-inline-size: var(--glaze-target-min);
-    padding-inline: .8rem;
+  .site-header-inner {
+    width: min(100% - 1rem, 1180px);
   }
 }
