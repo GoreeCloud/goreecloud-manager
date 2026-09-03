@@ -20,7 +20,7 @@
 
   <aside class="platform-boundary">
     <strong>Authority boundary.</strong>
-    Manager presents normalized Mesh records but does not approve, upgrade, or manufacture component state. Authentication proves the read path to Mesh; each producer and its accepted evidence remain authoritative for the facts shown here.
+    Manager presents normalized Mesh records but does not approve, upgrade, or manufacture component state. Authentication proves the read path to Mesh; each producer remains authoritative for its declaration and evidence, while the canonical GoreeCloud evaluator remains authoritative for computed conformance.
   </aside>
 
   {% if mesh.state == "healthy" %}
@@ -31,11 +31,11 @@
       </div>
       <div class="platform-summary-card">
         <strong>{{ mesh.conformant_count }}</strong>
-        <span>producer-reported conformant</span>
+        <span>canonical-evaluator conformant</span>
       </div>
       <div class="platform-summary-card">
         <strong>{{ mesh.stable_eligible_count }}</strong>
-        <span>producer-computed Stable eligible</span>
+        <span>canonical-evaluator Stable eligible</span>
       </div>
       <div class="platform-summary-card">
         <strong>{{ mesh.verified_restore_count }}</strong>
@@ -57,9 +57,9 @@
               <h2 id="component-{{ forloop.counter }}">{{ record.product_name }}</h2>
               <p class="platform-muted"><code>{{ record.component_id }}</code> · {{ record.repository }} · source <code>{{ record.source_revision|slice:":12" }}…</code></p>
             </div>
-            <div class="platform-badge-row" aria-label="Lifecycle and conformance">
+            <div class="platform-badge-row" aria-label="Lifecycle and canonical conformance">
               <span class="platform-badge">{{ record.lifecycle }}</span>
-              <span class="platform-badge">{{ record.overall_result }}</span>
+              <span class="platform-badge">{{ record.computed_result }}</span>
               <span class="platform-badge">Stable: {{ record.stable_eligible|yesno:"eligible,not eligible" }}</span>
             </div>
           </header>
@@ -88,6 +88,30 @@
             <div class="platform-fact">
               <dt>Observed</dt>
               <dd>{{ record.observed_at|date:"M j, Y g:i A T" }}</dd>
+            </div>
+          </dl>
+
+          <h3>Conformance provenance</h3>
+          <dl class="platform-facts">
+            <div class="platform-fact">
+              <dt>Declared</dt>
+              <dd>{{ record.declared_result }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Computed</dt>
+              <dd>{{ record.computed_result }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Evaluator</dt>
+              <dd>{{ record.evaluator_repository }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Evaluator revision</dt>
+              <dd><code>{{ record.evaluator_revision|slice:":12" }}…</code></dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Evaluated</dt>
+              <dd>{{ record.evaluated_at|date:"M j, Y g:i A T" }}</dd>
             </div>
           </dl>
 
@@ -143,13 +167,21 @@
             <p class="platform-note"><strong>Backup is not restore proof.</strong> This record does not carry a verified restore timestamp, so Manager does not present it as currently restorable.</p>
           {% endif %}
 
-          <h3>Missing mandatory evidence</h3>
+          <h3>Conformance gaps</h3>
           {% if record.missing_mandatory_evidence %}
+            <p class="platform-muted"><strong>Missing mandatory evidence</strong></p>
             <ul class="platform-list">
               {% for evidence in record.missing_mandatory_evidence %}<li><code>{{ evidence }}</code></li>{% endfor %}
             </ul>
-          {% else %}
-            <p class="platform-muted">The producer record reports no missing mandatory evidence identifiers.</p>
+          {% endif %}
+          {% if record.blockers %}
+            <p class="platform-muted"><strong>Blockers</strong></p>
+            <ul class="platform-list">
+              {% for blocker in record.blockers %}<li>{{ blocker }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+          {% if not record.missing_mandatory_evidence and not record.blockers %}
+            <p class="platform-muted">The canonical record reports no missing mandatory evidence identifiers or blockers.</p>
           {% endif %}
         </article>
       {% empty %}
