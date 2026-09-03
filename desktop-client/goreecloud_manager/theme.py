@@ -8,6 +8,11 @@ from PySide6.QtWidgets import QApplication
 
 
 APPEARANCE_VALUES = ("system", "light", "dark")
+GLAZE_UI_VERSION = "2.2.0"
+GLAZE_UI_SOURCE_REVISION = "6731098b28dd0393faa878c70d989a221d714a20"
+GLAZE_TARGET_PX = 48
+GLAZE_TOUCH_ASSISTED_PX = 56
+GLAZE_SYSTEM_PANEL_BUDGET = 1
 
 
 @dataclass(frozen=True)
@@ -132,8 +137,20 @@ def semantic_color(preference: str, role: str, app: QGuiApplication | None = Non
     return getattr(tokens, role if role in allowed else "text")
 
 
-def stylesheet(preference: str, app: QGuiApplication | None = None) -> str:
+def control_target_px(touch_assistance: bool = False) -> int:
+    """Return the Glaze UI 2.2 effective native control floor for this host state."""
+    return GLAZE_TOUCH_ASSISTED_PX if touch_assistance else GLAZE_TARGET_PX
+
+
+def stylesheet(
+    preference: str,
+    app: QGuiApplication | None = None,
+    *,
+    touch_assistance: bool = False,
+) -> str:
+    """Map Glaze UI 2.2 semantics into Qt without pretending Qt is the web reference."""
     t = theme_tokens(preference, app)
+    control_target = control_target_px(touch_assistance)
     return f"""
 QMainWindow, QDialog, QWidget#root, QWidget#scrollBody, QWidget#scrollViewport,
 QWidget#settingsBody, QWidget#settingsViewport {{
@@ -161,8 +178,9 @@ QLabel#sourceBadgeLocal, QLabel#sourceBadgeSsh, QLabel#sourceBadgeError {{
 QLabel#sourceBadgeLocal {{ color: {t.primary}; background: {t.primary_soft}; border: 1px solid {t.primary_border}; }}
 QLabel#sourceBadgeSsh {{ color: {t.success}; background: {t.success_soft}; border: 1px solid {t.success_border}; }}
 QLabel#sourceBadgeError {{ color: {t.danger}; background: {t.danger_soft}; border: 1px solid {t.danger_border}; }}
+/* Durable operational content is intentionally solid in the native mapping. */
 QFrame.card, QFrame#sourceCard, QFrame.settingsCard {{
-    background: {t.surface}; border: 1px solid {t.border}; border-radius: 14px;
+    background: {t.surface}; border: 1px solid {t.border}; border-radius: 20px;
 }}
 QFrame.card:hover {{ border: 1px solid {t.primary_border}; }}
 QFrame#sourceCard {{ background: {t.surface_alt}; }}
@@ -174,7 +192,7 @@ QLabel.metricStatusWarning {{ color: {t.warning}; font-size: 11px; font-weight: 
 QLabel.metricStatusCritical {{ color: {t.danger}; font-size: 11px; font-weight: 700; }}
 QLabel.infoLabel {{ color: {t.subtle}; font-size: 11px; }}
 QLabel.infoValue {{ color: {t.text_strong}; font-size: 13px; font-weight: 600; }}
-QFrame#detailsCard {{ background: {t.surface_alt}; border: 1px solid {t.border}; border-radius: 14px; }}
+QFrame#detailsCard {{ background: {t.surface_alt}; border: 1px solid {t.border}; border-radius: 20px; }}
 QLabel.serviceName {{ color: {t.text_strong}; font-size: 16px; font-weight: 700; }}
 QLabel.serviceDescription {{ color: {t.muted}; font-size: 12px; }}
 QLabel.statusHealthy {{ color: {t.success}; font-weight: 700; }}
@@ -182,8 +200,9 @@ QLabel.statusReachable {{ color: {t.primary}; font-weight: 700; }}
 QLabel.statusDegraded, QLabel.statusUnknown {{ color: {t.warning}; font-weight: 700; }}
 QLabel.statusOffline {{ color: {t.danger}; font-weight: 700; }}
 QPushButton {{
-    background: {t.primary}; border: none; border-radius: 9px; color: #ffffff;
-    padding: 8px 12px; font-weight: 600;
+    min-height: {control_target}px;
+    background: {t.primary}; border: none; border-radius: 18px; color: #ffffff;
+    padding: 0 12px; font-weight: 600;
 }}
 QPushButton:hover {{ background: {t.primary_hover}; }}
 QPushButton:disabled {{ background: {t.neutral_soft}; color: {t.muted}; }}
@@ -191,7 +210,7 @@ QPushButton.secondary {{ background: {t.surface_muted}; border: 1px solid {t.bor
 QPushButton.secondary:hover {{ background: {t.primary_soft}; }}
 QPushButton.danger {{ background: {t.danger_soft}; border: 1px solid {t.danger_border}; color: {t.danger}; }}
 QPushButton.danger:hover {{ background: {t.danger_soft}; }}
-QFrame#emptyState {{ background: {t.surface_alt}; border: 1px dashed {t.border_strong}; border-radius: 14px; }}
+QFrame#emptyState {{ background: {t.surface_alt}; border: 1px dashed {t.border_strong}; border-radius: 20px; }}
 QLabel#emptyTitle {{ color: {t.text_strong}; font-size: 16px; font-weight: 700; }}
 QProgressBar {{
     background: {t.surface_muted}; border: 1px solid {t.border}; border-radius: 5px;
@@ -199,18 +218,20 @@ QProgressBar {{
 }}
 QProgressBar::chunk {{ background: {t.primary_border}; border-radius: 4px; }}
 QLineEdit, QComboBox, QSpinBox {{
+    min-height: {control_target}px;
     background: {t.surface_alt}; color: {t.text}; border: 1px solid {t.border_strong};
-    border-radius: 8px; padding: 7px 9px; min-height: 20px;
+    border-radius: 18px; padding: 0 10px;
 }}
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus {{ border: 1px solid {t.primary_border}; }}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus {{ border: 2px solid {t.primary_border}; }}
 QComboBox QAbstractItemView {{
     background: {t.surface}; color: {t.text}; border: 1px solid {t.border_strong};
     selection-background-color: {t.selection}; selection-color: #ffffff;
 }}
-QCheckBox {{ color: {t.text}; spacing: 7px; }}
-QTabWidget::pane {{ border: 1px solid {t.border}; border-radius: 10px; top: -1px; }}
+QCheckBox {{ color: {t.text}; spacing: 7px; min-height: {control_target}px; }}
+QTabWidget::pane {{ border: 1px solid {t.border}; border-radius: 20px; top: -1px; }}
 QTabBar::tab {{
-    background: {t.surface_muted}; color: {t.muted}; border: 1px solid {t.border}; padding: 8px 16px;
+    min-height: {control_target}px;
+    background: {t.surface_muted}; color: {t.muted}; border: 1px solid {t.border}; padding: 0 16px;
 }}
 QTabBar::tab:selected {{ background: {t.primary_soft}; color: {t.text_strong}; border-bottom-color: {t.primary_soft}; }}
 QScrollArea {{ border: none; background: {t.canvas}; }}
@@ -220,7 +241,7 @@ QScrollBar::handle:vertical:hover {{ background: {t.scrollbar_hover}; }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: transparent; }}
 QTableWidget {{
-    background: {t.surface_alt}; color: {t.text}; border: 1px solid {t.border}; border-radius: 10px;
+    background: {t.surface_alt}; color: {t.text}; border: 1px solid {t.border}; border-radius: 20px;
     gridline-color: {t.border}; alternate-background-color: {t.surface_muted};
     selection-background-color: {t.selection}; selection-color: #ffffff;
 }}
@@ -239,9 +260,21 @@ QLabel.statusBadgeNeutral {{ color: {t.text}; background: {t.neutral_soft}; bord
 """
 
 
-def apply_theme(app: QApplication, preference: str) -> str:
+def apply_theme(
+    app: QApplication,
+    preference: str,
+    *,
+    touch_assistance: bool = False,
+) -> str:
+    """Apply the native 2.2 mapping and expose auditable application properties."""
     resolved = resolve_appearance(preference, app)
-    app.setStyleSheet(stylesheet(preference, app))
+    target = control_target_px(touch_assistance)
+    app.setStyleSheet(stylesheet(preference, app, touch_assistance=touch_assistance))
     app.setProperty("goreecloudAppearance", normalize_appearance(preference))
     app.setProperty("goreecloudResolvedAppearance", resolved)
+    app.setProperty("goreecloudGlazeVersion", GLAZE_UI_VERSION)
+    app.setProperty("goreecloudGlazeSourceRevision", GLAZE_UI_SOURCE_REVISION)
+    app.setProperty("goreecloudTouchAssistance", bool(touch_assistance))
+    app.setProperty("goreecloudTargetMinimum", target)
+    app.setProperty("goreecloudSystemPanelBudget", GLAZE_SYSTEM_PANEL_BUDGET)
     return resolved
