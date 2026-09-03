@@ -1,0 +1,129 @@
+schema_version: "0.1"
+
+component:
+  type: application
+  id: goreecloud-manager
+  product_name: GoreeCloud Manager
+  repository: GoreeCloud/goreecloud-manager
+
+lifecycle: development
+version: 0.1.0-dev
+
+supported_platforms:
+  - web
+
+api:
+  versions: []
+  endpoints:
+    - name: health
+      url: /healthz/
+      purpose: Public process-liveness signal; not a production-readiness verdict.
+    - name: readiness
+      url: /readyz/
+      purpose: Database-aware readiness signal kept separate from process liveness.
+    - name: tasks-integration-health
+      url: /healthz/integrations/tasks/
+      purpose: Sanitized GoreeCloud Tasks integration monitoring signal.
+
+platform_systems:
+  manager:
+    status: not-applicable
+    version: 0.1.0-dev
+    evidence:
+      - README.md
+      - docs/project-specification.md
+    notes: This repository implements the GoreeCloud Manager authority itself; a separate Manager-to-Manager integration is not applicable.
+  privacy_shield:
+    status: partial
+    version: null
+    evidence:
+      - core/privacy_views.py
+      - integrations/privacy_shield.py
+    notes: A sanitized read-only status contract and authenticated surface exist, but runtime acceptance and production approval remain independently gated.
+  wardveil_security:
+    status: planned
+    version: null
+    evidence: []
+    notes: No accepted Wardveil Security runtime integration is declared by the current Manager source baseline.
+  everkeep:
+    status: partial
+    version: null
+    evidence:
+      - integrations/everkeep.py
+      - docs/project-specification.md
+    notes: Manager has a bounded Everkeep resilience-status integration and disposable recovery evidence, while target-environment recovery and production acceptance remain outstanding.
+  glaze_ui:
+    status: partial
+    version: 1.3.0
+    evidence:
+      - docs/glaze-ui.md
+      - core/static/core/css/glaze-ui.css
+    notes: Repository source documents a Glaze UI 1.3.0 application baseline with source-level conformance checks; migration to the current platform baseline and rendered application acceptance remain open.
+  mesh:
+    status: planned
+    version: null
+    evidence: []
+    notes: Manager-to-Mesh platform visibility and coordination integration remains planned and is not claimed as implemented by this manifest.
+    capabilities: []
+    dependencies: []
+    published_events: []
+    consumed_events: []
+  identity:
+    status: planned
+    version: null
+    evidence: []
+    notes: Manager currently uses its local Django authentication/session foundation; GoreeCloud Identity adoption remains a separate platform migration.
+
+health:
+  health_endpoint: /healthz/
+  readiness_endpoint: /readyz/
+
+continuity:
+  backup:
+    required: true
+    requirements:
+      - Protect Manager persistent application state and non-reproducible configuration before production dependency.
+      - Keep reusable secrets outside ordinary unapproved backup content while preserving approved recovery references.
+  restore:
+    required: true
+    requirements:
+      - Validate clean-environment restoration of Manager state, authentication, health, and required read-only integrations before production acceptance.
+  export:
+    required: true
+    requirements:
+      - Preserve an independently usable export or recovery path for Manager-owned durable state where applicable.
+  portability:
+    required: true
+    requirements:
+      - Keep Manager deployment and durable state reproducible without making Manager the sole source of recovery knowledge.
+
+external_dependencies:
+  - name: Django 5.2 LTS
+    purpose: Server-side application, authentication, sessions, ORM, migrations, and templates.
+    required: true
+  - name: SQLite
+    purpose: Development and initial-MVP Manager-owned application state.
+    required: true
+
+compatibility:
+  requires:
+    - goreecloud-platform-contract=0.1
+  provides: []
+
+conformance:
+  status: partial
+  validated_at: null
+  evidence:
+    - README.md
+    - docs/project-specification.md
+    - docs/glaze-ui.md
+    - core/urls.py
+    - integrations/privacy_shield.py
+    - integrations/everkeep.py
+  blockers:
+    - GoreeCloud Manager is still in Development and is not approved for production publication.
+    - GoreeCloud Mesh integration remains planned.
+    - GoreeCloud Identity integration remains planned.
+    - Wardveil Security runtime integration and acceptance remain outstanding.
+    - Current Glaze UI platform-baseline migration and rendered application acceptance remain outstanding.
+    - Full target-environment backup, restore, publication, and production-readiness acceptance remain outstanding.
