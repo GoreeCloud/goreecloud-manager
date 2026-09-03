@@ -21,6 +21,7 @@ from integrations.beszel import BeszelStatus, beszel_status
 from integrations.everkeep import EverkeepSnapshot, everkeep_snapshot
 from integrations.healthchecks import HealthchecksSnapshot, healthchecks_snapshot
 from integrations.kopia import KopiaStatus, kopia_status
+from integrations.mesh import MeshPlatformSnapshot, mesh_platform_snapshot
 from integrations.netbird import NetBirdSnapshot, netbird_snapshot
 from integrations.registry import integration_statuses
 from integrations.tasks import TasksSnapshot, tasks_snapshot
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 SnapshotFactory = Callable[[], Any]
 FailureFactory = Callable[[str], Any]
 
-MAX_OUTSTANDING_INTEGRATION_JOBS = 7
+MAX_OUTSTANDING_INTEGRATION_JOBS = 8
 _INTEGRATION_EXECUTOR = ThreadPoolExecutor(
     max_workers=MAX_OUTSTANDING_INTEGRATION_JOBS,
     thread_name_prefix="manager-integration",
@@ -85,6 +86,14 @@ def _everkeep_failure(detail: str) -> EverkeepSnapshot:
 
 def _tasks_failure(detail: str) -> TasksSnapshot:
     return TasksSnapshot(
+        state="unavailable",
+        detail=detail,
+        condition="internal-error",
+    )
+
+
+def _mesh_failure(detail: str) -> MeshPlatformSnapshot:
+    return MeshPlatformSnapshot(
         state="unavailable",
         detail=detail,
         condition="internal-error",
@@ -154,6 +163,7 @@ def _overview_snapshots() -> dict[str, Any]:
         tuple[str, SnapshotFactory, FailureFactory],
     ] = {
         "everkeep": ("Everkeep", everkeep_snapshot, _everkeep_failure),
+        "mesh": ("GoreeCloud Mesh", mesh_platform_snapshot, _mesh_failure),
         "netbird": ("NetBird", netbird_snapshot, _netbird_failure),
         "healthchecks": ("Healthchecks", healthchecks_snapshot, _healthchecks_failure),
         "uptime_kuma": ("Uptime Kuma", uptime_kuma_snapshot, _uptime_kuma_failure),
@@ -222,9 +232,10 @@ def _single_snapshot(
 
 @login_required
 def overview(request):
-    """Render the authenticated platform overview."""
+    """Render the authenticated operational overview."""
     snapshots = _overview_snapshots()
     everkeep = snapshots["everkeep"]
+    mesh = snapshots["mesh"]
     netbird = snapshots["netbird"]
     healthchecks = snapshots["healthchecks"]
     uptime_kuma = snapshots["uptime_kuma"]
@@ -237,6 +248,7 @@ def overview(request):
         {
             "integrations": integration_statuses(
                 everkeep_status=everkeep.integration_status(),
+                mesh_status=mesh.integration_status(),
                 netbird_status=netbird.integration_status(),
                 healthchecks_status=healthchecks.integration_status(),
                 uptime_kuma_status=uptime_kuma.integration_status(),
@@ -245,12 +257,32 @@ def overview(request):
                 tasks_status=tasks.integration_status(),
             ),
             "everkeep": everkeep,
+            "mesh": mesh,
             "netbird": netbird,
             "healthchecks": healthchecks,
             "uptime_kuma": uptime_kuma,
             "beszel": beszel,
             "kopia": kopia,
             "tasks": tasks,
+            "release": "0.1.0-dev",
+        },
+    )
+
+
+@login_required
+def platform_view(request):
+    """Render authority-preserving platform, conformance, dependency, and continuity state."""
+    mesh = _single_snapshot(
+        "mesh",
+        "GoreeCloud Mesh",
+        mesh_platform_snapshot,
+        _mesh_failure,
+    )
+    return render(
+        request,
+        "core/platform.html",
+        {
+            "mesh": mesh,
             "release": "0.1.0-dev",
         },
     )
