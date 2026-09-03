@@ -62,10 +62,16 @@ platform_systems:
   mesh:
     result: applicable-blocked
     version: null
-    evidence: []
-    notes: Manager-to-Mesh platform visibility and coordination integration remains unaccepted and is not claimed as implemented by this manifest.
-    capabilities: []
-    dependencies: []
+    evidence:
+      - integrations/mesh.py
+      - docs/platform-overview.md
+      - tests/test_mesh.py
+      - tests/test_platform_view.py
+    notes: A bounded read-only Platform Registry consumer is implemented at source level and fail-closed against Platform Contract v0.2 records, but accepted GoreeCloud Identity credentials, live Mesh publication, network-path acceptance, and production runtime evidence remain incomplete.
+    capabilities:
+      - platform-registry-read
+    dependencies:
+      - goreecloud-mesh
     published_events: []
     consumed_events: []
   identity:
@@ -124,12 +130,16 @@ conformance:
     - README.md
     - docs/project-specification.md
     - docs/glaze-ui.md
+    - docs/platform-overview.md
     - core/urls.py
     - integrations/privacy_shield.py
     - integrations/everkeep.py
+    - integrations/mesh.py
+    - tests/test_mesh.py
+    - tests/test_platform_view.py
   blockers:
     - GoreeCloud Manager is still in Development and is not approved for production publication.
-    - GoreeCloud Mesh integration remains blocked pending implementation and acceptance.
+    - GoreeCloud Mesh source integration exists, but accepted Identity credentials, live registry publication, target network acceptance, and production evidence remain incomplete.
     - GoreeCloud Identity integration remains blocked pending implementation and acceptance.
     - Wardveil Security runtime integration and acceptance remain outstanding.
     - Current Stable GLAZE UI V1.1 / 1.1.0 migration and rendered application acceptance remain outstanding.
