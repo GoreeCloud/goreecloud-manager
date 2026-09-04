@@ -13,6 +13,7 @@
   <script src="{% static 'core/js/theme.js' %}"></script>
   <link rel="stylesheet" href="{% static 'core/css/app.css' %}">
   <link rel="stylesheet" href="{% static 'core/css/glaze-ui.css' %}">
+  {% block extra_styles %}{% endblock %}
 </head>
 <body data-glaze-ui="manager" data-glaze-version="1.3.0">
   <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -29,6 +30,7 @@
         {% if user.is_authenticated %}
           <nav class="primary-nav" aria-label="Primary" data-glaze-action-group="adaptive">
             <a class="nav-link" href="{% url 'overview' %}" {% if request.resolver_match.url_name == 'overview' %}aria-current="page"{% endif %}>Overview</a>
+            <a class="nav-link" href="{% url 'platform' %}" {% if request.resolver_match.url_name == 'platform' %}aria-current="page"{% endif %}>Platform</a>
             <a class="nav-link" href="{% url 'everkeep' %}" {% if request.resolver_match.url_name == 'everkeep' %}aria-current="page"{% endif %}>Everkeep</a>
             <a class="nav-link" href="{% url 'privacy-shield' %}" {% if request.resolver_match.url_name == 'privacy-shield' %}aria-current="page"{% endif %}>Privacy Shield</a>
             <a class="nav-link" href="{% url 'tasks' %}" {% if request.resolver_match.url_name == 'tasks' %}aria-current="page"{% endif %}>Tasks</a>

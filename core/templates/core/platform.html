@@ -1,0 +1,225 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Platform · GoreeCloud Manager{% endblock %}
+
+{% block extra_styles %}
+  <link rel="stylesheet" href="{% static 'core/css/platform.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="platform-page" aria-labelledby="platform-title">
+  <header class="platform-heading">
+    <div>
+      <p class="eyebrow">Platform visibility</p>
+      <h1 id="platform-title">GoreeCloud Platform</h1>
+      <p>Read-only lifecycle, conformance, dependency, continuity, and evidence-freshness state from GoreeCloud Mesh.</p>
+    </div>
+    <span class="platform-state">Mesh: {{ mesh.state }}</span>
+  </header>
+
+  <aside class="platform-boundary">
+    <strong>Authority boundary.</strong>
+    Manager presents normalized Mesh records but does not approve, upgrade, or manufacture component state. Authentication proves the read path to Mesh; each producer remains authoritative for its declaration and evidence, while the canonical GoreeCloud evaluator remains authoritative for computed conformance. Manager's local freshness classification affects only whether evidence is presented as current; it never rewrites the producer or evaluator result.
+  </aside>
+
+  {% if mesh.state == "degraded" %}
+    <aside class="platform-boundary" role="status">
+      <strong>Stale platform evidence.</strong>
+      {{ mesh.detail }} Refresh or republish the affected producer records before treating favorable state as current operational evidence.
+    </aside>
+  {% endif %}
+
+  {% if mesh.state == "healthy" or mesh.state == "degraded" %}
+    <section class="platform-summary" aria-label="Platform summary">
+      <div class="platform-summary-card">
+        <strong>{{ mesh.records|length }}</strong>
+        <span>registered components</span>
+      </div>
+      <div class="platform-summary-card">
+        <strong>{{ mesh.conformant_count }}</strong>
+        <span>fresh canonical-evaluator conformant</span>
+      </div>
+      <div class="platform-summary-card">
+        <strong>{{ mesh.stable_eligible_count }}</strong>
+        <span>fresh Stable eligible</span>
+      </div>
+      <div class="platform-summary-card">
+        <strong>{{ mesh.verified_restore_count }}</strong>
+        <span>fresh verified restore evidence</span>
+      </div>
+      <div class="platform-summary-card">
+        <strong>{{ mesh.stale_count }}</strong>
+        <span>stale records</span>
+      </div>
+    </section>
+
+    <section class="platform-section" aria-labelledby="dependency-heading">
+      <h2 id="dependency-heading">Dependency graph</h2>
+      <p class="platform-note">{{ mesh.relationship_count }} declared dependency or relationship edge{{ mesh.relationship_count|pluralize }} are represented. Manager does not infer edges from naming, network adjacency, or shared infrastructure.</p>
+    </section>
+
+    <section class="platform-records" aria-label="Platform component records">
+      {% for record in mesh.records %}
+        <article class="platform-record" aria-labelledby="component-{{ forloop.counter }}">
+          <header class="platform-record-heading">
+            <div>
+              <p class="eyebrow">{{ record.kind }}</p>
+              <h2 id="component-{{ forloop.counter }}">{{ record.product_name }}</h2>
+              <p class="platform-muted"><code>{{ record.component_id }}</code> · {{ record.repository }} · source <code>{{ record.source_revision|slice:":12" }}…</code></p>
+            </div>
+            <div class="platform-badge-row" aria-label="Lifecycle, canonical conformance, and evidence freshness">
+              <span class="platform-badge">{{ record.lifecycle }}</span>
+              <span class="platform-badge">{{ record.computed_result }}</span>
+              <span class="platform-badge">Stable: {{ record.stable_eligible|yesno:"eligible,not eligible" }}</span>
+              <span class="platform-badge">Evidence: {{ record.freshness_state }}</span>
+            </div>
+          </header>
+
+          {% if not record.is_fresh %}
+            <p class="platform-note"><strong>Historical producer state.</strong> This record exceeds Manager's configured Platform Registry freshness window. The producer and canonical-evaluator values below are preserved for inspection, but Manager does not count favorable conformance, Stable eligibility, or verified-restore state from this record as current.</p>
+          {% endif %}
+
+          <dl class="platform-facts">
+            <div class="platform-fact">
+              <dt>Version</dt>
+              <dd>{{ record.version }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Runtime</dt>
+              <dd>{{ record.runtime_state }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Health</dt>
+              <dd>{{ record.health_state }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Readiness</dt>
+              <dd>{{ record.readiness }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Platforms</dt>
+              <dd>{{ record.supported_platforms|join:", " }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Observed</dt>
+              <dd>{{ record.observed_at|date:"M j, Y g:i A T" }}<br><span class="platform-muted">{{ record.observed_at|timesince }} ago</span></dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Freshness</dt>
+              <dd>{{ record.freshness_state }}</dd>
+            </div>
+          </dl>
+
+          <h3>Conformance provenance</h3>
+          <dl class="platform-facts">
+            <div class="platform-fact">
+              <dt>Declared</dt>
+              <dd>{{ record.declared_result }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Computed</dt>
+              <dd>{{ record.computed_result }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Evaluator</dt>
+              <dd>{{ record.evaluator_repository }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Evaluator revision</dt>
+              <dd><code>{{ record.evaluator_revision|slice:":12" }}…</code></dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Evaluated</dt>
+              <dd>{{ record.evaluated_at|date:"M j, Y g:i A T" }}<br><span class="platform-muted">{{ record.evaluated_at|timesince }} ago</span></dd>
+            </div>
+          </dl>
+
+          <h3>Integral Platform Systems</h3>
+          <dl class="platform-systems">
+            {% for system, status in record.platform_systems %}
+              <div class="platform-fact">
+                <dt>{% if system == "manager" %}GoreeCloud Manager{% elif system == "identity" %}GoreeCloud Identity{% elif system == "wardveil_security" %}Wardveil Security{% elif system == "privacy_shield" %}Privacy Shield{% elif system == "everkeep" %}Everkeep{% elif system == "mesh" %}GoreeCloud Mesh{% elif system == "glaze_ui" %}Glaze UI{% else %}{{ system }}{% endif %}</dt>
+                <dd>{{ status }}</dd>
+              </div>
+            {% endfor %}
+          </dl>
+
+          <h3>Dependencies and relationships</h3>
+          {% if record.dependencies or record.relationships %}
+            {% if record.dependencies %}
+              <p class="platform-muted"><strong>Declared dependencies</strong></p>
+              <ul class="platform-list">
+                {% for dependency in record.dependencies %}<li><code>{{ dependency }}</code></li>{% endfor %}
+              </ul>
+            {% endif %}
+            {% if record.relationships %}
+              <p class="platform-muted"><strong>Explicit relationships</strong></p>
+              <ul class="platform-list">
+                {% for relationship in record.relationships %}
+                  <li><code>{{ relationship.target }}</code> — {{ relationship.relationship_type }}{% if relationship.required %} · required{% else %} · optional{% endif %}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          {% else %}
+            <p class="platform-muted">No dependencies or required relationships are declared in this record.</p>
+          {% endif %}
+
+          <h3>Continuity Health</h3>
+          <dl class="platform-continuity">
+            <div class="platform-fact">
+              <dt>Backup evidence</dt>
+              <dd>{{ record.backup_status }}</dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Restore evidence</dt>
+              <dd>
+                {{ record.restore_status }}
+                {% if record.last_verified_restore %}<br><span class="platform-muted">Verified {{ record.last_verified_restore|date:"M j, Y g:i A T" }}</span>{% endif %}
+              </dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Export / portability</dt>
+              <dd>{{ record.export_status }}{% if record.export_formats %}<br><span class="platform-muted">{{ record.export_formats|join:", " }}</span>{% endif %}</dd>
+            </div>
+          </dl>
+          {% if record.backup_status == "verified" and not record.continuity_verified %}
+            <p class="platform-note"><strong>Backup is not restore proof.</strong> This record does not carry a verified restore timestamp, so Manager does not present it as currently restorable.</p>
+          {% endif %}
+          {% if record.continuity_verified and not record.is_fresh %}
+            <p class="platform-note"><strong>Restore evidence is stale.</strong> The historical record contains a verified restore timestamp, but Manager excludes it from the current verified-restore summary until fresh producer evidence is published.</p>
+          {% endif %}
+
+          <h3>Conformance gaps</h3>
+          {% if record.missing_mandatory_evidence %}
+            <p class="platform-muted"><strong>Missing mandatory evidence</strong></p>
+            <ul class="platform-list">
+              {% for evidence in record.missing_mandatory_evidence %}<li><code>{{ evidence }}</code></li>{% endfor %}
+            </ul>
+          {% endif %}
+          {% if record.blockers %}
+            <p class="platform-muted"><strong>Blockers</strong></p>
+            <ul class="platform-list">
+              {% for blocker in record.blockers %}<li>{{ blocker }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+          {% if not record.missing_mandatory_evidence and not record.blockers %}
+            <p class="platform-muted">The canonical record reports no missing mandatory evidence identifiers or blockers.</p>
+          {% endif %}
+        </article>
+      {% empty %}
+        <section class="platform-fallback">
+          <h2>No platform records</h2>
+          <p>Mesh is reachable, but no normalized component records are currently registered.</p>
+        </section>
+      {% endfor %}
+    </section>
+  {% else %}
+    <section class="platform-fallback" aria-labelledby="platform-unavailable-title">
+      <h2 id="platform-unavailable-title">Live platform data is not available</h2>
+      <p>{{ mesh.detail }}</p>
+      <p class="platform-muted">Manager remains usable. Resolve the Mesh read-only integration separately; do not infer component conformance or continuity while the source is unavailable.</p>
+    </section>
+  {% endif %}
+</section>
+{% endblock %}
