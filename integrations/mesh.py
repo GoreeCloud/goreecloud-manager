@@ -3,7 +3,8 @@
 Manager consumes only normalized Mesh platform records and never receives registry write
 scope. Mesh transport authentication proves the upstream service boundary; producer
 systems and the canonical evaluator remain authoritative for the facts represented by
-each record.
+each record. Manager adds only local presentation freshness and never rewrites producer
+conformance, security, privacy, identity, or recovery truth.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -20,6 +21,7 @@ import httpx
 
 DEFAULT_TIMEOUT_SECONDS = 5.0
 MAX_TIMEOUT_SECONDS = 30.0
+MAX_CREDENTIAL_LENGTH = 16_384
 PLATFORM_REGISTRY_PATH = "/v1/platform-registry"
 EXPECTED_RECORD_SCHEMA = "goreecloud.mesh.platform-record.v1"
 EXPECTED_CONTRACT_SCHEMA = "0.2"
@@ -100,6 +102,9 @@ class MeshPlatformRecord:
     missing_mandatory_evidence: tuple[str, ...]
     blockers: tuple[str, ...]
     observed_at: datetime
+    observation_age_seconds: int
+    evaluation_age_seconds: int
+    freshness_state: str
 
     @property
     def platform_system_map(self) -> dict[str, str]:
@@ -115,6 +120,10 @@ class MeshPlatformRecord:
     def continuity_verified(self) -> bool:
         return self.restore_status == "verified" and self.last_verified_restore is not None
 
+    @property
+    def is_fresh(self) -> bool:
+        return self.freshness_state == "fresh"
+
 
 @dataclass(frozen=True)
 class MeshPlatformSnapshot:
@@ -128,15 +137,19 @@ class MeshPlatformSnapshot:
 
     @property
     def conformant_count(self) -> int:
-        return sum(record.computed_result == "conformant" for record in self.records)
+        return sum(record.is_fresh and record.computed_result == "conformant" for record in self.records)
 
     @property
     def stable_eligible_count(self) -> int:
-        return sum(record.stable_eligible for record in self.records)
+        return sum(record.is_fresh and record.stable_eligible for record in self.records)
 
     @property
     def verified_restore_count(self) -> int:
-        return sum(record.continuity_verified for record in self.records)
+        return sum(record.is_fresh and record.continuity_verified for record in self.records)
+
+    @property
+    def stale_count(self) -> int:
+        return sum(not record.is_fresh for record in self.records)
 
     @property
     def relationship_count(self) -> int:
@@ -151,6 +164,10 @@ def _enabled() -> bool:
     return os.getenv("MESH_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def _timeout_seconds() -> float:
     raw = os.getenv("MESH_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS)).strip()
     try:
@@ -162,21 +179,43 @@ def _timeout_seconds() -> float:
     return min(value, MAX_TIMEOUT_SECONDS)
 
 
+def _max_record_age_seconds() -> tuple[int | None, str | None]:
+    raw = os.getenv("MESH_PLATFORM_RECORD_MAX_AGE_SECONDS", "").strip()
+    if not raw:
+        return None, "Missing MESH_PLATFORM_RECORD_MAX_AGE_SECONDS."
+    try:
+        value = int(raw)
+    except ValueError:
+        return None, "MESH_PLATFORM_RECORD_MAX_AGE_SECONDS must be a positive integer."
+    if value <= 0:
+        return None, "MESH_PLATFORM_RECORD_MAX_AGE_SECONDS must be a positive integer."
+    return value, None
+
+
+def _validate_token(token: str) -> tuple[str | None, str | None]:
+    value = token.strip()
+    if not value:
+        return None, "The configured Mesh access token is empty."
+    if len(value) > MAX_CREDENTIAL_LENGTH:
+        return None, "The configured Mesh access token exceeds the approved size bound."
+    if "\r" in value or "\n" in value:
+        return None, "The configured Mesh access token contains invalid line breaks."
+    return value, None
+
+
 def _configured_token() -> tuple[str | None, str | None]:
-    direct = os.getenv("MESH_ACCESS_TOKEN", "").strip()
+    direct = os.getenv("MESH_ACCESS_TOKEN", "")
     file_path = os.getenv("MESH_ACCESS_TOKEN_FILE", "").strip()
-    if direct and file_path:
+    if direct.strip() and file_path:
         return None, "Set only one Mesh access-token source."
     if file_path:
         try:
-            token = Path(file_path).read_text(encoding="utf-8").strip()
+            token = Path(file_path).read_text(encoding="utf-8")
         except OSError:
             return None, "The configured Mesh access-token file could not be read."
-        if not token:
-            return None, "The configured Mesh access-token file is empty."
-        return token, None
-    if direct:
-        return direct, None
+        return _validate_token(token)
+    if direct.strip():
+        return _validate_token(direct)
     return None, "Missing MESH_ACCESS_TOKEN or MESH_ACCESS_TOKEN_FILE."
 
 
@@ -189,6 +228,9 @@ def _api_url() -> tuple[str | None, str | None]:
         return None, "MESH_API_URL must be an absolute HTTP(S) URL."
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         return None, "MESH_API_URL must not embed credentials, query parameters, or fragments."
+    loopback = parsed.hostname in {"127.0.0.1", "localhost", "::1"}
+    if parsed.scheme != "https" and not (parsed.scheme == "http" and loopback):
+        return None, "MESH_API_URL requires HTTPS except for loopback development."
     return f"{base_url}{PLATFORM_REGISTRY_PATH}", None
 
 
@@ -259,7 +301,7 @@ def _relationship(raw: Any) -> MeshRelationship:
     )
 
 
-def _record(raw: Any) -> MeshPlatformRecord:
+def _record(raw: Any, *, now: datetime, max_age_seconds: int) -> MeshPlatformRecord:
     value = _mapping(raw, "platform record")
     if value.get("schema") != EXPECTED_RECORD_SCHEMA:
         raise MeshProtocolError("Mesh returned an unsupported platform-record schema.")
@@ -313,6 +355,8 @@ def _record(raw: Any) -> MeshPlatformRecord:
         raise MeshProtocolError("Mesh returned verified restore state without restore evidence time.")
     if restore_status != "verified" and last_verified_restore is not None:
         raise MeshProtocolError("Mesh returned a restore evidence time for a non-verified restore state.")
+    if last_verified_restore is not None and last_verified_restore > now:
+        raise MeshProtocolError("Mesh returned a verified restore timestamp from the future.")
 
     declared_result = _text(conformance.get("declared_result"), "declared conformance result")
     computed_result = _text(conformance.get("computed_result"), "computed conformance result")
@@ -331,6 +375,16 @@ def _record(raw: Any) -> MeshPlatformRecord:
         raise MeshProtocolError("Mesh returned conformance from a non-canonical evaluator.")
     evaluator_revision = _revision(conformance.get("evaluator_revision"), "evaluator revision")
     evaluated_at = _timestamp(conformance.get("evaluated_at"), "evaluated at")
+    observed_at = _timestamp(value.get("observed_at"), "observed at")
+    if evaluated_at > now or observed_at > now:
+        raise MeshProtocolError("Mesh returned platform evidence timestamped in the future.")
+    evaluation_age_seconds = int((now - evaluated_at).total_seconds())
+    observation_age_seconds = int((now - observed_at).total_seconds())
+    freshness_state = (
+        "fresh"
+        if max(evaluation_age_seconds, observation_age_seconds) <= max_age_seconds
+        else "stale"
+    )
 
     dependencies = _text_list(value.get("dependencies", []), "dependency")
     for dependency in dependencies:
@@ -372,11 +426,14 @@ def _record(raw: Any) -> MeshPlatformRecord:
             "missing mandatory evidence",
         ),
         blockers=_text_list(conformance.get("blockers", []), "conformance blocker"),
-        observed_at=_timestamp(value.get("observed_at"), "observed at"),
+        observed_at=observed_at,
+        observation_age_seconds=observation_age_seconds,
+        evaluation_age_seconds=evaluation_age_seconds,
+        freshness_state=freshness_state,
     )
 
 
-def _healthy_snapshot(payload: Any) -> MeshPlatformSnapshot:
+def _healthy_snapshot(payload: Any, *, now: datetime, max_age_seconds: int) -> MeshPlatformSnapshot:
     value = _mapping(payload, "platform registry response")
     records_raw = value.get("records")
     count = value.get("count")
@@ -384,9 +441,26 @@ def _healthy_snapshot(payload: Any) -> MeshPlatformSnapshot:
         raise MeshProtocolError("Mesh returned an incomplete platform registry response.")
     if count < 0 or count != len(records_raw):
         raise MeshProtocolError("Mesh returned inconsistent platform registry counts.")
-    records = tuple(sorted((_record(item) for item in records_raw), key=lambda item: item.component_id))
+    records = tuple(
+        sorted(
+            (_record(item, now=now, max_age_seconds=max_age_seconds) for item in records_raw),
+            key=lambda item: item.component_id,
+        )
+    )
     if len({item.component_id for item in records}) != len(records):
         raise MeshProtocolError("Mesh returned duplicate component records.")
+    stale_count = sum(not item.is_fresh for item in records)
+    if stale_count:
+        return MeshPlatformSnapshot(
+            state="degraded",
+            detail=(
+                f"GoreeCloud Mesh returned {stale_count} stale platform record(s) out of {count}. "
+                "Manager preserves those producer values for inspection but excludes stale favorable state "
+                "from current conformance, Stable-eligibility, and verified-restore summary counts."
+            ),
+            condition="stale-records",
+            records=records,
+        )
     return MeshPlatformSnapshot(
         state="healthy",
         detail=f"Live authority-preserving Mesh platform registry data verified for {count} component(s).",
@@ -407,7 +481,8 @@ def mesh_platform_snapshot() -> MeshPlatformSnapshot:
 
     api_url, url_error = _api_url()
     token, token_error = _configured_token()
-    configuration_errors = [error for error in (url_error, token_error) if error]
+    max_age_seconds, freshness_error = _max_record_age_seconds()
+    configuration_errors = [error for error in (url_error, token_error, freshness_error) if error]
     if configuration_errors:
         return MeshPlatformSnapshot(
             state="misconfigured",
@@ -469,7 +544,11 @@ def mesh_platform_snapshot() -> MeshPlatformSnapshot:
             condition="response-too-large",
         )
     try:
-        return _healthy_snapshot(response.json())
+        return _healthy_snapshot(
+            response.json(),
+            now=_utc_now(),
+            max_age_seconds=max_age_seconds,
+        )
     except (ValueError, MeshProtocolError, TypeError):
         return MeshPlatformSnapshot(
             state="unavailable",
