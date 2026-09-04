@@ -3,7 +3,13 @@
 
   const root = document.documentElement;
   const storageKey = "goreecloud-manager-theme";
-  const modes = ["system", "light", "dark"];
+  const modes = ["system", "light", "dark", "deep-dark"];
+  const labels = {
+    system: "System",
+    light: "Light",
+    dark: "Dark",
+    "deep-dark": "Deep Dark",
+  };
 
   function readPreference() {
     try {
@@ -28,16 +34,21 @@
 
   function applyRootAppearance(value) {
     if (value === "system") {
+      root.removeAttribute("data-glz-appearance");
       root.removeAttribute("data-theme");
-    } else {
-      root.setAttribute("data-theme", value);
+      return;
     }
-    root.dataset.appearance = value;
+
+    root.setAttribute("data-glz-appearance", value);
+    // Manager's existing product palette still consumes data-theme. Keep this
+    // compatibility attribute local while V1.1 data-glz-appearance is the
+    // canonical appearance contract.
+    root.setAttribute("data-theme", value === "deep-dark" ? "dark" : value);
   }
 
   let current = readPreference();
 
-  // This script intentionally runs before the stylesheet so an explicit local
+  // This script intentionally runs before the stylesheets so an explicit local
   // preference is applied before first paint. It never sends the preference to
   // Manager or any external service.
   applyRootAppearance(current);
@@ -48,12 +59,12 @@
 
     function updateControl() {
       if (label) {
-        label.textContent = current[0].toUpperCase() + current.slice(1);
+        label.textContent = labels[current];
       }
       if (toggle) {
         toggle.setAttribute(
           "aria-label",
-          `Appearance: ${current}. Activate to change theme.`,
+          `Appearance: ${labels[current]}. Activate to change theme.`,
         );
       }
     }
