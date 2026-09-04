@@ -1,0 +1,24 @@
+{
+  "schema": "goreecloud.glaze-ui.web-source-manifest.v1",
+  "product": "GLAZE UI V1.1",
+  "version": "1.1.0",
+  "tag": "v1.1.0",
+  "release_commit": "15cc76d2bcd4065552dc31c77145b63f34d9e7b2",
+  "entrypoint": "css/glaze-v1.1.0.css",
+  "runtime_network_dependency_required": false,
+  "files": {
+    "css/glaze-v1.1.0.css": "c689e8e58cefc49f931862996a1e0e871497fe88",
+    "css/glaze-v1.0.0.css": "eca2209c5d678830f92907b4d44ea6cc5b1c8536",
+    "css/glaze-v1.1.css": "aa0250f01151f17cd3c77e9a67544c6af4b5aa32",
+    "css/glaze-v1.1-appearance.css": "c4e10e043d537c68f1e4a5f97bdb8b6f0d371dce",
+    "css/glaze-v1.foundation.css": "b01051203831ce011c08f37b79f2e2032d34d0c8",
+    "css/glaze-v1.components.css": "f74d5d4a4dd3ae22354812260e06a042d3928507",
+    "css/glaze-v1.components.adaptive.css": "e174ea4923ec1ac6e1eb52d7ee33c14f2f77d5ca",
+    "css/glaze-v1.components.runtime.css": "a89356172d74b66c62cfda198ae827fe9b71c520",
+    "css/glaze-v1.structure.css": "9781c3e162edbac9fce67b93fd3287fdacbcd504",
+    "css/glaze-v1.overlay.css": "cb937fae3166289c9c935d7ae25cefe3f82f3ec0",
+    "css/glaze-v1.advanced.css": "d6e60a9b23354b1dc62dafac284c93b772e582a4",
+    "css/glaze-v1.visual-refinement.css": "f5696fdb81f8deda3ce75e112989d772b7d74909",
+    "css/glaze-v1.optical-reachability.css": "6123cff22f06b4c537156a1285e2664763f33316"
+  }
+}

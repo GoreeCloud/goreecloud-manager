@@ -53,12 +53,18 @@ platform_systems:
       - docs/project-specification.md
     notes: Manager has bounded Everkeep resilience-status integration and disposable recovery evidence, while target-environment recovery and production acceptance remain outstanding.
   glaze_ui:
-    result: applicable-migration-required
-    version: 1.3.0
+    result: applicable-blocked
+    version: 1.1.0
     evidence:
       - docs/glaze-ui.md
+      - docs/glaze-ui-v1.1-import-closure-blocker.md
+      - core/static/core/glaze.lock.json
+      - core/static/core/glaze/
       - core/static/core/css/glaze-ui.css
-    notes: Repository source documents an older Manager-specific Glaze UI baseline; migration and application-specific acceptance against current Stable GLAZE UI V1.1 / 1.1.0 remain required.
+      - core/templates/core/base.html
+      - scripts/vendor_glaze_v1_1.py
+      - tests/test_glaze_ui_contract.py
+    notes: Manager's source candidate activates and byte-locks the published GLAZE UI V1.1 / 1.1.0 graph, but that immutable graph contains a known missing transitive import from glaze-v1.components.css to nonexistent glaze-v1.candidate.css. Canonical Glaze PR #129 prepares a corrected 1.1.1 release candidate but 1.1.1 is not current Stable. Manager must remain blocked until a corrected immutable Stable release is published, explicitly re-pinned, and fresh source/rendered/client/device/deployed-byte acceptance is completed.
   mesh:
     result: applicable-blocked
     version: null
@@ -90,10 +96,12 @@ continuity:
     requirements:
       - Protect Manager persistent application state and non-reproducible configuration before production dependency.
       - Keep reusable secrets outside ordinary unapproved backup content while preserving approved recovery references.
+      - Successful backup evidence must never independently establish verified restoration or Manager recovery readiness.
   restore:
     required: true
     requirements:
       - Validate clean-environment restoration of Manager state, authentication, health, and required read-only integrations before production acceptance.
+      - Verified restore evidence must remain separate from backup existence or backup transport success.
   export:
     required: true
     requirements:
@@ -130,11 +138,14 @@ conformance:
     - README.md
     - docs/project-specification.md
     - docs/glaze-ui.md
+    - docs/glaze-ui-v1.1-import-closure-blocker.md
     - docs/platform-overview.md
     - core/urls.py
     - integrations/privacy_shield.py
     - integrations/everkeep.py
     - integrations/mesh.py
+    - scripts/vendor_glaze_v1_1.py
+    - tests/test_glaze_ui_contract.py
     - tests/test_mesh.py
     - tests/test_platform_view.py
   blockers:
@@ -142,6 +153,6 @@ conformance:
     - GoreeCloud Mesh source integration exists, but accepted Identity credentials, live registry publication, target network acceptance, and production evidence remain incomplete.
     - GoreeCloud Identity integration remains blocked pending implementation and acceptance.
     - Wardveil Security runtime integration and acceptance remain outstanding.
-    - Current Stable GLAZE UI V1.1 / 1.1.0 migration and rendered application acceptance remain outstanding.
-    - Full target-environment backup, restore, publication, and production-readiness acceptance remain outstanding.
+    - The current immutable GLAZE UI V1.1 / 1.1.0 web graph contains a missing transitive CSS import. A corrected immutable Stable release, explicit Manager re-pin, and repeated exact-revision source/rendered/client/device/deployed-byte acceptance are required before current Glaze conformance can be claimed.
+    - Full target-environment backup, verified restore, publication, and production-readiness acceptance remain outstanding; backup success cannot establish restore success.
     - Required Stable acceptance-test and published release evidence has not been produced.
