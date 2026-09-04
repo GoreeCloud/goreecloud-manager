@@ -13,17 +13,24 @@
     <div>
       <p class="eyebrow">Platform visibility</p>
       <h1 id="platform-title">GoreeCloud Platform</h1>
-      <p>Read-only lifecycle, conformance, dependency, and continuity state from GoreeCloud Mesh.</p>
+      <p>Read-only lifecycle, conformance, dependency, continuity, and evidence-freshness state from GoreeCloud Mesh.</p>
     </div>
     <span class="platform-state">Mesh: {{ mesh.state }}</span>
   </header>
 
   <aside class="platform-boundary">
     <strong>Authority boundary.</strong>
-    Manager presents normalized Mesh records but does not approve, upgrade, or manufacture component state. Authentication proves the read path to Mesh; each producer remains authoritative for its declaration and evidence, while the canonical GoreeCloud evaluator remains authoritative for computed conformance.
+    Manager presents normalized Mesh records but does not approve, upgrade, or manufacture component state. Authentication proves the read path to Mesh; each producer remains authoritative for its declaration and evidence, while the canonical GoreeCloud evaluator remains authoritative for computed conformance. Manager's local freshness classification affects only whether evidence is presented as current; it never rewrites the producer or evaluator result.
   </aside>
 
-  {% if mesh.state == "healthy" %}
+  {% if mesh.state == "degraded" %}
+    <aside class="platform-boundary" role="status">
+      <strong>Stale platform evidence.</strong>
+      {{ mesh.detail }} Refresh or republish the affected producer records before treating favorable state as current operational evidence.
+    </aside>
+  {% endif %}
+
+  {% if mesh.state == "healthy" or mesh.state == "degraded" %}
     <section class="platform-summary" aria-label="Platform summary">
       <div class="platform-summary-card">
         <strong>{{ mesh.records|length }}</strong>
@@ -31,15 +38,19 @@
       </div>
       <div class="platform-summary-card">
         <strong>{{ mesh.conformant_count }}</strong>
-        <span>canonical-evaluator conformant</span>
+        <span>fresh canonical-evaluator conformant</span>
       </div>
       <div class="platform-summary-card">
         <strong>{{ mesh.stable_eligible_count }}</strong>
-        <span>canonical-evaluator Stable eligible</span>
+        <span>fresh Stable eligible</span>
       </div>
       <div class="platform-summary-card">
         <strong>{{ mesh.verified_restore_count }}</strong>
-        <span>verified restore evidence</span>
+        <span>fresh verified restore evidence</span>
+      </div>
+      <div class="platform-summary-card">
+        <strong>{{ mesh.stale_count }}</strong>
+        <span>stale records</span>
       </div>
     </section>
 
@@ -57,12 +68,17 @@
               <h2 id="component-{{ forloop.counter }}">{{ record.product_name }}</h2>
               <p class="platform-muted"><code>{{ record.component_id }}</code> · {{ record.repository }} · source <code>{{ record.source_revision|slice:":12" }}…</code></p>
             </div>
-            <div class="platform-badge-row" aria-label="Lifecycle and canonical conformance">
+            <div class="platform-badge-row" aria-label="Lifecycle, canonical conformance, and evidence freshness">
               <span class="platform-badge">{{ record.lifecycle }}</span>
               <span class="platform-badge">{{ record.computed_result }}</span>
               <span class="platform-badge">Stable: {{ record.stable_eligible|yesno:"eligible,not eligible" }}</span>
+              <span class="platform-badge">Evidence: {{ record.freshness_state }}</span>
             </div>
           </header>
+
+          {% if not record.is_fresh %}
+            <p class="platform-note"><strong>Historical producer state.</strong> This record exceeds Manager's configured Platform Registry freshness window. The producer and canonical-evaluator values below are preserved for inspection, but Manager does not count favorable conformance, Stable eligibility, or verified-restore state from this record as current.</p>
+          {% endif %}
 
           <dl class="platform-facts">
             <div class="platform-fact">
@@ -87,7 +103,11 @@
             </div>
             <div class="platform-fact">
               <dt>Observed</dt>
-              <dd>{{ record.observed_at|date:"M j, Y g:i A T" }}</dd>
+              <dd>{{ record.observed_at|date:"M j, Y g:i A T" }}<br><span class="platform-muted">{{ record.observed_at|timesince }} ago</span></dd>
+            </div>
+            <div class="platform-fact">
+              <dt>Freshness</dt>
+              <dd>{{ record.freshness_state }}</dd>
             </div>
           </dl>
 
@@ -111,7 +131,7 @@
             </div>
             <div class="platform-fact">
               <dt>Evaluated</dt>
-              <dd>{{ record.evaluated_at|date:"M j, Y g:i A T" }}</dd>
+              <dd>{{ record.evaluated_at|date:"M j, Y g:i A T" }}<br><span class="platform-muted">{{ record.evaluated_at|timesince }} ago</span></dd>
             </div>
           </dl>
 
@@ -165,6 +185,9 @@
           </dl>
           {% if record.backup_status == "verified" and not record.continuity_verified %}
             <p class="platform-note"><strong>Backup is not restore proof.</strong> This record does not carry a verified restore timestamp, so Manager does not present it as currently restorable.</p>
+          {% endif %}
+          {% if record.continuity_verified and not record.is_fresh %}
+            <p class="platform-note"><strong>Restore evidence is stale.</strong> The historical record contains a verified restore timestamp, but Manager excludes it from the current verified-restore summary until fresh producer evidence is published.</p>
           {% endif %}
 
           <h3>Conformance gaps</h3>
