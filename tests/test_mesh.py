@@ -1,6 +1,7 @@
 """Tests for the read-only GoreeCloud Mesh platform-registry integration."""
 
 import os
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 import httpx
@@ -88,6 +89,10 @@ class MeshAdapterTests(SimpleTestCase):
             "MESH_ACCESS_TOKEN": self.TOKEN,
             "MESH_ACCESS_TOKEN_FILE": "",
             "MESH_TIMEOUT_SECONDS": "5",
+            # Intentionally broad for tests that exercise schema/authority rather
+            # than freshness. Dedicated freshness tests use a bounded window and
+            # a fixed clock below.
+            "MESH_PLATFORM_RECORD_MAX_AGE_SECONDS": "3153600000",
         }
         values.update(overrides)
         return patch.dict(os.environ, values, clear=False)
@@ -108,6 +113,8 @@ class MeshAdapterTests(SimpleTestCase):
         self.assertEqual(record.computed_result, "nonconformant")
         self.assertEqual(record.evaluator_repository, "GoreeCloud/GoreeCloud")
         self.assertEqual(record.platform_system_map["glaze_ui"], "applicable-migration-required")
+        self.assertEqual(record.freshness_state, "fresh")
+        self.assertEqual(snapshot.stale_count, 0)
         self.assertEqual(snapshot.relationship_count, 2)
 
         args, kwargs = mocked_get.call_args
@@ -222,6 +229,77 @@ class MeshAdapterTests(SimpleTestCase):
         with self._environment():
             snapshot = mesh_platform_snapshot()
         self.assertEqual(snapshot.condition, "schema-invalid")
+
+    @patch("integrations.mesh._utc_now")
+    @patch("integrations.mesh.httpx.get")
+    def test_stale_favorable_state_is_preserved_but_excluded_from_current_summary(
+        self, mocked_get, mocked_now
+    ):
+        mocked_now.return_value = datetime(2026, 9, 3, 2, 0, tzinfo=timezone.utc)
+        payload = self._payload()
+        record = payload["records"][0]
+        record["component"]["lifecycle"] = "stable"
+        record["conformance"]["declared_result"] = "conformant"
+        record["conformance"]["computed_result"] = "conformant"
+        record["conformance"]["stable_eligible"] = True
+        record["conformance"]["missing_mandatory_evidence"] = []
+        record["conformance"]["blockers"] = []
+        record["recovery"] = {
+            "backup_status": "verified",
+            "restore_status": "verified",
+            "last_verified_restore": "2026-09-03T00:20:00Z",
+        }
+        mocked_get.return_value = self._response(payload=payload)
+
+        with self._environment(MESH_PLATFORM_RECORD_MAX_AGE_SECONDS="60"):
+            snapshot = mesh_platform_snapshot()
+
+        self.assertEqual(snapshot.state, "degraded")
+        self.assertEqual(snapshot.condition, "stale-records")
+        self.assertEqual(snapshot.stale_count, 1)
+        stale = snapshot.records[0]
+        self.assertEqual(stale.computed_result, "conformant")
+        self.assertTrue(stale.stable_eligible)
+        self.assertTrue(stale.continuity_verified)
+        self.assertEqual(stale.freshness_state, "stale")
+        self.assertEqual(snapshot.conformant_count, 0)
+        self.assertEqual(snapshot.stable_eligible_count, 0)
+        self.assertEqual(snapshot.verified_restore_count, 0)
+
+    @patch("integrations.mesh._utc_now")
+    @patch("integrations.mesh.httpx.get")
+    def test_future_dated_platform_evidence_fails_closed(self, mocked_get, mocked_now):
+        mocked_now.return_value = datetime(2026, 9, 3, 0, 29, tzinfo=timezone.utc)
+        mocked_get.return_value = self._response(payload=self._payload())
+        with self._environment(MESH_PLATFORM_RECORD_MAX_AGE_SECONDS="3600"):
+            snapshot = mesh_platform_snapshot()
+        self.assertEqual(snapshot.state, "unavailable")
+        self.assertEqual(snapshot.condition, "schema-invalid")
+        self.assertEqual(snapshot.records, ())
+
+    @patch("integrations.mesh.httpx.get")
+    def test_missing_freshness_policy_fails_closed_before_network(self, mocked_get):
+        with self._environment(MESH_PLATFORM_RECORD_MAX_AGE_SECONDS=""):
+            snapshot = mesh_platform_snapshot()
+        self.assertEqual(snapshot.state, "misconfigured")
+        self.assertIn("MESH_PLATFORM_RECORD_MAX_AGE_SECONDS", snapshot.detail)
+        mocked_get.assert_not_called()
+
+    @patch("integrations.mesh.httpx.get")
+    def test_invalid_or_multiline_access_token_fails_closed_before_network(self, mocked_get):
+        with self._environment(MESH_ACCESS_TOKEN="secret\r\nInjected: value"):
+            snapshot = mesh_platform_snapshot()
+        self.assertEqual(snapshot.state, "misconfigured")
+        self.assertNotIn("secret", snapshot.detail)
+        mocked_get.assert_not_called()
+
+    @patch("integrations.mesh.httpx.get")
+    def test_non_loopback_plain_http_mesh_url_fails_closed_before_network(self, mocked_get):
+        with self._environment(MESH_API_URL="http://mesh.internal.example.test"):
+            snapshot = mesh_platform_snapshot()
+        self.assertEqual(snapshot.state, "misconfigured")
+        self.assertIn("HTTPS", snapshot.detail)
+        mocked_get.assert_not_called()
 
     @patch("integrations.mesh.httpx.get")
     def test_timeout_is_fail_soft_and_sanitized(self, mocked_get):
