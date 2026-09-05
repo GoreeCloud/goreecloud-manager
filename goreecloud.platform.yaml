@@ -46,8 +46,11 @@ platform_systems:
   wardveil_security:
     result: applicable-blocked
     version: null
-    evidence: []
-    notes: No accepted Wardveil Security runtime integration is established by the current Manager source baseline.
+    evidence:
+      - integrations/wardveil.py
+      - docs/wardveil-security.md
+      - tests/test_wardveil.py
+    notes: Manager now has a bounded read-only source consumer for Wardveil security-status evidence through the authenticated GoreeCloud Mesh evidence plane. Wardveil remains security authority and Manager does not manufacture Protected claims. Live Wardveil evidence production, Identity credential issuance, target Mesh routing/TLS, privacy review, and production acceptance remain incomplete.
   everkeep:
     result: applicable-blocked
     version: null
@@ -68,17 +71,21 @@ platform_systems:
     evidence:
       - integrations/mesh.py
       - integrations/mesh_events.py
+      - integrations/wardveil.py
       - core/platform_events.py
       - core/static/core/js/platform-live.js
       - docs/platform-overview.md
+      - docs/wardveil-security.md
       - tests/test_mesh.py
       - tests/test_mesh_events.py
       - tests/test_platform_view.py
       - tests/test_platform_events.py
-    notes: Bounded read-only Platform Registry and live-only lifecycle-event consumers are implemented at source level. Events only trigger a fresh registry read and never become platform truth. Accepted GoreeCloud Identity credentials, live Mesh publication/streaming, network-path acceptance, and production runtime evidence remain incomplete.
+      - tests/test_wardveil.py
+    notes: Bounded read-only Platform Registry, live-only lifecycle-event, and Wardveil evidence-read consumers are implemented at source level. Each uses an independently scoped credential and preserves producer authority. Accepted GoreeCloud Identity credentials, live registry/event/evidence publication, network-path acceptance, and production runtime evidence remain incomplete.
     capabilities:
       - platform-registry-read
       - live-event-refresh
+      - wardveil-security-status-read
     dependencies:
       - goreecloud-mesh
     published_events: []
@@ -90,8 +97,10 @@ platform_systems:
     version: null
     evidence:
       - integrations/mesh_events.py
+      - integrations/wardveil.py
       - tests/test_mesh_events.py
-    notes: Manager's Mesh event source boundary requires a separate GoreeCloud Identity credential carrying only mesh.events.read, while the Platform Registry uses mesh.platform-registry.read. Full accepted GoreeCloud Identity adoption for Manager authentication/session authority remains a separate blocked platform migration.
+      - tests/test_wardveil.py
+    notes: Manager requires separate GoreeCloud Identity credentials for mesh.platform-registry.read, mesh.events.read, and mesh.evidence.read rather than broadening one workload token. Full accepted GoreeCloud Identity adoption for Manager authentication/session authority plus live production token issuance and key custody remain separate blocked platform work.
 
 health:
   health_endpoint: /healthz/
@@ -144,6 +153,7 @@ conformance:
     - docs/project-specification.md
     - docs/glaze-ui.md
     - docs/platform-overview.md
+    - docs/wardveil-security.md
     - core/urls.py
     - core/platform_events.py
     - core/static/core/js/platform-live.js
@@ -151,15 +161,17 @@ conformance:
     - integrations/everkeep.py
     - integrations/mesh.py
     - integrations/mesh_events.py
+    - integrations/wardveil.py
     - tests/test_mesh.py
     - tests/test_mesh_events.py
     - tests/test_platform_view.py
     - tests/test_platform_events.py
+    - tests/test_wardveil.py
   blockers:
     - GoreeCloud Manager is still in Development and is not approved for production publication.
-    - GoreeCloud Mesh source integration exists, but accepted Identity credentials, live registry/event publication, target network acceptance, and production evidence remain incomplete.
-    - GoreeCloud Identity integration remains blocked pending implementation and acceptance.
-    - Wardveil Security runtime integration and acceptance remain outstanding.
+    - GoreeCloud Mesh source integrations exist, but accepted Identity credentials, live registry/event/evidence publication, target network acceptance, and production evidence remain incomplete.
+    - GoreeCloud Identity human authentication/session integration and production workload-token issuance remain blocked pending implementation and acceptance.
+    - Wardveil Security source-level status visibility exists, but live producer evidence, target routing, security/privacy acceptance, and production evidence remain outstanding.
     - Current Stable GLAZE UI V1.1 / 1.1.0 migration and rendered application acceptance remain outstanding.
     - Full target-environment backup, restore, publication, and production-readiness acceptance remain outstanding.
     - Required Stable acceptance-test and published release evidence has not been produced.
