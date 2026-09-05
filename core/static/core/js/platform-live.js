@@ -1,18 +1,22 @@
 (() => {
   "use strict";
 
-  const root = document.querySelector("[data-mesh-events-url]");
-  if (!root || typeof window.EventSource !== "function") {
+  if (typeof window.EventSource !== "function") {
     return;
   }
 
-  const url = root.getAttribute("data-mesh-events-url");
-  if (!url || !url.startsWith("/")) {
+  const pageUrl = new URL(window.location.href);
+  if (!pageUrl.pathname.endsWith("/platform/")) {
+    return;
+  }
+
+  const streamUrl = new URL("events/", pageUrl);
+  if (streamUrl.origin !== pageUrl.origin) {
     return;
   }
 
   let reloadScheduled = false;
-  const stream = new window.EventSource(url);
+  const stream = new window.EventSource(streamUrl.pathname);
 
   stream.addEventListener("platform-update", () => {
     if (reloadScheduled) {
