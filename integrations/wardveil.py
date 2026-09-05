@@ -97,7 +97,25 @@ class WardveilSnapshot:
     stale_count: int = 0
 
     def integration_status(self) -> dict[str, str]:
-        return {"state": self.state, "detail": self.detail}
+        """Return bounded UI status without turning producer outcomes into Manager truth."""
+
+        detail = self.detail
+        current_outcomes: dict[str, int] = {}
+        historical_outcomes: dict[str, int] = {}
+        for record in self.records:
+            target = current_outcomes if record.fresh else historical_outcomes
+            target[record.outcome_label] = target.get(record.outcome_label, 0) + 1
+        if current_outcomes:
+            outcome_text = ", ".join(
+                f"{label} ({count})" for label, count in sorted(current_outcomes.items())
+            )
+            detail += f" Current Wardveil producer outcomes: {outcome_text}."
+        elif historical_outcomes:
+            outcome_text = ", ".join(
+                f"{label} ({count})" for label, count in sorted(historical_outcomes.items())
+            )
+            detail += f" Historical Wardveil producer outcomes: {outcome_text}."
+        return {"state": self.state, "detail": detail}
 
 
 class WardveilProtocolError(ValueError):
@@ -344,7 +362,9 @@ def _snapshot(payload: Any, *, now: datetime) -> WardveilSnapshot:
         previous = latest.get(key)
         if previous is None or item.observed_at > previous.observed_at:
             latest[key] = item
-    displayed = tuple(sorted(latest.values(), key=lambda item: (item.subject_kind, item.subject_id, item.subject_scope)))
+    displayed = tuple(
+        sorted(latest.values(), key=lambda item: (item.subject_kind, item.subject_id, item.subject_scope))
+    )
     displayed_current = sum(item.fresh for item in displayed)
     displayed_stale = len(displayed) - displayed_current
 
