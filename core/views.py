@@ -26,12 +26,13 @@ from integrations.netbird import NetBirdSnapshot, netbird_snapshot
 from integrations.registry import integration_statuses
 from integrations.tasks import TasksSnapshot, tasks_snapshot
 from integrations.uptime_kuma import UptimeKumaSnapshot, uptime_kuma_snapshot
+from integrations.wardveil import WardveilSnapshot, wardveil_snapshot
 
 logger = logging.getLogger(__name__)
 SnapshotFactory = Callable[[], Any]
 FailureFactory = Callable[[str], Any]
 
-MAX_OUTSTANDING_INTEGRATION_JOBS = 8
+MAX_OUTSTANDING_INTEGRATION_JOBS = 9
 _INTEGRATION_EXECUTOR = ThreadPoolExecutor(
     max_workers=MAX_OUTSTANDING_INTEGRATION_JOBS,
     thread_name_prefix="manager-integration",
@@ -94,6 +95,14 @@ def _tasks_failure(detail: str) -> TasksSnapshot:
 
 def _mesh_failure(detail: str) -> MeshPlatformSnapshot:
     return MeshPlatformSnapshot(
+        state="unavailable",
+        detail=detail,
+        condition="internal-error",
+    )
+
+
+def _wardveil_failure(detail: str) -> WardveilSnapshot:
+    return WardveilSnapshot(
         state="unavailable",
         detail=detail,
         condition="internal-error",
@@ -164,6 +173,7 @@ def _overview_snapshots() -> dict[str, Any]:
     ] = {
         "everkeep": ("Everkeep", everkeep_snapshot, _everkeep_failure),
         "mesh": ("GoreeCloud Mesh", mesh_platform_snapshot, _mesh_failure),
+        "wardveil": ("Wardveil Security", wardveil_snapshot, _wardveil_failure),
         "netbird": ("NetBird", netbird_snapshot, _netbird_failure),
         "healthchecks": ("Healthchecks", healthchecks_snapshot, _healthchecks_failure),
         "uptime_kuma": ("Uptime Kuma", uptime_kuma_snapshot, _uptime_kuma_failure),
@@ -236,6 +246,7 @@ def overview(request):
     snapshots = _overview_snapshots()
     everkeep = snapshots["everkeep"]
     mesh = snapshots["mesh"]
+    wardveil = snapshots["wardveil"]
     netbird = snapshots["netbird"]
     healthchecks = snapshots["healthchecks"]
     uptime_kuma = snapshots["uptime_kuma"]
@@ -249,6 +260,7 @@ def overview(request):
             "integrations": integration_statuses(
                 everkeep_status=everkeep.integration_status(),
                 mesh_status=mesh.integration_status(),
+                wardveil_status=wardveil.integration_status(),
                 netbird_status=netbird.integration_status(),
                 healthchecks_status=healthchecks.integration_status(),
                 uptime_kuma_status=uptime_kuma.integration_status(),
@@ -258,6 +270,7 @@ def overview(request):
             ),
             "everkeep": everkeep,
             "mesh": mesh,
+            "wardveil": wardveil,
             "netbird": netbird,
             "healthchecks": healthchecks,
             "uptime_kuma": uptime_kuma,
