@@ -24,6 +24,9 @@ api:
     - name: tasks-integration-health
       url: /healthz/integrations/tasks/
       purpose: Sanitized GoreeCloud Tasks integration monitoring signal.
+    - name: platform-events
+      url: /platform/events/
+      purpose: Authenticated same-origin best-effort refresh signaling derived from validated GoreeCloud Mesh lifecycle events; not a platform-truth or replay API.
 
 platform_systems:
   manager:
@@ -64,21 +67,31 @@ platform_systems:
     version: null
     evidence:
       - integrations/mesh.py
+      - integrations/mesh_events.py
+      - core/platform_events.py
+      - core/static/core/js/platform-live.js
       - docs/platform-overview.md
       - tests/test_mesh.py
+      - tests/test_mesh_events.py
       - tests/test_platform_view.py
-    notes: A bounded read-only Platform Registry consumer is implemented at source level and fail-closed against Platform Contract v0.2 records, but accepted GoreeCloud Identity credentials, live Mesh publication, network-path acceptance, and production runtime evidence remain incomplete.
+      - tests/test_platform_events.py
+    notes: Bounded read-only Platform Registry and live-only lifecycle-event consumers are implemented at source level. Events only trigger a fresh registry read and never become platform truth. Accepted GoreeCloud Identity credentials, live Mesh publication/streaming, network-path acceptance, and production runtime evidence remain incomplete.
     capabilities:
       - platform-registry-read
+      - live-event-refresh
     dependencies:
       - goreecloud-mesh
     published_events: []
-    consumed_events: []
+    consumed_events:
+      - mesh.service.upserted.v1
+      - mesh.relationship.upserted.v1
   identity:
     result: applicable-blocked
     version: null
-    evidence: []
-    notes: Manager currently uses its local Django authentication/session foundation; accepted GoreeCloud Identity adoption remains a separate platform migration.
+    evidence:
+      - integrations/mesh_events.py
+      - tests/test_mesh_events.py
+    notes: Manager's Mesh event source boundary requires a separate GoreeCloud Identity credential carrying only mesh.events.read, while the Platform Registry uses mesh.platform-registry.read. Full accepted GoreeCloud Identity adoption for Manager authentication/session authority remains a separate blocked platform migration.
 
 health:
   health_endpoint: /healthz/
@@ -132,14 +145,19 @@ conformance:
     - docs/glaze-ui.md
     - docs/platform-overview.md
     - core/urls.py
+    - core/platform_events.py
+    - core/static/core/js/platform-live.js
     - integrations/privacy_shield.py
     - integrations/everkeep.py
     - integrations/mesh.py
+    - integrations/mesh_events.py
     - tests/test_mesh.py
+    - tests/test_mesh_events.py
     - tests/test_platform_view.py
+    - tests/test_platform_events.py
   blockers:
     - GoreeCloud Manager is still in Development and is not approved for production publication.
-    - GoreeCloud Mesh source integration exists, but accepted Identity credentials, live registry publication, target network acceptance, and production evidence remain incomplete.
+    - GoreeCloud Mesh source integration exists, but accepted Identity credentials, live registry/event publication, target network acceptance, and production evidence remain incomplete.
     - GoreeCloud Identity integration remains blocked pending implementation and acceptance.
     - Wardveil Security runtime integration and acceptance remain outstanding.
     - Current Stable GLAZE UI V1.1 / 1.1.0 migration and rendered application acceptance remain outstanding.
