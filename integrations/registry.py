@@ -34,9 +34,11 @@ def integration_statuses(
     privacy_shield_status: dict[str, str] | None = None,
     everkeep_status: dict[str, str] | None = None,
     mesh_status: dict[str, str] | None = None,
+    wardveil_status: dict[str, str] | None = None,
 ) -> list[dict[str, str]]:
     definitions = [
         ("privacy-shield", "Privacy Shield", "Privacy", None),
+        ("wardveil-security", "Wardveil Security", "Security", "WARDVEIL_STATUS_ENABLED"),
         ("everkeep", "Everkeep", "Protection / Continuity", "EVERKEEP_ENABLED"),
         ("mesh", "GoreeCloud Mesh", "Platform Coordination", "MESH_ENABLED"),
         ("netbird", "NetBird", "Network", "NETBIRD_ENABLED"),
@@ -51,6 +53,7 @@ def integration_statuses(
 
     live_statuses = {
         "privacy-shield": privacy_shield_status,
+        "wardveil-security": wardveil_status,
         "everkeep": everkeep_status,
         "mesh": mesh_status,
         "netbird": netbird_status,
