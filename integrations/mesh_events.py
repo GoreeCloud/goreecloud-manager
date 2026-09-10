@@ -51,6 +51,10 @@ DEFAULT_BUFFER_SIZE = 8
 MAX_BUFFER_SIZE = 64
 DEFAULT_WINDOW_SECONDS = 5
 MAX_WINDOW_SECONDS = 10
+MESH_EVENT_DELIVERY_HEADER = "X-GoreeCloud-Mesh-Event-Delivery"
+MESH_EVENT_REPLAY_HEADER = "X-GoreeCloud-Mesh-Event-Replay"
+EXPECTED_MESH_EVENT_DELIVERY = "best-effort-live-only"
+EXPECTED_MESH_EVENT_REPLAY = "unavailable"
 
 
 @dataclass(frozen=True)
@@ -256,6 +260,21 @@ def _validate_event_payload(payload: Any, event_name: str, *, now: datetime) -> 
     return {"type": event_type}
 
 
+def _advertised_transport_contract_is_accepted(headers: Any) -> bool:
+    """Accept legacy omission, but fail closed on any advertised incompatible semantics."""
+
+    delivery = headers.get(MESH_EVENT_DELIVERY_HEADER)
+    replay = headers.get(MESH_EVENT_REPLAY_HEADER)
+    if delivery is None and replay is None:
+        return True
+    if delivery is None or replay is None:
+        return False
+    return (
+        str(delivery).strip().lower() == EXPECTED_MESH_EVENT_DELIVERY
+        and str(replay).strip().lower() == EXPECTED_MESH_EVENT_REPLAY
+    )
+
+
 def _parse_sse_lines(lines: Iterator[str]) -> Iterator[dict[str, str]]:
     event_name: str | None = None
     data_lines: list[str] = []
@@ -306,9 +325,10 @@ def _parse_sse_lines(lines: Iterator[str]) -> Iterator[dict[str, str]]:
 def iter_mesh_event_refresh_signals() -> Iterator[str]:
     """Yield sanitized same-origin SSE signals for accepted Mesh lifecycle events.
 
-    Network, authorization, HTTP, content-type, and contract failures terminate the
-    current best-effort stream without reflecting upstream error text or credentials.
-    Browser EventSource reconnection remains live-only; no replay cursor is supplied.
+    Network, authorization, HTTP, content-type, transport-contract, and event-contract
+    failures terminate the current best-effort stream without reflecting upstream error
+    text or credentials. Browser EventSource reconnection remains live-only; no replay
+    cursor is supplied.
     """
 
     if not _enabled():
@@ -343,6 +363,8 @@ def iter_mesh_event_refresh_signals() -> Iterator[str]:
                 return
             content_type = response.headers.get("content-type", "").lower()
             if not content_type.startswith("text/event-stream"):
+                return
+            if not _advertised_transport_contract_is_accepted(response.headers):
                 return
             try:
                 for signal in _parse_sse_lines(iter(response.iter_lines())):
