@@ -42,6 +42,8 @@ def test_structured_record_keeps_provider_outcome_separate_from_manager_prose() 
 
     assert record["provider_outcome"] == "<b>provider-claim</b>"
     assert "<b>provider-claim</b>" not in record["manager_detail"]
+    assert record["provider_system"] == "privacy-shield"
+    assert record["producer_repository"] == "GoreeCloud/goreecloud-privacy-shield"
     assert record["manager_display_state"] == "available"
     assert record["manager_authority"] is False
     assert record["authority_transfer"] is False
@@ -58,6 +60,7 @@ def test_structured_record_preserves_stale_provider_evidence_as_attention() -> N
     record = provider_status_record(view)
 
     assert record["provider_system"] == "everkeep"
+    assert record["producer_repository"] == "GoreeCloud/goreecloud-everkeep"
     assert record["authority_domain"] == "recovery"
     assert record["manager_display_state"] == "attention"
     assert record["manager_authority"] is False
