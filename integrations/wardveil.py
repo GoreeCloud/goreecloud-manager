@@ -27,7 +27,7 @@ import httpx
 EVIDENCE_PATH = "/v1/evidence/envelopes"
 EVIDENCE_VERSION = "goreecloud.evidence-envelope.v1"
 WARDVEIL_SYSTEM = "wardveil-security"
-WARDVEIL_REPOSITORY = "GoreeCloud/goreecloud-wardveil-security"
+WARDVEIL_REPOSITORY = "GoreeCloud/goreecloud-wardveil"
 WARDVEIL_STATUS_CONTRACT = "contracts/wardveil.status.schema.json"
 WARDVEIL_AUTHORITY_DOMAIN = "security"
 WARDVEIL_STATUS_ASSERTION = "security-status"
