@@ -12,6 +12,7 @@ class ProviderEvidenceViewInvariantTests(TestCase):
     def valid_kwargs(self) -> dict:
         return {
             "provider_system": PRIVACY_SHIELD.system,
+            "producer_repository": PRIVACY_SHIELD.repository,
             "authority_domain": PRIVACY_SHIELD.authority_domain,
             "assertion": PRIVACY_SHIELD.assertion,
             "producer_revision": "a" * 40,
@@ -28,6 +29,12 @@ class ProviderEvidenceViewInvariantTests(TestCase):
         values = self.valid_kwargs()
         values["provider_system"] = "manager"
         with self.assertRaisesRegex(ProviderEvidenceError, "system is not governed"):
+            ProviderEvidenceView(**values)
+
+    def test_direct_view_rejects_mismatched_producer_repository(self) -> None:
+        values = self.valid_kwargs()
+        values["producer_repository"] = "GoreeCloud/other"
+        with self.assertRaisesRegex(ProviderEvidenceError, "producer repository mismatch"):
             ProviderEvidenceView(**values)
 
     def test_direct_view_rejects_mismatched_authority_domain(self) -> None:
