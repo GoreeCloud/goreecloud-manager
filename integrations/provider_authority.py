@@ -41,6 +41,28 @@ EVERKEEP = ProviderAuthority(
 )
 
 
+class ProviderEvidenceError(ValueError):
+    pass
+
+
+def _text(value: Any, field: str, *, limit: int = MAX_TEXT) -> str:
+    if not isinstance(value, str) or not value:
+        raise ProviderEvidenceError(f"{field} must be a non-empty string")
+    if value != value.strip():
+        raise ProviderEvidenceError(f"{field} must be canonical and must not contain surrounding whitespace")
+    if len(value) > limit:
+        raise ProviderEvidenceError(f"{field} exceeds Manager's display bound")
+    if any(unicodedata.category(char).startswith("C") for char in value):
+        raise ProviderEvidenceError(f"{field} contains control characters")
+    return value
+
+
+def _aware_datetime(value: Any, field: str) -> datetime:
+    if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+        raise ProviderEvidenceError(f"{field} must include timezone information")
+    return value.astimezone(timezone.utc)
+
+
 @dataclass(frozen=True)
 class ProviderEvidenceView:
     provider_system: str
@@ -50,6 +72,7 @@ class ProviderEvidenceView:
     producer_outcome: str
     observed_at: datetime
     valid_until: datetime
+    evaluated_at: datetime
     evidence_reference: str
     payload_digest: str
     state: str
@@ -76,38 +99,22 @@ class ProviderEvidenceView:
         if not DIGEST.fullmatch(digest):
             raise ProviderEvidenceError("provider evidence view payload digest is invalid")
 
-        for value, field in (
-            (self.observed_at, "observed_at"),
-            (self.valid_until, "valid_until"),
-        ):
-            if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
-                raise ProviderEvidenceError(
-                    f"provider evidence view {field} must include timezone information"
-                )
-        if self.valid_until <= self.observed_at:
+        observed = _aware_datetime(self.observed_at, "provider evidence view observed_at")
+        valid_until = _aware_datetime(self.valid_until, "provider evidence view valid_until")
+        evaluated = _aware_datetime(self.evaluated_at, "provider evidence view evaluated_at")
+        if valid_until <= observed:
             raise ProviderEvidenceError("provider evidence view validity window is invalid")
-        if self.state not in {"current", "stale"}:
-            raise ProviderEvidenceError("provider evidence view state is invalid")
+        if observed > evaluated:
+            raise ProviderEvidenceError("provider evidence view cannot be observed in the future")
+        expected_state = "current" if valid_until > evaluated else "stale"
+        if self.state != expected_state:
+            raise ProviderEvidenceError(
+                "provider evidence view state does not match its evaluation time and validity window"
+            )
 
     @property
     def current(self) -> bool:
         return self.state == "current"
-
-
-class ProviderEvidenceError(ValueError):
-    pass
-
-
-def _text(value: Any, field: str, *, limit: int = MAX_TEXT) -> str:
-    if not isinstance(value, str) or not value:
-        raise ProviderEvidenceError(f"{field} must be a non-empty string")
-    if value != value.strip():
-        raise ProviderEvidenceError(f"{field} must be canonical and must not contain surrounding whitespace")
-    if len(value) > limit:
-        raise ProviderEvidenceError(f"{field} exceeds Manager's display bound")
-    if any(unicodedata.category(char).startswith("C") for char in value):
-        raise ProviderEvidenceError(f"{field} contains control characters")
-    return value
 
 
 def _time(value: Any, field: str) -> datetime:
@@ -205,6 +212,7 @@ def normalize_provider_evidence(
         producer_outcome=outcome,
         observed_at=observed,
         valid_until=valid_until,
+        evaluated_at=current_time,
         evidence_reference=reference,
         payload_digest=digest,
         state="current" if valid_until > current_time else "stale",
@@ -253,6 +261,7 @@ def provider_status_record(view: ProviderEvidenceView) -> dict[str, Any]:
         "provider_outcome": view.producer_outcome,
         "observed_at": _iso_utc(view.observed_at),
         "valid_until": _iso_utc(view.valid_until),
+        "evaluated_at": _iso_utc(view.evaluated_at),
         "evidence_reference": view.evidence_reference,
         "payload_digest": view.payload_digest,
         "manager_display_state": display["state"],
