@@ -54,6 +54,41 @@ class ProviderEvidenceView:
     payload_digest: str
     state: str
 
+    def __post_init__(self) -> None:
+        authority_by_system = {
+            PRIVACY_SHIELD.system: PRIVACY_SHIELD,
+            EVERKEEP.system: EVERKEEP,
+        }
+        authority = authority_by_system.get(self.provider_system)
+        if authority is None:
+            raise ProviderEvidenceError("provider evidence view system is not governed")
+        if self.authority_domain != authority.authority_domain:
+            raise ProviderEvidenceError("provider evidence view authority domain mismatch")
+        if self.assertion != authority.assertion:
+            raise ProviderEvidenceError("provider evidence view assertion mismatch")
+
+        revision = _text(self.producer_revision, "producer_revision", limit=40)
+        if not REVISION.fullmatch(revision):
+            raise ProviderEvidenceError("provider evidence view revision must be an exact commit SHA")
+        _text(self.producer_outcome, "producer_outcome")
+        _text(self.evidence_reference, "evidence_reference", limit=1000)
+        digest = _text(self.payload_digest, "payload_digest", limit=71)
+        if not DIGEST.fullmatch(digest):
+            raise ProviderEvidenceError("provider evidence view payload digest is invalid")
+
+        for value, field in (
+            (self.observed_at, "observed_at"),
+            (self.valid_until, "valid_until"),
+        ):
+            if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
+                raise ProviderEvidenceError(
+                    f"provider evidence view {field} must include timezone information"
+                )
+        if self.valid_until <= self.observed_at:
+            raise ProviderEvidenceError("provider evidence view validity window is invalid")
+        if self.state not in {"current", "stale"}:
+            raise ProviderEvidenceError("provider evidence view state is invalid")
+
     @property
     def current(self) -> bool:
         return self.state == "current"
