@@ -64,14 +64,15 @@ class ProviderEvidenceError(ValueError):
 
 
 def _text(value: Any, field: str, *, limit: int = MAX_TEXT) -> str:
-    if not isinstance(value, str) or not value.strip():
+    if not isinstance(value, str) or not value:
         raise ProviderEvidenceError(f"{field} must be a non-empty string")
-    text = value.strip()
-    if len(text) > limit:
+    if value != value.strip():
+        raise ProviderEvidenceError(f"{field} must be canonical and must not contain surrounding whitespace")
+    if len(value) > limit:
         raise ProviderEvidenceError(f"{field} exceeds Manager's display bound")
-    if any(unicodedata.category(char).startswith("C") for char in text):
+    if any(unicodedata.category(char).startswith("C") for char in value):
         raise ProviderEvidenceError(f"{field} contains control characters")
-    return text
+    return value
 
 
 def _time(value: Any, field: str) -> datetime:
