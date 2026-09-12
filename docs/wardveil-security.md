@@ -37,7 +37,7 @@ Manager requests only evidence matching all of these filters:
 Every returned envelope is then validated again locally. Manager requires:
 
 - `goreecloud.evidence-envelope.v1`;
-- producer repository `GoreeCloud/goreecloud-wardveil-security`;
+- producer repository `GoreeCloud/goreecloud-wardveil`;
 - an exact 40-character producer Git revision;
 - producer contract `contracts/wardveil.status.schema.json`;
 - authority domain `security`;
