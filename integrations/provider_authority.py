@@ -68,6 +68,7 @@ def _aware_datetime(value: Any, field: str) -> datetime:
 @dataclass(frozen=True)
 class ProviderEvidenceView:
     provider_system: str
+    producer_repository: str
     authority_domain: str
     assertion: str
     producer_revision: str
@@ -87,6 +88,8 @@ class ProviderEvidenceView:
         authority = authority_by_system.get(self.provider_system)
         if authority is None:
             raise ProviderEvidenceError("provider evidence view system is not governed")
+        if self.producer_repository != authority.repository:
+            raise ProviderEvidenceError("provider evidence view producer repository mismatch")
         if self.authority_domain != authority.authority_domain:
             raise ProviderEvidenceError("provider evidence view authority domain mismatch")
         if self.assertion != authority.assertion:
@@ -208,6 +211,7 @@ def normalize_provider_evidence(
 
     return ProviderEvidenceView(
         provider_system=authority.system,
+        producer_repository=authority.repository,
         authority_domain=authority.authority_domain,
         assertion=authority.assertion,
         producer_revision=revision,
@@ -253,6 +257,7 @@ def select_latest_provider_evidence(
     latest = [view for view in views if view.observed_at == latest_observed]
     signatures = {
         (
+            view.producer_repository,
             view.producer_revision,
             view.producer_outcome,
             view.valid_until,
@@ -304,6 +309,7 @@ def provider_status_record(view: ProviderEvidenceView) -> dict[str, Any]:
     display = integration_status(view)
     return {
         "provider_system": view.provider_system,
+        "producer_repository": view.producer_repository,
         "authority_domain": view.authority_domain,
         "assertion": view.assertion,
         "producer_revision": view.producer_revision,
