@@ -25,7 +25,7 @@ class WardveilAdapterTests(SimpleTestCase):
             "id": "wardveil-status-test-1",
             "producer": {
                 "system": "wardveil-security",
-                "repository": "GoreeCloud/goreecloud-wardveil-security",
+                "repository": "GoreeCloud/goreecloud-wardveil",
                 "revision": "0123456789abcdef0123456789abcdef01234567",
                 "contract": "contracts/wardveil.status.schema.json",
             },
