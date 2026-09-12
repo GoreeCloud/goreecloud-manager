@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from integrations.provider_authority import (
     EVERKEEP,
@@ -10,6 +10,7 @@ from integrations.provider_authority import (
 )
 
 NOW = datetime(2026, 9, 12, 5, 0, tzinfo=timezone.utc)
+MAX_EVIDENCE_AGE = timedelta(hours=1)
 
 
 def evidence(authority, *, outcome: str = "provider-owned-state", valid_until: str = "2026-09-12T05:30:00Z"):
@@ -36,6 +37,7 @@ def test_structured_record_keeps_provider_outcome_separate_from_manager_prose() 
     view = normalize_provider_evidence(
         evidence(PRIVACY_SHIELD, outcome="<b>provider-claim</b>"),
         authority=PRIVACY_SHIELD,
+        max_evidence_age=MAX_EVIDENCE_AGE,
         now=NOW,
     )
     record = provider_status_record(view)
@@ -49,12 +51,28 @@ def test_structured_record_keeps_provider_outcome_separate_from_manager_prose() 
     assert record["authority_transfer"] is False
     assert record["observed_at"] == "2026-09-12T04:30:00Z"
     assert record["valid_until"] == "2026-09-12T05:30:00Z"
+    assert record["manager_effective_valid_until"] == "2026-09-12T05:30:00Z"
+
+
+def test_structured_record_exposes_shorter_manager_freshness_boundary() -> None:
+    view = normalize_provider_evidence(
+        evidence(PRIVACY_SHIELD, valid_until="2027-09-12T05:30:00Z"),
+        authority=PRIVACY_SHIELD,
+        max_evidence_age=timedelta(minutes=20),
+        now=NOW,
+    )
+    record = provider_status_record(view)
+
+    assert record["valid_until"] == "2027-09-12T05:30:00Z"
+    assert record["manager_effective_valid_until"] == "2026-09-12T04:50:00Z"
+    assert record["manager_display_state"] == "attention"
 
 
 def test_structured_record_preserves_stale_provider_evidence_as_attention() -> None:
     view = normalize_provider_evidence(
         evidence(EVERKEEP, valid_until="2026-09-12T04:45:00Z"),
         authority=EVERKEEP,
+        max_evidence_age=MAX_EVIDENCE_AGE,
         now=NOW,
     )
     record = provider_status_record(view)
