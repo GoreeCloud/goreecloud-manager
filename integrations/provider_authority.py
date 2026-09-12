@@ -11,7 +11,7 @@ import re
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 
 REVISION = re.compile(r"^[0-9a-f]{40}$")
@@ -65,6 +65,22 @@ def _aware_datetime(value: Any, field: str) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def _effective_valid_until(
+    observed_at: datetime,
+    provider_valid_until: datetime,
+    max_evidence_age: timedelta | None,
+) -> datetime:
+    if max_evidence_age is None:
+        return observed_at
+    if not isinstance(max_evidence_age, timedelta) or max_evidence_age <= timedelta(0):
+        raise ProviderEvidenceError("Manager maximum evidence age must be a positive duration")
+    try:
+        manager_valid_until = observed_at + max_evidence_age
+    except OverflowError as exc:
+        raise ProviderEvidenceError("Manager maximum evidence age is out of range") from exc
+    return min(provider_valid_until, manager_valid_until)
+
+
 @dataclass(frozen=True)
 class ProviderEvidenceView:
     provider_system: str
@@ -79,6 +95,7 @@ class ProviderEvidenceView:
     evidence_reference: str
     payload_digest: str
     state: str
+    max_evidence_age: timedelta | None = None
 
     def __post_init__(self) -> None:
         authority_by_system = {
@@ -111,15 +128,20 @@ class ProviderEvidenceView:
             raise ProviderEvidenceError("provider evidence view validity window is invalid")
         if observed > evaluated:
             raise ProviderEvidenceError("provider evidence view cannot be observed in the future")
-        expected_state = "current" if valid_until > evaluated else "stale"
+        effective_valid_until = _effective_valid_until(observed, valid_until, self.max_evidence_age)
+        expected_state = "current" if effective_valid_until > evaluated else "stale"
         if self.state != expected_state:
             raise ProviderEvidenceError(
-                "provider evidence view state does not match its evaluation time and validity window"
+                "provider evidence view state does not match its evaluation time and effective validity window"
             )
 
     @property
     def current(self) -> bool:
         return self.state == "current"
+
+    @property
+    def effective_valid_until(self) -> datetime:
+        return _effective_valid_until(self.observed_at, self.valid_until, self.max_evidence_age)
 
 
 def _time(value: Any, field: str) -> datetime:
@@ -149,13 +171,15 @@ def normalize_provider_evidence(
     raw: Mapping[str, Any],
     *,
     authority: ProviderAuthority,
+    max_evidence_age: timedelta | None = None,
     now: datetime | None = None,
 ) -> ProviderEvidenceView:
     """Validate one producer record without interpreting the producer's outcome.
 
     The provider-specific outcome remains opaque. Manager derives only whether the
     record is current or stale for display; it never upgrades, combines, or converts
-    producer state into Manager-owned privacy/recovery truth.
+    producer state into Manager-owned privacy/recovery truth. A current display
+    state additionally requires an explicit positive Manager freshness duration.
     """
     if not isinstance(raw, Mapping):
         raise ProviderEvidenceError("provider evidence must be an object")
@@ -208,6 +232,7 @@ def normalize_provider_evidence(
         raise ProviderEvidenceError("provider evidence cannot be observed in the future")
     if valid_until <= observed:
         raise ProviderEvidenceError("provider evidence validity window is invalid")
+    effective_valid_until = _effective_valid_until(observed, valid_until, max_evidence_age)
 
     return ProviderEvidenceView(
         provider_system=authority.system,
@@ -221,7 +246,8 @@ def normalize_provider_evidence(
         evaluated_at=current_time,
         evidence_reference=reference,
         payload_digest=digest,
-        state="current" if valid_until > current_time else "stale",
+        state="current" if effective_valid_until > current_time else "stale",
+        max_evidence_age=max_evidence_age,
     )
 
 
@@ -229,15 +255,15 @@ def select_latest_provider_evidence(
     records: Sequence[Mapping[str, Any]],
     *,
     authority: ProviderAuthority,
+    max_evidence_age: timedelta | None = None,
     now: datetime | None = None,
 ) -> ProviderEvidenceView:
     """Select one latest producer record without aggregating provider authority.
 
-    Every candidate is independently normalized against the same evaluation time.
-    The collection is bounded and any invalid record fails the selection closed.
-    When multiple records share the latest observation time, they must describe
-    the same exact producer evidence; otherwise Manager refuses the ambiguous
-    latest state instead of choosing an arbitrary winner.
+    Every candidate is independently normalized against the same evaluation time
+    and Manager freshness policy. The collection is bounded and any invalid record
+    fails the selection closed. Same-time latest records must describe the same
+    exact producer evidence or the selection is ambiguous.
     """
     if not isinstance(records, Sequence) or isinstance(records, (str, bytes, bytearray)):
         raise ProviderEvidenceError("provider evidence collection must be a sequence")
@@ -250,7 +276,12 @@ def select_latest_provider_evidence(
 
     evaluated_at = _evaluation_time(now)
     views = [
-        normalize_provider_evidence(record, authority=authority, now=evaluated_at)
+        normalize_provider_evidence(
+            record,
+            authority=authority,
+            max_evidence_age=max_evidence_age,
+            now=evaluated_at,
+        )
         for record in records
     ]
     latest_observed = max(view.observed_at for view in views)
@@ -316,6 +347,7 @@ def provider_status_record(view: ProviderEvidenceView) -> dict[str, Any]:
         "provider_outcome": view.producer_outcome,
         "observed_at": _iso_utc(view.observed_at),
         "valid_until": _iso_utc(view.valid_until),
+        "manager_effective_valid_until": _iso_utc(view.effective_valid_until),
         "evaluated_at": _iso_utc(view.evaluated_at),
         "evidence_reference": view.evidence_reference,
         "payload_digest": view.payload_digest,
