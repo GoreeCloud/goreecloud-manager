@@ -30,14 +30,14 @@ PRIVACY_SHIELD = ProviderAuthority(
     system="privacy-shield",
     repository="GoreeCloud/goreecloud-privacy-shield",
     authority_domain="privacy",
-    assertion="privacy-state",
+    assertion="privacy-status",
 )
 
 EVERKEEP = ProviderAuthority(
     system="everkeep",
     repository="GoreeCloud/goreecloud-everkeep",
     authority_domain="recovery",
-    assertion="recovery-state",
+    assertion="recovery-readiness",
 )
 
 
