@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
@@ -16,6 +17,7 @@ from typing import Any, Mapping
 REVISION = re.compile(r"^[0-9a-f]{40}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 MAX_TEXT = 256
+MAX_PROVIDER_RECORDS = 128
 
 
 @dataclass(frozen=True)
@@ -217,6 +219,53 @@ def normalize_provider_evidence(
         payload_digest=digest,
         state="current" if valid_until > current_time else "stale",
     )
+
+
+def select_latest_provider_evidence(
+    records: Sequence[Mapping[str, Any]],
+    *,
+    authority: ProviderAuthority,
+    now: datetime | None = None,
+) -> ProviderEvidenceView:
+    """Select one latest producer record without aggregating provider authority.
+
+    Every candidate is independently normalized against the same evaluation time.
+    The collection is bounded and any invalid record fails the selection closed.
+    When multiple records share the latest observation time, they must describe
+    the same exact producer evidence; otherwise Manager refuses the ambiguous
+    latest state instead of choosing an arbitrary winner.
+    """
+    if not isinstance(records, Sequence) or isinstance(records, (str, bytes, bytearray)):
+        raise ProviderEvidenceError("provider evidence collection must be a sequence")
+    if not records:
+        raise ProviderEvidenceError("provider evidence collection must not be empty")
+    if len(records) > MAX_PROVIDER_RECORDS:
+        raise ProviderEvidenceError(
+            f"provider evidence collection exceeds {MAX_PROVIDER_RECORDS} records"
+        )
+
+    evaluated_at = _evaluation_time(now)
+    views = [
+        normalize_provider_evidence(record, authority=authority, now=evaluated_at)
+        for record in records
+    ]
+    latest_observed = max(view.observed_at for view in views)
+    latest = [view for view in views if view.observed_at == latest_observed]
+    signatures = {
+        (
+            view.producer_revision,
+            view.producer_outcome,
+            view.valid_until,
+            view.evidence_reference,
+            view.payload_digest,
+        )
+        for view in latest
+    }
+    if len(signatures) != 1:
+        raise ProviderEvidenceError(
+            "latest provider evidence is ambiguous at the same observation time"
+        )
+    return latest[0]
 
 
 def integration_status(view: ProviderEvidenceView) -> dict[str, str]:
