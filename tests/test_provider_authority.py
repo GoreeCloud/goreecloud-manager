@@ -85,6 +85,14 @@ class ProviderAuthorityTests(unittest.TestCase):
         with self.assertRaises(ProviderEvidenceError):
             normalize_provider_evidence(inverted, authority=PRIVACY_SHIELD, now=NOW)
 
+    def test_naive_evaluation_clock_fails_closed(self):
+        with self.assertRaises(ProviderEvidenceError):
+            normalize_provider_evidence(
+                evidence(PRIVACY_SHIELD),
+                authority=PRIVACY_SHIELD,
+                now=datetime(2026, 9, 12, 5, 0),
+            )
+
     def test_extended_or_duplicate_semantics_are_not_silently_accepted(self):
         raw = evidence(EVERKEEP)
         raw["manager_override"] = "ready"
