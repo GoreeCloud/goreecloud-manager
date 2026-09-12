@@ -93,6 +93,10 @@ def _evaluation_time(now: datetime | None) -> datetime:
     return now.astimezone(timezone.utc)
 
 
+def _iso_utc(value: datetime) -> str:
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def normalize_provider_evidence(
     raw: Mapping[str, Any],
     *,
@@ -194,4 +198,29 @@ def integration_status(view: ProviderEvidenceView) -> dict[str, str]:
             f"Only stale {view.provider_system} producer evidence is available. "
             "Manager does not infer a current privacy or recovery state from stale evidence."
         ),
+    }
+
+
+def provider_status_record(view: ProviderEvidenceView) -> dict[str, Any]:
+    """Return a structured, non-authorizing record for Manager UI/API consumers.
+
+    The producer-owned outcome is carried as its own field instead of being
+    interpolated into Manager-authored prose. The explicit false authority flags
+    make this record unsuitable for accidental use as a privacy/recovery decision.
+    """
+    display = integration_status(view)
+    return {
+        "provider_system": view.provider_system,
+        "authority_domain": view.authority_domain,
+        "assertion": view.assertion,
+        "producer_revision": view.producer_revision,
+        "provider_outcome": view.producer_outcome,
+        "observed_at": _iso_utc(view.observed_at),
+        "valid_until": _iso_utc(view.valid_until),
+        "evidence_reference": view.evidence_reference,
+        "payload_digest": view.payload_digest,
+        "manager_display_state": display["state"],
+        "manager_detail": display["detail"],
+        "manager_authority": False,
+        "authority_transfer": False,
     }
