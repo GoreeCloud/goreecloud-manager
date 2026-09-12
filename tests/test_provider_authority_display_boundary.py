@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from integrations.provider_authority import (
     PRIVACY_SHIELD,
@@ -28,6 +28,7 @@ def test_manager_authored_status_does_not_echo_opaque_provider_outcome():
     view = normalize_provider_evidence(
         raw,
         authority=PRIVACY_SHIELD,
+        max_evidence_age=timedelta(hours=2),
         now=datetime(2026, 9, 12, 7, 0, tzinfo=timezone.utc),
     )
 
