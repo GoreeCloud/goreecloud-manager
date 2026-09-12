@@ -36,6 +36,9 @@ class CoreViewTests(TestCase):
         self.assertContains(response, "GoreeCloud Manager")
         self.assertContains(response, "Wardveil Security")
         self.assertContains(response, "wardveil-security-icon.")
+        self.assertContains(response, "GoreeCloud Gateway")
+        self.assertContains(response, "GoreeCloud DNS")
+        self.assertContains(response, "GoreeCloud Network")
         self.assertContains(response, "NetBird")
         self.assertContains(response, "Healthchecks")
         self.assertContains(response, "Kopia")
@@ -160,6 +163,29 @@ class CoreViewTests(TestCase):
 
 
 class IntegrationRegistryTests(SimpleTestCase):
+    def test_goreecloud_infrastructure_statuses_are_first_class_registry_entries(self):
+        statuses = integration_statuses(
+            gateway_status={
+                "state": "development",
+                "detail": "Gateway sanitized status accepted.",
+            },
+            dns_status={
+                "state": "development",
+                "detail": "DNS sanitized status accepted.",
+            },
+            network_status={
+                "state": "development",
+                "detail": "Network sanitized status accepted.",
+            },
+        )
+
+        by_key = {status["key"]: status for status in statuses}
+        self.assertEqual(by_key["goreecloud-gateway"]["name"], "GoreeCloud Gateway")
+        self.assertEqual(by_key["goreecloud-dns"]["name"], "GoreeCloud DNS")
+        self.assertEqual(by_key["goreecloud-network"]["name"], "GoreeCloud Network")
+        self.assertEqual(by_key["goreecloud-network"]["state"], "development")
+        self.assertEqual(by_key["netbird"]["category"], "Network / Transitional")
+
     def test_enabled_flag_changes_state_without_returning_token(self):
         with patch.dict(
             os.environ,
