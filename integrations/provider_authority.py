@@ -172,13 +172,22 @@ def normalize_provider_evidence(
 
 
 def integration_status(view: ProviderEvidenceView) -> dict[str, str]:
-    """Return a bounded display state without interpreting provider outcome."""
+    """Return Manager-authored display state without adopting producer wording.
+
+    The opaque provider outcome remains available on ``ProviderEvidenceView`` for
+    a provider-owned field or dedicated UI surface. Manager-authored explanatory
+    text deliberately does not interpolate that untrusted wording, which keeps
+    producer claims visually and semantically separate from Manager's own state.
+    """
     if view.current:
-        detail = (
-            f"Current {view.provider_system} producer evidence is available. "
-            f"Producer outcome: {view.producer_outcome}. Manager is displaying provider evidence only."
-        )
-        return {"state": "available", "detail": detail}
+        return {
+            "state": "available",
+            "detail": (
+                f"Current {view.provider_system} producer evidence is available. "
+                "Manager is displaying provider evidence only and does not reinterpret "
+                "the provider-owned outcome."
+            ),
+        }
     return {
         "state": "attention",
         "detail": (
