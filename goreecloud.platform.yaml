@@ -64,7 +64,7 @@ platform_systems:
     evidence:
       - docs/glaze-ui.md
       - core/static/core/css/glaze-ui.css
-    notes: Repository source documents an older Manager-specific Glaze UI baseline; migration and application-specific acceptance against current Stable GLAZE UI V1.1 / 1.1.0 remain required.
+    notes: Repository source documents a Manager-specific GLAZE UI V1.3 / 1.3.0 source baseline. Current application conformance still requires complete rendered, accessibility, resilience, adaptive, representative-target, Human Visual Excellence, rollback, release, and production acceptance; the source version alone does not establish current consumer conformance.
   mesh:
     result: applicable-blocked
     version: null
@@ -135,10 +135,10 @@ external_dependencies:
 
 compatibility:
   platform_contract: "0.2"
-  glaze_ui_required: "1.1.0"
+  glaze_ui_required: "1.3.0"
   requires:
     - goreecloud-platform-contract==0.2
-    - glaze-ui==1.1.0
+    - glaze-ui==1.3.0
   provides: []
 
 evidence:
@@ -172,6 +172,6 @@ conformance:
     - GoreeCloud Mesh source integrations exist, but accepted Identity credentials, live registry/event/evidence publication, target network acceptance, and production evidence remain incomplete.
     - GoreeCloud Identity human authentication/session integration and production workload-token issuance remain blocked pending implementation and acceptance.
     - Wardveil Security source-level status visibility exists, but live producer evidence, target routing, security/privacy acceptance, and production evidence remain outstanding.
-    - Current Stable GLAZE UI V1.1 / 1.1.0 migration and rendered application acceptance remain outstanding.
+    - GLAZE UI V1.3 / 1.3.0 source mapping exists, but complete rendered, accessibility, resilience, adaptive, representative-target, Human Visual Excellence, rollback, release, and production acceptance remain outstanding.
     - Full target-environment backup, restore, publication, and production-readiness acceptance remain outstanding.
     - Required Stable acceptance-test and published release evidence has not been produced.
