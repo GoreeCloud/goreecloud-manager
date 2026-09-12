@@ -1,6 +1,6 @@
-schema_version: '0.2'
+schema_version: '0.3'
 component:
-  type: application
+  type: platform-system
   id: goreecloud-manager
   product_name: GoreeCloud Manager
   repository: GoreeCloud/goreecloud-manager
@@ -53,7 +53,7 @@ platform_systems:
     evidence:
     - docs/glaze-ui.md
     - core/static/core/css/glaze-ui.css
-    notes: Repository source documents a Glaze UI 1.3.0 application baseline with source-level conformance checks; migration and rendered acceptance against the current Platform Contract Glaze UI baseline remain open.
+    notes: Repository source documents a Glaze UI 1.3.0 application baseline with source-level conformance checks; rendered, accessibility, representative-target, rollback, and production acceptance remain independently required.
   mesh:
     result: applicable-blocked
     version: null
@@ -68,6 +68,11 @@ platform_systems:
     version: null
     evidence: []
     notes: Manager currently uses its local Django authentication/session foundation; GoreeCloud Identity adoption remains a separate platform migration.
+  sync:
+    result: applicable-blocked
+    version: null
+    evidence: []
+    notes: GoreeCloud Sync operational visibility, synchronization-state presentation, and bounded administrative integration are required where applicable, but no accepted Manager-to-Sync runtime integration is established by the current main source baseline.
 health:
   health_endpoint: /healthz/
   readiness_endpoint: /readyz/
@@ -97,11 +102,11 @@ external_dependencies:
   purpose: Development and initial-MVP Manager-owned application state.
   required: true
 compatibility:
-  platform_contract: '0.2'
-  glaze_ui_required: 1.1.0
+  platform_contract: '0.3'
+  glaze_ui_required: 1.3.0
   requires:
-  - goreecloud-platform-contract==0.2
-  - glaze-ui==1.1.0
+  - goreecloud-platform-contract==0.3
+  - glaze-ui==1.3.0
   provides: []
 evidence:
   acceptance_tests: []
@@ -120,6 +125,7 @@ conformance:
   - GoreeCloud Manager is still in Development and is not approved for production publication.
   - GoreeCloud Mesh integration remains planned.
   - GoreeCloud Identity integration remains planned.
+  - GoreeCloud Sync integration and acceptance remain outstanding.
   - Wardveil Security runtime integration and acceptance remain outstanding.
-  - Migration and rendered acceptance against the current Platform Contract Glaze UI baseline remain outstanding.
+  - Rendered and production acceptance against the current Stable Glaze UI 1.3.0 baseline remain outstanding.
   - Full target-environment backup, restore, publication, and production-readiness acceptance remain outstanding.
