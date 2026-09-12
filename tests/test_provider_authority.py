@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from integrations.provider_authority import (
     EVERKEEP,
@@ -13,6 +13,7 @@ from integrations.provider_authority import (
 )
 
 NOW = datetime(2026, 9, 12, 5, 0, tzinfo=timezone.utc)
+MAX_EVIDENCE_AGE = timedelta(hours=1)
 
 
 def evidence(authority):
@@ -37,7 +38,12 @@ def evidence(authority):
 
 class ProviderAuthorityTests(unittest.TestCase):
     def test_privacy_shield_current_evidence_remains_provider_owned(self):
-        view = normalize_provider_evidence(evidence(PRIVACY_SHIELD), authority=PRIVACY_SHIELD, now=NOW)
+        view = normalize_provider_evidence(
+            evidence(PRIVACY_SHIELD),
+            authority=PRIVACY_SHIELD,
+            max_evidence_age=MAX_EVIDENCE_AGE,
+            now=NOW,
+        )
         self.assertEqual(view.state, "current")
         self.assertEqual(view.producer_outcome, "provider-owned-state")
         status = integration_status(view)
@@ -45,14 +51,53 @@ class ProviderAuthorityTests(unittest.TestCase):
         self.assertIn("provider evidence only", status["detail"])
 
     def test_everkeep_current_evidence_remains_provider_owned(self):
-        view = normalize_provider_evidence(evidence(EVERKEEP), authority=EVERKEEP, now=NOW)
+        view = normalize_provider_evidence(
+            evidence(EVERKEEP),
+            authority=EVERKEEP,
+            max_evidence_age=MAX_EVIDENCE_AGE,
+            now=NOW,
+        )
         self.assertEqual(view.authority_domain, "recovery")
         self.assertEqual(view.provider_system, "everkeep")
+        self.assertTrue(view.current)
+
+    def test_missing_manager_freshness_policy_cannot_produce_current_display(self):
+        view = normalize_provider_evidence(evidence(PRIVACY_SHIELD), authority=PRIVACY_SHIELD, now=NOW)
+        self.assertEqual(view.state, "stale")
+        self.assertEqual(integration_status(view)["state"], "attention")
+
+    def test_provider_validity_cannot_extend_manager_freshness_ceiling(self):
+        raw = evidence(PRIVACY_SHIELD)
+        raw["valid_until"] = "2027-09-12T05:30:00Z"
+        view = normalize_provider_evidence(
+            raw,
+            authority=PRIVACY_SHIELD,
+            max_evidence_age=timedelta(minutes=20),
+            now=NOW,
+        )
+        self.assertEqual(view.state, "stale")
+        self.assertEqual(view.effective_valid_until, datetime(2026, 9, 12, 4, 50, tzinfo=timezone.utc))
+
+    def test_invalid_manager_freshness_policy_fails_closed(self):
+        for value in (timedelta(0), timedelta(seconds=-1), "one hour"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ProviderEvidenceError, "positive duration"):
+                    normalize_provider_evidence(
+                        evidence(PRIVACY_SHIELD),
+                        authority=PRIVACY_SHIELD,
+                        max_evidence_age=value,
+                        now=NOW,
+                    )
 
     def test_stale_evidence_never_becomes_current_manager_truth(self):
         raw = evidence(EVERKEEP)
         raw["valid_until"] = "2026-09-12T04:45:00Z"
-        view = normalize_provider_evidence(raw, authority=EVERKEEP, now=NOW)
+        view = normalize_provider_evidence(
+            raw,
+            authority=EVERKEEP,
+            max_evidence_age=MAX_EVIDENCE_AGE,
+            now=NOW,
+        )
         self.assertEqual(view.state, "stale")
         self.assertEqual(integration_status(view)["state"], "attention")
 
@@ -90,6 +135,7 @@ class ProviderAuthorityTests(unittest.TestCase):
             normalize_provider_evidence(
                 evidence(PRIVACY_SHIELD),
                 authority=PRIVACY_SHIELD,
+                max_evidence_age=MAX_EVIDENCE_AGE,
                 now=datetime(2026, 9, 12, 5, 0),
             )
 
