@@ -47,7 +47,7 @@ class ProviderAuthorityTests(unittest.TestCase):
     def test_everkeep_current_evidence_remains_provider_owned(self):
         view = normalize_provider_evidence(evidence(EVERKEEP), authority=EVERKEEP, now=NOW)
         self.assertEqual(view.authority_domain, "recovery")
-        self.assertEqual(view.producer_system, "everkeep")
+        self.assertEqual(view.provider_system, "everkeep")
 
     def test_stale_evidence_never_becomes_current_manager_truth(self):
         raw = evidence(EVERKEEP)
