@@ -85,6 +85,14 @@ def _time(value: Any, field: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def _evaluation_time(now: datetime | None) -> datetime:
+    if now is None:
+        return datetime.now(timezone.utc)
+    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
+        raise ProviderEvidenceError("evaluation time must include timezone information")
+    return now.astimezone(timezone.utc)
+
+
 def normalize_provider_evidence(
     raw: Mapping[str, Any],
     *,
@@ -143,7 +151,7 @@ def normalize_provider_evidence(
 
     observed = _time(raw.get("observed_at"), "observed_at")
     valid_until = _time(raw.get("valid_until"), "valid_until")
-    current_time = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    current_time = _evaluation_time(now)
     if observed > current_time:
         raise ProviderEvidenceError("provider evidence cannot be observed in the future")
     if valid_until <= observed:
