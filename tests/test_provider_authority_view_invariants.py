@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest import TestCase
 
 from integrations.provider_authority import (
@@ -23,6 +23,7 @@ class ProviderEvidenceViewInvariantTests(TestCase):
             "evidence_reference": "evidence+sha256:provider-record",
             "payload_digest": "sha256:" + "b" * 64,
             "state": "current",
+            "max_evidence_age": timedelta(hours=1),
         }
 
     def test_direct_view_rejects_ungoverned_provider_system(self) -> None:
@@ -61,11 +62,29 @@ class ProviderEvidenceViewInvariantTests(TestCase):
         with self.assertRaisesRegex(ProviderEvidenceError, "observed in the future"):
             ProviderEvidenceView(**values)
 
-    def test_direct_view_rejects_fabricated_current_state_after_expiry(self) -> None:
+    def test_direct_view_rejects_fabricated_current_state_after_provider_expiry(self) -> None:
         values = self.valid_kwargs()
         values["evaluated_at"] = datetime(2026, 9, 12, 9, 1, tzinfo=timezone.utc)
         values["state"] = "current"
         with self.assertRaisesRegex(ProviderEvidenceError, "does not match"):
+            ProviderEvidenceView(**values)
+
+    def test_direct_view_rejects_fabricated_current_state_after_manager_age_ceiling(self) -> None:
+        values = self.valid_kwargs()
+        values["max_evidence_age"] = timedelta(minutes=20)
+        with self.assertRaisesRegex(ProviderEvidenceError, "does not match"):
+            ProviderEvidenceView(**values)
+
+    def test_direct_view_without_manager_freshness_policy_cannot_claim_current(self) -> None:
+        values = self.valid_kwargs()
+        values["max_evidence_age"] = None
+        with self.assertRaisesRegex(ProviderEvidenceError, "does not match"):
+            ProviderEvidenceView(**values)
+
+    def test_direct_view_rejects_nonpositive_manager_freshness_policy(self) -> None:
+        values = self.valid_kwargs()
+        values["max_evidence_age"] = timedelta(0)
+        with self.assertRaisesRegex(ProviderEvidenceError, "positive duration"):
             ProviderEvidenceView(**values)
 
     def test_direct_view_accepts_stale_state_when_evaluation_is_after_expiry(self) -> None:
