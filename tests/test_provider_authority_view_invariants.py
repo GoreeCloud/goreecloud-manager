@@ -18,6 +18,7 @@ class ProviderEvidenceViewInvariantTests(TestCase):
             "producer_outcome": "provider-owned-state",
             "observed_at": datetime(2026, 9, 12, 8, 0, tzinfo=timezone.utc),
             "valid_until": datetime(2026, 9, 12, 9, 0, tzinfo=timezone.utc),
+            "evaluated_at": datetime(2026, 9, 12, 8, 30, tzinfo=timezone.utc),
             "evidence_reference": "evidence+sha256:provider-record",
             "payload_digest": "sha256:" + "b" * 64,
             "state": "current",
@@ -47,8 +48,28 @@ class ProviderEvidenceViewInvariantTests(TestCase):
         with self.assertRaisesRegex(ProviderEvidenceError, "validity window"):
             ProviderEvidenceView(**values)
 
+    def test_direct_view_rejects_future_observation_relative_to_evaluation(self) -> None:
+        values = self.valid_kwargs()
+        values["evaluated_at"] = datetime(2026, 9, 12, 7, 59, tzinfo=timezone.utc)
+        with self.assertRaisesRegex(ProviderEvidenceError, "observed in the future"):
+            ProviderEvidenceView(**values)
+
+    def test_direct_view_rejects_fabricated_current_state_after_expiry(self) -> None:
+        values = self.valid_kwargs()
+        values["evaluated_at"] = datetime(2026, 9, 12, 9, 1, tzinfo=timezone.utc)
+        values["state"] = "current"
+        with self.assertRaisesRegex(ProviderEvidenceError, "does not match"):
+            ProviderEvidenceView(**values)
+
+    def test_direct_view_accepts_stale_state_when_evaluation_is_after_expiry(self) -> None:
+        values = self.valid_kwargs()
+        values["evaluated_at"] = datetime(2026, 9, 12, 9, 1, tzinfo=timezone.utc)
+        values["state"] = "stale"
+        view = ProviderEvidenceView(**values)
+        self.assertFalse(view.current)
+
     def test_direct_view_rejects_unknown_display_state(self) -> None:
         values = self.valid_kwargs()
         values["state"] = "protected"
-        with self.assertRaisesRegex(ProviderEvidenceError, "state is invalid"):
+        with self.assertRaisesRegex(ProviderEvidenceError, "does not match"):
             ProviderEvidenceView(**values)
