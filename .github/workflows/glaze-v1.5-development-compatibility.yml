@@ -23,6 +23,7 @@ jobs:
   validate:
     name: Validate Manager Glaze V1.5 Development integration
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     env:
       MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
       GLAZE_V15_REVISION: e7c397837908e4644d6230f17d0f73e84e3d1558
