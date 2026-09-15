@@ -18,6 +18,12 @@ permissions:
 
 jobs:
   validate:
-    uses: GoreeCloud/GoreeCloud/.github/workflows/reusable-platform-manifest.yml@3204afc4f603f3b29a456f01cbb28755d7f7bd00
+    # Development pin to the governance-aligned seven-system Platform Contract 0.2
+    # recovery candidate in GoreeCloud/GoreeCloud PR #33. Exact candidate
+    # 822e5fa65f1f253cf681f3dc6a0150e5949f6072 requires current Stable
+    # Glaze UI 1.4.1 and keeps GoreeCloud Sync outside platform_systems.
+    # Replace this pin only after the authoritative central contract is accepted
+    # at an immutable integrated revision.
+    uses: GoreeCloud/GoreeCloud/.github/workflows/reusable-platform-manifest.yml@822e5fa65f1f253cf681f3dc6a0150e5949f6072
     with:
       manifest-path: goreecloud.platform.yaml
