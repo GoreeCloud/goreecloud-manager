@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "documentVersion": "1.0",
+  "recordType": "goreecloud-manager-glaze-v1.5-development-integration",
+  "consumer": {
+    "name": "GoreeCloud Manager",
+    "repository": "GoreeCloud/goreecloud-manager",
+    "lifecycle": "development",
+    "supportedSurfaces": ["web-admin-console"]
+  },
+  "glazeUi": {
+    "canonicalRepository": "GoreeCloud/goreecloud-glaze-ui",
+    "implementedSourceTarget": "1.3.0",
+    "requiredStableTarget": "1.4.1",
+    "requiredStableRevision": "4fab9da0fad2e5c974e0e66ec88632c61745751c",
+    "developmentVersion": "1.5.0-dev.1",
+    "developmentRevision": "e7c397837908e4644d6230f17d0f73e84e3d1558",
+    "developmentEntrypoint": "js/glaze-v1.5-resolution.dev.mjs",
+    "providerRegistryEntrypoint": "js/glaze-v1.5-provider-registry.dev.mjs",
+    "sharedRepresentativeProfile": "goreecloud-manager-desktop"
+  },
+  "integrationBoundary": {
+    "developmentOnly": true,
+    "testOnly": true,
+    "runtimeDependencyAdded": false,
+    "platformManifestChangedByThisIntegration": false,
+    "requiredStable141TargetPreserved": true,
+    "implementedV13SourceMappingPreserved": true,
+    "stable141MigrationCompleted": false,
+    "consumerAcceptanceEstablished": false,
+    "releaseCandidateQualified": false,
+    "stableQualified": false,
+    "productionEligible": false
+  },
+  "authorityBoundary": {
+    "glazeAuthority": "presentation-only",
+    "managerApplicationAuthority": "GoreeCloud Manager",
+    "administrativeAuthorizationAuthority": "Manager policy authority",
+    "privacyAuthority": "Privacy Shield",
+    "securityAuthority": "Wardveil Security",
+    "identityAuthority": "GoreeCloud Identity",
+    "coordinationAuthority": "GoreeCloud Mesh",
+    "continuityAuthority": "Everkeep",
+    "authorizationMayBeInferredByGlaze": false,
+    "providerPrecedenceMayBeInferredByGlaze": false,
+    "permissionMayBeGrantedByGlaze": false,
+    "automaticNavigationAllowed": false,
+    "consequentialExecutionMayBeAutomatic": false,
+    "fallbackExecutionMayBeAutomatic": false
+  },
+  "validation": {
+    "exactManagerRevisionRequired": true,
+    "exactGlazeDevelopmentRevisionRequired": true,
+    "upstreamRepresentativeProfileRequired": true,
+    "scenarios": [
+      "manager.v1.5.shared-desktop-restricted-admin-profile",
+      "manager.v1.5.policy-authorizes-admin-without-auto-execution",
+      "manager.v1.5.duplicate-admin-authorization-fails-closed",
+      "manager.v1.5.refresh-temporarily-unavailable-preserves-policy-truth"
+    ],
+    "requiredProperties": [
+      "refresh-remains-application-owned",
+      "administrative-authorization-remains-policy-owned",
+      "restricted-administration-remains-visible-but-disabled",
+      "consequential-administrative-actions-are-never-auto-executed",
+      "policy-availability-does-not-trigger-automatic-navigation",
+      "duplicate-authorization-ownership-fails-closed-without-provider-precedence",
+      "application-refresh-unavailability-does-not-rewrite-policy-authorization",
+      "task-and-navigation-state-remain-stable",
+      "diagnostics-omit-provider-identity-and-raw-context",
+      "telemetry-and-remote-analysis-are-not-required"
+    ]
+  },
+  "acceptance": {
+    "repositoryLocalDevelopmentContractPresent": true,
+    "repositoryLocalDevelopmentValidationRequired": true,
+    "renderedV15Acceptance": false,
+    "browserV15Acceptance": false,
+    "assistiveTechnologyV15Acceptance": false,
+    "representativeTargetV15Acceptance": false,
+    "privacyReviewV15Acceptance": false,
+    "securityReviewV15Acceptance": false,
+    "repositoryLocalConsumerAcceptance": false,
+    "productionAcceptance": false
+  },
+  "notes": "This record exercises non-consumer-eligible Glaze UI 1.5.0-dev.1 resolver semantics against Manager authority boundaries without changing Manager's implemented V1.3 presentation source, required Stable V1.4.1 target, platform manifest, or shipped runtime. It is Development compatibility evidence only and cannot establish V1.4.1 migration, Manager conformance, Release Candidate qualification, Stable qualification, release, deployment, or production acceptance."
+}
