@@ -1,0 +1,56 @@
+name: Manager Glaze V1.5 Development Compatibility
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/glaze-v1.5-development-compatibility.yml
+      - contracts/glaze-ui/manager-glaze-v1.5-development.json
+      - scripts/validate_glaze_v1_5_development.mjs
+      - docs/glaze-v1.5-development-compatibility.md
+  push:
+    branches:
+      - agent/glaze-v1.5-development-compat-20260915
+    paths:
+      - .github/workflows/glaze-v1.5-development-compatibility.yml
+      - contracts/glaze-ui/manager-glaze-v1.5-development.json
+      - scripts/validate_glaze_v1_5_development.mjs
+      - docs/glaze-v1.5-development-compatibility.md
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Manager Glaze V1.5 Development integration
+    runs-on: ubuntu-latest
+    env:
+      MANAGER_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
+      GLAZE_V15_REVISION: e7c397837908e4644d6230f17d0f73e84e3d1558
+    steps:
+      - name: Check out exact Manager source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.MANAGER_SOURCE_REVISION }}
+          persist-credentials: false
+
+      - name: Verify exact Manager source revision
+        run: test "$(git rev-parse HEAD)" = "$MANAGER_SOURCE_REVISION"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+
+      - name: Fetch exact Glaze V1.5 Development revision
+        run: |
+          set -euo pipefail
+          GLAZE_V15_ROOT="$RUNNER_TEMP/goreecloud-glaze-ui-v1.5"
+          git init "$GLAZE_V15_ROOT"
+          git -C "$GLAZE_V15_ROOT" remote add origin https://github.com/GoreeCloud/goreecloud-glaze-ui.git
+          git -C "$GLAZE_V15_ROOT" fetch --depth=1 origin "$GLAZE_V15_REVISION"
+          git -C "$GLAZE_V15_ROOT" checkout --detach FETCH_HEAD
+          test "$(git -C "$GLAZE_V15_ROOT" rev-parse HEAD)" = "$GLAZE_V15_REVISION"
+          echo "GLAZE_V15_ROOT=$GLAZE_V15_ROOT" >> "$GITHUB_ENV"
+
+      - name: Validate repository-local Glaze V1.5 Development compatibility
+        run: node scripts/validate_glaze_v1_5_development.mjs
