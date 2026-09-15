@@ -14,6 +14,7 @@ GLAZE_CSS = REPOSITORY_ROOT / "core/static/core/css/glaze-ui.css"
 THEME_JS = REPOSITORY_ROOT / "core/static/core/js/theme.js"
 MANAGER_MARK = REPOSITORY_ROOT / "core/static/core/img/manager-mark.svg"
 GLAZE_DOC = REPOSITORY_ROOT / "docs/glaze-ui.md"
+PLATFORM_MANIFEST = REPOSITORY_ROOT / "goreecloud.platform.yaml"
 PRIMARY_TEMPLATES = (
     REPOSITORY_ROOT / "core/templates/core/login.html",
     REPOSITORY_ROOT / "core/templates/core/overview.html",
@@ -107,11 +108,18 @@ class GlazeUiContractTests(SimpleTestCase):
         self.assertIn('role="alert"', login)
         self.assertNotIn("role=\"switch\"", login)
 
-    def test_glaze_13_documentation_pins_stable_source_and_material_boundary(self):
+    def test_glaze_documentation_preserves_v13_source_and_current_stable_boundary(self):
         doc = self._read(GLAZE_DOC)
+        manifest = self._read(PLATFORM_MANIFEST)
 
-        self.assertIn("Glaze UI 1.3.0 Stable", doc)
-        self.assertIn("0cd084d9c888a9697cbd9fdd2c4d2bd91286c56c", doc)
+        self.assertIn("implemented source mapping remains Glaze UI V1.3 / `1.3.0`", doc)
+        self.assertIn("required current Official Stable consumer target", doc)
+        self.assertIn("GLAZE UI V1.4.1 / `1.4.1`", doc)
+        self.assertIn("4fab9da0fad2e5c974e0e66ec88632c61745751c", doc)
+        self.assertIn("`applicable-migration-required`", doc)
+        self.assertNotIn("Manager targets **Glaze UI 1.3.0 Stable**", doc)
+        self.assertIn('glaze_ui_required: "1.4.1"', manifest)
+        self.assertIn('glaze-ui==1.4.1', manifest)
         self.assertIn("Functional Glass", doc)
         self.assertIn("Solid/Raised", doc)
         self.assertIn("effects motion", doc)
