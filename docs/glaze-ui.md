@@ -4,7 +4,7 @@
 
 This document defines the repository-local implementation contract for the GoreeCloud Manager interface. Manager uses **Glaze UI** as its complete visual and interaction language while preserving the application's read-only security model and the authority of integrated systems.
 
-Manager's **implemented source mapping remains Glaze UI V1.3 / `1.3.0`**. The required current Official Stable consumer target is **GLAZE UI V1.4.1 / `1.4.1`**, whose exact Stable source authority is `GoreeCloud/goreecloud-glaze-ui` main revision `4fab9da0fad2e5c974e0e66ec88632c61745751c`. Updating the required target does not claim that Manager's V1.3 styles or concrete application surfaces have migrated to V1.4.1. Manager remains `applicable-migration-required` and nonconformant until substantive current-Stable source adoption and repository-local acceptance are completed.
+Manager's **implemented source mapping remains Glaze UI V1.3 / `1.3.0`**. The required current Official Stable consumer target is **GLAZE UI V1.5 / `1.5.0`**, whose current Stable source-qualification anchor is `ee1032a0822ab8e103f8afe48e5c1859fde65cc9` in `GoreeCloud/goreecloud-glaze-ui`. Updating the required target does not claim that Manager's V1.3 styles or concrete application surfaces have migrated to V1.5. Manager remains `applicable-migration-required` and nonconformant until substantive current-Stable source adoption and repository-local acceptance are completed.
 
 The implemented V1.3 baseline was reconciled against historical Stable source and is retained as the currently implemented Manager presentation contract. Manager maps Glaze semantics into its existing product layer instead of copying the canonical reference stylesheet wholesale.
 
@@ -28,7 +28,7 @@ Manager should be recognizable as GoreeCloud before the user reads the product n
 
 The shared visual vocabulary includes layered surfaces, softened rounded geometry, restrained shadows, purposeful gradients, consistent typography and spacing, strong System/Light/Dark appearance behavior, responsive administration layouts, and semantic state/focus treatment.
 
-The implemented Glaze UI 1.3 layer adds a stricter material boundary: glass is a functional hierarchy tool, not the default content treatment. Manager therefore keeps ordinary operational information on Solid/Raised surfaces while reserving Functional Glass for navigation and interactive chrome. Current-Stable V1.4.1 migration must preserve or deliberately supersede these repository-local semantics through a separately validated implementation path; this document does not infer that migration from the version requirement alone.
+The implemented Glaze UI 1.3 layer adds a stricter material boundary: glass is a functional hierarchy tool, not the default content treatment. Manager therefore keeps ordinary operational information on Solid/Raised surfaces while reserving Functional Glass for navigation and interactive chrome. Current-Stable V1.5 migration must preserve or deliberately supersede these repository-local semantics through a separately validated implementation path; this document does not infer that migration from the version requirement alone.
 
 ## Glaze UI 1.3 expressive-hierarchy mapping
 
@@ -93,7 +93,7 @@ The Django/source suite includes regression coverage for:
 
 - GoreeCloud Manager identity and local mark;
 - the implemented Glaze UI 1.3.0 source declaration and repository-local presentation semantics;
-- the separately declared required current Stable Glaze UI 1.4.1 consumer target without relabeling V1.3 source as migrated;
+- the separately declared required current Stable Glaze UI 1.5.0 consumer target without relabeling V1.3 source as migrated;
 - Functional Glass limited to application chrome;
 - Solid/Raised operational content defaults;
 - expressive shape roles and bounded pressed geometry;
@@ -103,16 +103,18 @@ The Django/source suite includes regression coverage for:
 - noindex/noarchive and same-origin browser metadata;
 - shared-shell inheritance, local-only presentation dependencies, pre-stylesheet appearance initialization, skip-link/main-target semantics, responsive/accessibility fallbacks, and active-navigation semantics.
 
-These automated tests establish a source-controlled conformance baseline for what they actually exercise. They do not establish substantive V1.4.1 migration and do not substitute for visual review in real browsers.
+These automated tests establish a source-controlled conformance baseline for what they actually exercise. They do not establish substantive V1.5 migration and do not substitute for visual review in real browsers.
 
 ## Current-Stable migration and acceptance boundary
 
-The current machine compatibility requirement is V1.4.1, but Manager's implemented source remains V1.3. A later migration must explicitly reconcile the concrete Manager styles, templates, semantic behavior, accessibility behavior, and any V1.4.1-specific requirements at an exact source revision. Shared Glaze V1.4.1 qualification or a dependency/version declaration cannot establish Manager-local adoption or acceptance.
+The current machine compatibility requirement is V1.5 / `1.5.0`, but Manager's implemented source remains V1.3. Migration must explicitly reconcile the concrete Manager styles, templates, semantic behavior, accessibility behavior, the Stable V1.5 context/capability runtime boundary where applicable, and all other current V1.5 requirements against exact authoritative source. Shared Glaze V1.5 qualification or a dependency/version declaration cannot establish Manager-local adoption or acceptance.
 
-Before current-Stable migration can be considered complete, Manager still requires repository-local rendered and accessibility evidence, representative browser/OS and adaptive-target review, product-specific Human Visual Excellence, rollback evidence, and the normal release/production acceptance gates. Any Development-only V1.5 compatibility exercise must remain isolated from the Stable target and cannot replace these obligations.
+A historical exact-revision `1.5.0-dev.1` compatibility exercise is retained separately because it tested useful presentation-authority invariants before V1.5 became Stable. That Development exercise is not Stable `1.5.0` consumer acceptance and cannot replace current source migration.
+
+Before current-Stable migration can be considered complete, Manager still requires repository-local rendered and accessibility evidence, representative browser/OS and adaptive-target review, product-specific Human Visual Excellence, rollback evidence, and the normal release/production acceptance gates.
 
 ## Release review boundary
 
 Before a production release is visually approved, material interface changes should receive authenticated browser review at representative desktop and mobile widths in System, Light, and Dark modes. Review should include keyboard-only navigation, reduced motion, reduced transparency where supported, increased contrast, forced colors/high contrast, authentication errors, empty states, degraded integration states, long operational values, Functional Glass readability, compact reachability, adaptive action grouping, and confirmation that operational content remains calm rather than becoming decorative glass.
 
-Passing repository tests means the source-level Glaze UI contract is intact for the tested implementation. It does not by itself claim that every rendered browser/OS combination has been visually inspected, that current-Stable V1.4.1 has been adopted, or that Manager is approved for production publication.
+Passing repository tests means the source-level Glaze UI contract is intact for the tested implementation. It does not by itself claim that every rendered browser/OS combination has been visually inspected, that current-Stable V1.5 has been adopted, or that Manager is approved for production publication.
