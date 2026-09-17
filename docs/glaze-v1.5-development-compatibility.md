@@ -8,16 +8,16 @@
 **Exact historical Glaze Development revision:** `e7c397837908e4644d6230f17d0f73e84e3d1558`  
 **Historical Development Stable baseline:** `1.4.1`  
 **Manager implemented Glaze source:** V1.3 / `1.3.0`  
-**Manager required current Stable Glaze target:** V1.5 / `1.5.0`  
-**Current Stable Glaze source-qualification anchor:** `ee1032a0822ab8e103f8afe48e5c1859fde65cc9`
+**Manager required current Stable Glaze target:** V1.5 / `1.5.1`  
+**Current Stable Glaze source-qualification anchor:** `5b59d0e36950d737dba35b58ae58058684e0831b`
 
-This record preserves a bounded Manager compatibility exercise performed against the pre-Stable GLAZE UI V1.5 Context + Capability Resolution Layer. Glaze V1.5 has since become current Official Stable `1.5.0`; that lifecycle change does not convert this historical Development exercise into Manager Stable-consumer acceptance.
+This record preserves a bounded Manager compatibility exercise performed against the pre-Stable GLAZE UI V1.5 Context + Capability Resolution Layer. Glaze V1.5 is now current Official Stable `1.5.1`; that lifecycle change does not convert this historical Development exercise into Manager Stable-consumer acceptance.
 
 ## Stable and migration boundary
 
-Manager still implements its repository-local V1.3 presentation mapping. The required current Stable consumer target is now V1.5 / `1.5.0`. Substantive Stable V1.5 source migration plus Manager-specific rendered, accessibility, representative-target, Human Visual Excellence, rollback, release, and production acceptance remain outstanding.
+Manager still implements its repository-local V1.3 presentation mapping. The required current Stable consumer target is now V1.5 / `1.5.1`. Substantive Stable V1.5 source migration plus Manager-specific rendered, accessibility, representative-target, Human Visual Excellence, rollback, release, and production acceptance remain outstanding.
 
-The historical `1.5.0-dev.1` exercise may be retained as useful compatibility evidence for the authority semantics it actually tested, but it cannot substitute for current Stable `1.5.0` adoption or acceptance. Manager remains Development, nonconformant, and `applicable-migration-required`.
+The historical `1.5.0-dev.1` exercise may be retained as useful compatibility evidence for the authority semantics it actually tested, but it cannot substitute for current Stable `1.5.1` adoption or acceptance. Manager remains Development, nonconformant, and `applicable-migration-required`.
 
 ## Authority model under test
 
@@ -52,7 +52,7 @@ The dedicated `Manager Glaze V1.5 Development Compatibility` workflow:
 - fetches historical exact Glaze Development revision `e7c397837908e4644d6230f17d0f73e84e3d1558` into a detached checkout;
 - verifies that upstream revision and its historical `1.4.1` Stable baseline;
 - runs the repository-local authority-scenario validator;
-- requires Manager's manifest to retain implemented V1.3 source truth while declaring current Stable target `1.5.0`; and
+- requires Manager's manifest to retain implemented V1.3 source truth while declaring current Stable target `1.5.1`; and
 - fails if the historical Development exercise is relabeled as current Stable migration or consumer acceptance.
 
 Manager's normal repository CI and readiness workflows remain independent required evidence for the exact PR revision. A green compatibility workflow proves only the source-level scenarios it executes.
@@ -61,7 +61,7 @@ Manager's normal repository CI and readiness workflows remain independent requir
 
 This exercise does **not** establish:
 
-- substantive Manager Stable V1.5 / `1.5.0` source migration;
+- substantive Manager Stable V1.5 / `1.5.1` source migration;
 - rendered or browser Stable V1.5 adoption;
 - accessibility or assistive-technology acceptance;
 - representative desktop/mobile browser acceptance;
