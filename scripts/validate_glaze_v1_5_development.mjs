@@ -12,8 +12,8 @@ const clone = value => JSON.parse(JSON.stringify(value));
 const expected = Object.freeze({
   repository: 'GoreeCloud/goreecloud-manager',
   implementedVersion: '1.3.0',
-  currentStableVersion: '1.5.0',
-  currentStableQualificationAnchor: 'ee1032a0822ab8e103f8afe48e5c1859fde65cc9',
+  currentStableVersion: '1.5.1',
+  currentStableQualificationAnchor: '5b59d0e36950d737dba35b58ae58058684e0831b',
   historicalDevelopmentVersion: '1.5.0-dev.1',
   historicalDevelopmentRevision: 'e7c397837908e4644d6230f17d0f73e84e3d1558',
   historicalDevelopmentStableBaseline: '1.4.1',
@@ -34,7 +34,7 @@ const upstreamRevision = execFileSync('git', ['-C', glazeRoot, 'rev-parse', 'HEA
 assert.equal(upstreamRevision, expected.historicalDevelopmentRevision, 'historical Glaze V1.5 checkout must match the exact governed Development revision');
 
 assert.equal(contract.schemaVersion, 1);
-assert.equal(contract.documentVersion, '1.1');
+assert.equal(contract.documentVersion, '1.2');
 assert.equal(contract.recordType, 'goreecloud-manager-glaze-v1.5-development-integration');
 assert.equal(contract.consumer?.repository, expected.repository);
 assert.equal(contract.consumer?.lifecycle, 'development');
@@ -49,8 +49,8 @@ assert.equal(contract.integrationBoundary?.developmentOnly, true);
 assert.equal(contract.integrationBoundary?.testOnly, true);
 assert.equal(contract.integrationBoundary?.runtimeDependencyAdded, false);
 assert.equal(contract.integrationBoundary?.implementedV13SourceMappingPreserved, true);
-assert.equal(contract.integrationBoundary?.requiredStable150TargetRecorded, true);
-assert.equal(contract.integrationBoundary?.stable150MigrationCompleted, false);
+assert.equal(contract.integrationBoundary?.requiredStable151TargetRecorded, true);
+assert.equal(contract.integrationBoundary?.stable151MigrationCompleted, false);
 assert.equal(contract.integrationBoundary?.historicalDevelopmentExerciseDoesNotEstablishStableMigration, true);
 assert.equal(contract.integrationBoundary?.consumerAcceptanceEstablished, false);
 assert.equal(contract.integrationBoundary?.releaseCandidateQualified, false);
@@ -72,14 +72,14 @@ assert.equal(contract.validation?.scenarios?.length, 4);
 assert.ok(baseTemplate.includes('data-glaze-version="1.3.0"'));
 assert.ok(glazeCss.includes('--glaze-contract-version: "1.3.0"'));
 assert.ok(glazeDoc.includes("implemented source mapping remains Glaze UI V1.3 / `1.3.0`"));
-assert.ok(glazeDoc.includes('required current Official Stable consumer target is **GLAZE UI V1.5 / `1.5.0`**'));
+assert.ok(glazeDoc.includes('required current Official Stable consumer target is **GLAZE UI V1.5 / `1.5.1`**'));
 assert.ok(compatibilityDoc.includes('Historical Development Stable baseline:** `1.4.1`'));
-assert.ok(compatibilityDoc.includes('Manager required current Stable Glaze target:** V1.5 / `1.5.0`'));
+assert.ok(compatibilityDoc.includes('Manager required current Stable Glaze target:** V1.5 / `1.5.1`'));
 assert.match(platform, /lifecycle:\s*development/);
 assert.match(platform, /result:\s*applicable-migration-required/);
 assert.match(platform, /glaze_ui:\n\s+result:\s+applicable-migration-required\n\s+version:\s+1\.3\.0/);
-assert.ok(platform.includes('glaze_ui_required: "1.5.0"'));
-assert.ok(platform.includes('glaze-ui==1.5.0'));
+assert.ok(platform.includes('glaze_ui_required: "1.5.1"'));
+assert.ok(platform.includes('glaze-ui==1.5.1'));
 assert.ok(platform.includes('conformance:\n  status: nonconformant'));
 assert.ok(!platform.includes('glaze-ui==1.5.0-dev.1'));
 assert.ok(!platform.includes('glaze_ui_required: "1.5.0-dev.1"'));
