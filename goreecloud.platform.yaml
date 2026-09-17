@@ -64,7 +64,7 @@ platform_systems:
     evidence:
       - docs/glaze-ui.md
       - core/static/core/css/glaze-ui.css
-    notes: Repository source implements a Manager-specific GLAZE UI V1.3 / 1.3.0 baseline, while the required current Official Stable consumer target is GLAZE UI V1.4.1 / 1.4.1 at exact Stable Glaze main revision 4fab9da0fad2e5c974e0e66ec88632c61745751c. The version field records implemented source rather than claiming migration. Manager therefore remains applicable-migration-required until it substantively adopts the current Stable source and completes repository-local rendered, accessibility, resilience, adaptive, representative-target, Human Visual Excellence, rollback, release, and production acceptance.
+    notes: Repository source implements a Manager-specific GLAZE UI V1.3 / 1.3.0 baseline, while the required current Official Stable consumer target is GLAZE UI V1.5 / 1.5.1. The version field records implemented source rather than claiming migration. Manager therefore remains applicable-migration-required until it substantively adopts the current Stable source and completes repository-local rendered, accessibility, resilience, adaptive, representative-target, Human Visual Excellence, rollback, release, and production acceptance.
   mesh:
     result: applicable-blocked
     version: null
@@ -135,10 +135,10 @@ external_dependencies:
 
 compatibility:
   platform_contract: "0.2"
-  glaze_ui_required: "1.4.1"
+  glaze_ui_required: "1.5.1"
   requires:
     - goreecloud-platform-contract==0.2
-    - glaze-ui==1.4.1
+    - glaze-ui==1.5.1
   provides: []
 
 evidence:
@@ -168,7 +168,7 @@ conformance:
     - tests/test_platform_events.py
     - tests/test_wardveil.py
   blockers:
-    - GLAZE UI V1.3 / 1.3.0 remains the implemented Manager source mapping, but current Stable GLAZE UI V1.4.1 / 1.4.1 is now the required consumer target. Substantive V1.4.1 source migration plus complete Manager-specific rendered, accessibility, resilience, adaptive, representative-target, Human Visual Excellence, rollback, release, and production acceptance remain outstanding; neither the requirement update nor shared Glaze qualification counts as Manager-local acceptance evidence.
+    - GLAZE UI V1.3 / 1.3.0 remains the implemented Manager source mapping, but current Stable GLAZE UI V1.5 / 1.5.1 is now the required consumer target. Substantive V1.5 source migration plus complete Manager-specific rendered, accessibility, resilience, adaptive, representative-target, Human Visual Excellence, rollback, release, and production acceptance remain outstanding; neither the requirement update nor shared Glaze qualification counts as Manager-local acceptance evidence.
     - GoreeCloud Manager is still in Development and is not approved for production publication.
     - GoreeCloud Mesh source integrations exist, but accepted Identity credentials, live registry/event/evidence publication, target network acceptance, and production evidence remain incomplete.
     - GoreeCloud Identity human authentication/session integration and production workload-token issuance remain blocked pending implementation and acceptance.

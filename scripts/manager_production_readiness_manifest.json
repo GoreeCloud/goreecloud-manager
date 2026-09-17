@@ -6,7 +6,7 @@
     "approval_reference": null,
     "approved_at": null
   },
-  "declared_effective_check_count": 10,
+  "declared_effective_check_count": 11,
   "source_evidence_gates": [
     {
       "workflow_path": ".github/workflows/ci.yml",
@@ -71,7 +71,15 @@
       "required_jobs": [
         "validate"
       ],
-      "evidence_scope": "repository-root GoreeCloud Platform Contract v0.1 declaration validation against an immutable central validator; structural validity does not establish runtime integration, production, or Stable acceptance"
+      "evidence_scope": "repository-root GoreeCloud Platform Contract v0.2 declaration validation against an immutable central validator; structural validity does not establish runtime integration, production, or Stable acceptance"
+    },
+    {
+      "workflow_path": ".github/workflows/glaze-v1.5-development-compatibility.yml",
+      "workflow_name": "Manager Glaze V1.5 Development Compatibility",
+      "required_jobs": [
+        "validate"
+      ],
+      "evidence_scope": "exact-revision Development-only Glaze UI V1.5 resolver compatibility against Manager authority boundaries; this gate does not establish migration to current Stable Glaze UI 1.5.0, consumer acceptance, release qualification, deployment, or production acceptance"
     },
     {
       "workflow_path": ".github/workflows/production-readiness-evidence-manifest.yml",
